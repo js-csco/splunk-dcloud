@@ -89,7 +89,26 @@ else
 fi
 
 # ===========================================================================
-# 4. Data integrations   (placeholder - added in a later step)
+# 4. Save-to-GitHub button: persist the PAT (if provided) for labsync.sh
+# ===========================================================================
+# The token is stored OUTSIDE the app dir so it is never captured/committed by
+# the snapshot. It must be provided at session start via the GITHUB_TOKEN env
+# var (e.g. in the dCloud startup command), since the VM wipes each session.
+TOKEN_DIR="${SPLUNK_HOME}/var/lib/dcloud"
+if [ -n "${GITHUB_TOKEN:-}" ]; then
+  mkdir -p "${TOKEN_DIR}"
+  printf '%s' "${GITHUB_TOKEN}" > "${TOKEN_DIR}/gh.token"
+  chmod 700 "${TOKEN_DIR}"; chmod 600 "${TOKEN_DIR}/gh.token"
+  chown -R "${SPLUNK_USER}:${SPLUNK_USER}" "${TOKEN_DIR}" 2>/dev/null || true
+  log "Save-to-GitHub: token stored (button is active)."
+else
+  log "Save-to-GitHub: no GITHUB_TOKEN provided - button will report 'no token' until one is set."
+fi
+# Make the labsync scripts executable in the deployed app.
+chmod +x "${SPLUNK_HOME}/etc/apps/${LAB_APP}/bin/"*.sh 2>/dev/null || true
+
+# ===========================================================================
+# 5. Data integrations   (placeholder - added in a later step)
 # ===========================================================================
 # HEC tokens / forwarder inputs for the Ubuntu + Proxmox senders.
 

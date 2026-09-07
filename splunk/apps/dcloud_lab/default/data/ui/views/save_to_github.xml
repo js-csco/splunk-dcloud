@@ -1,0 +1,46 @@
+<form theme="dark">
+  <label>Save to GitHub</label>
+  <description>Commit the current lab configuration (including dashboards created in this session) to the lab-snapshot branch on GitHub.</description>
+
+  <fieldset submitButton="true" autoRun="false">
+    <input type="dropdown" token="confirm">
+      <label>Save current lab changes to GitHub?</label>
+      <choice value="go">Yes — commit &amp; push to the lab-snapshot branch</choice>
+      <default></default>
+    </input>
+  </fieldset>
+
+  <row>
+    <panel>
+      <title>Result</title>
+      <table depends="$confirm$">
+        <search>
+          <query>| makeresults count=1 | eval trigger="$confirm$" | labsync | rename status as Status, message as Message, commit as Commit, branch as Branch | table Status Message Commit Branch</query>
+          <earliest>-1m</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <format type="color" field="Status">
+          <colorPalette type="map">{"ok":#53a051,"nochange":#c8a21a,"error":#d93f3c}</colorPalette>
+        </format>
+      </table>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
+      <html>
+        <h3>How this works</h3>
+        <ul>
+          <li>Create or edit dashboards, etc. in the <b>Lab Overview</b> app as usual - Splunk saves them into the app.</li>
+          <li>Come here, choose <b>Yes</b>, and click <b>Submit</b>.</li>
+          <li>The current app state is committed and pushed to the <b>lab-snapshot</b> branch on
+              <a href="https://github.com/js-csco/splunk-dcloud/tree/lab-snapshot" target="_blank">GitHub</a>.</li>
+          <li>Review it there and merge into <b>main</b> when you are happy - the next session will include it.</li>
+        </ul>
+        <p style="color:#8b98a5;">Admin-only. Requires a GitHub token to be configured on the box
+        (see the repo README, "Save to GitHub" section). If you see a "no token" error, the token was not provided at session start.</p>
+      </html>
+    </panel>
+  </row>
+</form>

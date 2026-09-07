@@ -10,3 +10,11 @@ export = system
 
 [nav]
 export = system
+
+# Custom search command (labsync) used by the Save to GitHub dashboard.
+[commands]
+export = system
+
+# The Save to GitHub dashboard is admin-only (it pushes to the repo).
+[views/save_to_github]
+access = read : [ admin ], write : [ admin ]

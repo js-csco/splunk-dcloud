@@ -1,5 +1,7 @@
 # Never commit real secrets or local overrides.
 *.secret
+*.token
+gh.token
 secrets.env
 config/lab.local.env
 

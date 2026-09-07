@@ -95,6 +95,47 @@ whereas REST creation is immediate and reliable.
 | **Lab Info** (landing page) | What the lab is, the topology diagram, repo link, Splunk version, and the deploy command. |
 | **Setup Status** | Post-deploy verification — green/red checklist confirming indexes, roles, users, and the app all loaded before the demo starts. |
 | **Ingestion & Health** | Event volume per location index and Splunk health. |
+| **Save to GitHub** (admin-only) | A button that commits the current lab state (including dashboards made this session) to the `lab-snapshot` branch. See below. |
+
+## Save to GitHub (persisting demo changes)
+
+The lab wipes each session, so anything a customer builds live (e.g. a new
+dashboard) is lost unless it's pushed back to the repo. The **Save to GitHub**
+dashboard does exactly that: it commits the running `dcloud_lab` app (including
+the customer's `local/` changes) to the **`lab-snapshot`** branch. You then
+review and merge it into `main`, and the next session includes it.
+
+**Setup — provide a GitHub token at session start.** Pushing needs write
+access, so create a **fine-grained PAT** with **Contents: Read and write** on
+`js-csco/splunk-dcloud`, and supply it as `GITHUB_TOKEN` when the lab starts.
+`apply.sh` stores it (mode 600, owned by the splunk user) at
+`$SPLUNK_HOME/var/lib/dcloud/gh.token` — **outside** the app dir, so it is
+never captured or committed.
+
+Two ways to supply it:
+
+```bash
+# A) In the dCloud startup command, prefix the token before apply.sh:
+sudo bash -c 'export GITHUB_TOKEN=github_pat_xxx; getent hosts github.com >/dev/null 2>&1 || { rm -f /etc/resolv.conf; printf "nameserver 1.1.1.1\nnameserver 8.8.8.8\n" > /etc/resolv.conf; }; rm -rf /opt/dcloud-splunk; git clone -b main https://github.com/js-csco/splunk-dcloud.git /opt/dcloud-splunk && exec bash /opt/dcloud-splunk/apply.sh'
+
+# B) Or drop it onto a running box by hand:
+sudo mkdir -p /opt/splunk/var/lib/dcloud
+printf '%s' 'github_pat_xxx' | sudo tee /opt/splunk/var/lib/dcloud/gh.token >/dev/null
+sudo chmod 600 /opt/splunk/var/lib/dcloud/gh.token
+sudo chown splunk:splunk /opt/splunk/var/lib/dcloud/gh.token
+```
+
+**Test the snapshot logic standalone** (no dashboard needed):
+
+```bash
+sudo -u splunk env SPLUNK_HOME=/opt/splunk bash /opt/splunk/etc/apps/dcloud_lab/bin/labsync.sh
+# -> {"status":"ok","message":"Saved N file(s) to lab-snapshot ...","commit":"...","branch":"lab-snapshot"}
+```
+
+> Security: the token grants write access to the repo and lives on the box for
+> the session; anyone who can click the button triggers a push. The dashboard
+> is restricted to `admin`. It pushes only to `lab-snapshot`, never directly to
+> `main`.
 
 ## Repo layout
 
@@ -109,9 +150,13 @@ splunk/apps/dcloud_lab/
     app.conf                  # app manifest (display name: "Lab Overview")
     indexes.conf              # per-location indexes
     data/ui/nav/default.xml   # app navigation
+    commands.conf             # registers the labsync search command
     data/ui/views/lab_info.xml       # landing page
     data/ui/views/setup.xml          # setup verification
     data/ui/views/lab_overview.xml   # ingestion & health
+    data/ui/views/save_to_github.xml # admin button -> push to lab-snapshot
+  bin/labsync.sh              # git snapshot + push (runnable standalone)
+  bin/labsync.py             # search-command wrapper for labsync.sh
   appserver/static/topology.svg      # topology diagram (used by Lab Info + this README)
   metadata/default.meta       # sharing/permissions
 ```
