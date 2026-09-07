@@ -7,7 +7,7 @@
 #
 # Recommended dCloud startup command (single line):
 #
-#   curl -fsSL https://raw.githubusercontent.com/js-csco/splunk-dcloud/claude/splunk-lab-deployment-u5s91k/bootstrap.sh | sudo bash
+#   curl -fsSL https://raw.githubusercontent.com/js-csco/splunk-dcloud/main/bootstrap.sh | sudo bash
 #
 # Everything else lives in the repo, so day-to-day changes are just a
 # `git push` - the startup command never has to change.
@@ -18,7 +18,7 @@ set -euo pipefail
 # These can be overridden by exporting them before invoking bootstrap.sh.
 DCLOUD_WORKDIR="${DCLOUD_WORKDIR:-/opt/dcloud-splunk}"
 DCLOUD_REPO="${DCLOUD_REPO:-js-csco/splunk-dcloud}"
-DCLOUD_BRANCH="${DCLOUD_BRANCH:-claude/splunk-lab-deployment-u5s91k}"
+DCLOUD_BRANCH="${DCLOUD_BRANCH:-main}"
 REPO_URL="https://github.com/${DCLOUD_REPO}.git"
 
 echo "== dCloud Splunk lab bootstrap =="

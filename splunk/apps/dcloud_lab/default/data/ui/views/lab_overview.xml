@@ -1,13 +1,13 @@
 <dashboard version="1.1" theme="dark">
   <label>Lab Overview</label>
-  <description>Health and ingestion overview for the dCloud Splunk lab.</description>
+  <description>Health and ingestion overview for the dCloud Splunk lab (per-location indexes).</description>
 
   <row>
     <panel>
       <title>Total events in lab indexes (last 24h)</title>
       <single>
         <search>
-          <query>| tstats count where index IN (linux_logs, proxmox, network, demo) earliest=-24h</query>
+          <query>| tstats count where index=loc* earliest=-24h</query>
         </search>
         <option name="drilldown">none</option>
         <option name="colorBy">value</option>
@@ -18,7 +18,7 @@
       <title>Lab indexes configured</title>
       <single>
         <search>
-          <query>| rest /services/data/indexes | search title IN (linux_logs, proxmox, network, demo) | stats count</query>
+          <query>| rest /services/data/indexes | search title=loc* | stats count</query>
         </search>
         <option name="drilldown">none</option>
       </single>
@@ -37,20 +37,20 @@
 
   <row>
     <panel>
-      <title>Events per lab index (last 24h)</title>
+      <title>Events per location index (last 24h)</title>
       <chart>
         <search>
-          <query>| tstats count where index IN (linux_logs, proxmox, network, demo) by index earliest=-24h | sort - count</query>
+          <query>| tstats count where index=loc* by index earliest=-24h | sort - count</query>
         </search>
         <option name="charting.chart">bar</option>
         <option name="charting.legend.placement">none</option>
       </chart>
     </panel>
     <panel>
-      <title>Ingestion over time (all lab indexes, last 24h)</title>
+      <title>Ingestion over time (all locations, last 24h)</title>
       <chart>
         <search>
-          <query>| tstats count where index IN (linux_logs, proxmox, network, demo) by _time span=15m | timechart span=15m sum(count) as events</query>
+          <query>| tstats count where index=loc* by _time span=15m | timechart span=15m sum(count) as events</query>
         </search>
         <option name="charting.chart">line</option>
         <option name="charting.axisTitleX.text">Time</option>
