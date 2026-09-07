@@ -143,11 +143,19 @@ sync_dir() {
 # avoids parsing 'list user' output, whose format varies across versions.
 # Usage: ensure_user <username> <password> <role> <full name>
 ensure_user() {
-  local name="$1" pw="$2" role="$3" full="$4"
-  if splunk_cli add user "${name}" -password "${pw}" -role "${role}" -full-name "${full}" >/dev/null 2>&1; then
+  local name="$1" pw="$2" role="$3" full="$4" out rc
+  out="$(splunk_cli add user "${name}" -password "${pw}" -role "${role}" -full-name "${full}" 2>&1)" && rc=0 || rc=$?
+  if [ "${rc}" -eq 0 ]; then
     log "  created user '${name}' (role=${role})"
-  else
+    return 0
+  fi
+  # Only treat it as "already exists" if the add actually said so; otherwise
+  # surface the real error instead of masking it with a doomed 'edit'.
+  if printf '%s' "$out" | grep -qi 'already exists'; then
     log "  user '${name}' exists - updating (role=${role})"
     splunk_cli edit user "${name}" -password "${pw}" -role "${role}" -full-name "${full}" >/dev/null
+  else
+    warn "  add user '${name}' failed (rc=${rc}): ${out}"
+    return 1
   fi
 }
