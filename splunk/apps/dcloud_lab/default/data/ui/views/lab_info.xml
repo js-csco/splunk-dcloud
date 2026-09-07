@@ -5,13 +5,17 @@
   <row>
     <panel>
       <html>
-        <h1>Splunk Location-Based RBAC Lab</h1>
+        <h1>dCloud Splunk Lab</h1>
         <p>
           A self-rebuilding Splunk lab for Cisco dCloud. The environment resets to an
           empty template each session, so on every startup a script pulls this project
-          from GitHub and re-creates the full configuration from scratch: per-location
-          indexes, RBAC roles, users, and dashboards. Nothing here is configured by
-          hand - it is all code, so the lab is identical every time.
+          from GitHub and re-creates the full configuration from scratch. Nothing here is
+          configured by hand - it is all code, so the lab is identical every time.
+        </p>
+        <p>
+          Location-based access control (RBAC) is the <b>foundation</b> the lab is built on -
+          each location's data lives in its own indexes and roles grant access per location -
+          but the lab is a general demo platform, not only about RBAC.
         </p>
         <p>
           <b>Repository:</b>
@@ -19,9 +23,9 @@
         </p>
         <h3>What gets pre-loaded on each session</h3>
         <ul>
-          <li><b>6 indexes</b>, one namespace per location: <code>loc1_*</code>, <code>loc2_*</code>, <code>loc3_*</code></li>
-          <li><b>3 RBAC roles</b>: <code>role_loc1</code> (loc1 only), <code>role_loc2</code> (loc2 only), <code>role_global</code> (all)</li>
-          <li><b>3 users</b>: <code>user_loc1</code>, <code>user_loc2</code>, <code>user_global</code></li>
+          <li><b>6 indexes</b>, one namespace per location: loc1_*, loc2_*, loc3_*</li>
+          <li><b>3 roles</b>: role_loc1 (loc1 only), role_loc2 (loc2 only), role_global (all)</li>
+          <li><b>3 users</b>: user_loc1, user_loc2, user_global</li>
           <li><b>Dashboards</b>: Lab Info (this page), Setup Status, Ingestion &amp; Health</li>
         </ul>
         <p>
@@ -51,25 +55,25 @@
           <tbody style="color:#e6edf3;">
             <tr>
               <td style="padding:8px;border:1px solid #2b3a4a;"><b>admin</b></td>
-              <td style="padding:8px;border:1px solid #2b3a4a;"><code>C1sco12345</code></td>
+              <td style="padding:8px;border:1px solid #2b3a4a;">C1sco12345</td>
               <td style="padding:8px;border:1px solid #2b3a4a;">admin</td>
               <td style="padding:8px;border:1px solid #2b3a4a;">Everything (full admin)</td>
             </tr>
             <tr>
               <td style="padding:8px;border:1px solid #2b3a4a;"><b>user_global</b></td>
-              <td style="padding:8px;border:1px solid #2b3a4a;"><code>C1sco12345</code></td>
+              <td style="padding:8px;border:1px solid #2b3a4a;">C1sco12345</td>
               <td style="padding:8px;border:1px solid #2b3a4a;">role_global</td>
               <td style="padding:8px;border:1px solid #2b3a4a;">All locations — loc1_*, loc2_*, loc3_*</td>
             </tr>
             <tr>
               <td style="padding:8px;border:1px solid #2b3a4a;"><b>user_loc1</b></td>
-              <td style="padding:8px;border:1px solid #2b3a4a;"><code>C1sco12345</code></td>
+              <td style="padding:8px;border:1px solid #2b3a4a;">C1sco12345</td>
               <td style="padding:8px;border:1px solid #2b3a4a;">role_loc1</td>
               <td style="padding:8px;border:1px solid #2b3a4a;">Location 1 only — loc1_*</td>
             </tr>
             <tr>
               <td style="padding:8px;border:1px solid #2b3a4a;"><b>user_loc2</b></td>
-              <td style="padding:8px;border:1px solid #2b3a4a;"><code>C1sco12345</code></td>
+              <td style="padding:8px;border:1px solid #2b3a4a;">C1sco12345</td>
               <td style="padding:8px;border:1px solid #2b3a4a;">role_loc2</td>
               <td style="padding:8px;border:1px solid #2b3a4a;">Location 2 only — loc2_*</td>
             </tr>
@@ -83,7 +87,7 @@
     <panel>
       <title>Topology</title>
       <html>
-        <img src="/static/app/dcloud_lab/topology.svg" alt="dCloud Splunk lab topology" style="width:100%;max-width:640px;height:auto;display:block;"/>
+        <img src="/static/app/dcloud_lab/topology.svg" alt="dCloud Splunk lab topology" style="width:100%;max-width:1200px;height:auto;display:block;"/>
       </html>
     </panel>
   </row>
@@ -97,16 +101,6 @@
         </search>
         <option name="drilldown">none</option>
       </table>
-    </panel>
-    <panel>
-      <title>How this lab is deployed</title>
-      <html>
-        <p>On each session start, dCloud Startup Automation runs one command that fixes DNS,
-        clones this repo, and applies the config:</p>
-        <pre style="white-space:pre-wrap;word-break:break-all;background:#11151a;padding:10px;border-radius:6px;">git clone -b main https://github.com/js-csco/splunk-dcloud.git /opt/dcloud-splunk &amp;&amp; bash /opt/dcloud-splunk/apply.sh</pre>
-        <p style="color:#8b98a5;">To change the lab, edit the repo and push to <code>main</code> - the next
-        session picks it up automatically.</p>
-      </html>
     </panel>
   </row>
 </dashboard>
