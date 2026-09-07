@@ -74,6 +74,12 @@ health dashboard). REST is used instead of `authorize.conf` because on this
 image app-level `authorize.conf` roles did not register even after a restart,
 whereas REST creation is immediate and reliable.
 
+> **Roles do NOT import the built-in `user` role.** On this image `user` grants
+> `srchIndexesAllowed = *`, and Splunk *unions* inherited index access — so
+> importing `user` would let `role_loc1` see every index. Instead each role is
+> given explicit capabilities (search, rtsearch, …) and only its own indexes,
+> which keeps the location wall airtight.
+
 **Users** (`config/lab_users.csv`, created at boot):
 
 | User | Role | Sees |

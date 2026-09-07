@@ -70,11 +70,14 @@ wait_for_splunk 45 || die "splunkd did not become ready in time."
 #   role_loc2  -> loc2_* only
 #   role_global-> all locations (+ internal indexes for the health dashboard)
 # ---------------------------------------------------------------------------
+# Roles get EXPLICIT capabilities and do NOT import the built-in 'user' role
+# (which grants srchIndexesAllowed=* and would leak every index).
+LOC_CAPS="search;rtsearch;get_metadata;get_typeahead;schedule_search;edit_own_objects;list_metrics_catalog"
 log "Reconciling RBAC roles via REST ..."
 rfails=0
-ensure_role role_loc1   "user" "loc1_*"                   "loc1_*"                || rfails=$((rfails+1))
-ensure_role role_loc2   "user" "loc2_*"                   "loc2_*"                || rfails=$((rfails+1))
-ensure_role role_global "user" "loc1_*;loc2_*;loc3_*;_*"  "loc1_*;loc2_*;loc3_*"  || rfails=$((rfails+1))
+ensure_role role_loc1   "" "loc1_*"                   "loc1_*"                "$LOC_CAPS" || rfails=$((rfails+1))
+ensure_role role_loc2   "" "loc2_*"                   "loc2_*"                "$LOC_CAPS" || rfails=$((rfails+1))
+ensure_role role_global "" "loc1_*;loc2_*;loc3_*;_*"  "loc1_*;loc2_*;loc3_*"  "$LOC_CAPS" || rfails=$((rfails+1))
 [ "${rfails}" -eq 0 ] || warn "${rfails} role(s) failed to reconcile - see errors above."
 
 # ===========================================================================
