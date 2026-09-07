@@ -23,13 +23,28 @@ INDEXER="${SPLUNK_INDEXER:-198.18.1.124}"
 LOC="${1:-auto}"
 
 if [ "$LOC" = "auto" ]; then
-  host="$(hostname)"
-  case "$host" in
+  # 1) try the hostname
+  case "$(hostname)" in
     *loc1*) LOC="loc1" ;;
     *loc2*) LOC="loc2" ;;
     *loc3*) LOC="loc3" ;;
-    *) echo "ERROR: cannot detect location from hostname '$host'. Pass one: sudo bash $0 loc2" >&2; exit 1 ;;
   esac
+  # 2) fall back to the box's IP subnet (198.18.<N>.x -> loc<N>) - reliable
+  #    even when the hostname is generic like "ubuntu".
+  if [ "$LOC" = "auto" ]; then
+    for ip in $(hostname -I 2>/dev/null); do
+      case "$ip" in
+        198.18.1.*) LOC="loc1"; break ;;
+        198.18.2.*) LOC="loc2"; break ;;
+        198.18.3.*) LOC="loc3"; break ;;
+      esac
+    done
+  fi
+  if [ "$LOC" = "auto" ]; then
+    echo "ERROR: could not detect location from hostname '$(hostname)' or IP ($(hostname -I 2>/dev/null))." >&2
+    echo "       Pass it explicitly, e.g.:  curl -fsSL <url> | sudo bash -s -- loc2" >&2
+    exit 1
+  fi
 fi
 
 case "$LOC" in
