@@ -1,0 +1,65 @@
+<dashboard version="1.1" theme="dark">
+  <label>Lab Info</label>
+  <description>What this lab is, how it is built, and where the code lives.</description>
+
+  <row>
+    <panel>
+      <html>
+        <h1>Splunk Location-Based RBAC Lab</h1>
+        <p>
+          A self-rebuilding Splunk lab for Cisco dCloud. The environment resets to an
+          empty template each session, so on every startup a script pulls this project
+          from GitHub and re-creates the full configuration from scratch: per-location
+          indexes, RBAC roles, users, and dashboards. Nothing here is configured by
+          hand - it is all code, so the lab is identical every time.
+        </p>
+        <p>
+          <b>Repository:</b>
+          <a href="https://github.com/js-csco/splunk-dcloud" target="_blank">github.com/js-csco/splunk-dcloud</a>
+        </p>
+        <h3>What gets pre-loaded on each session</h3>
+        <ul>
+          <li><b>6 indexes</b>, one namespace per location: <code>loc1_*</code>, <code>loc2_*</code>, <code>loc3_*</code></li>
+          <li><b>3 RBAC roles</b>: <code>role_loc1</code> (loc1 only), <code>role_loc2</code> (loc2 only), <code>role_global</code> (all)</li>
+          <li><b>3 users</b>: <code>user_loc1</code>, <code>user_loc2</code>, <code>user_global</code></li>
+          <li><b>Dashboards</b>: Lab Info (this page), Setup Status, Ingestion &amp; Health</li>
+        </ul>
+        <p>
+          Start here, then open <b>Setup Status</b> to confirm everything loaded correctly
+          before the demo begins.
+        </p>
+      </html>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
+      <title>Topology</title>
+      <html>
+        <img src="/static/app/dcloud_lab/topology.svg" alt="dCloud Splunk lab topology" style="max-width:100%;height:auto;"/>
+      </html>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
+      <title>Splunk environment</title>
+      <table>
+        <search>
+          <query>| rest /services/server/info | eval uptime_hours=round(startup_time_delta/3600,1) | rename version as Version, build as Build, os_name as OS, cpu_arch as Arch, numberOfCores as Cores, serverName as Host, uptime_hours as "Uptime (h)" | table Version Build OS Arch Cores Host "Uptime (h)"</query>
+        </search>
+        <option name="drilldown">none</option>
+      </table>
+    </panel>
+    <panel>
+      <title>How this lab is deployed</title>
+      <html>
+        <p>On each session start, dCloud Startup Automation runs one command that fixes DNS,
+        clones this repo, and applies the config:</p>
+        <pre style="white-space:pre-wrap;word-break:break-all;background:#11151a;padding:10px;border-radius:6px;">git clone -b main https://github.com/js-csco/splunk-dcloud.git /opt/dcloud-splunk &amp;&amp; bash /opt/dcloud-splunk/apply.sh</pre>
+        <p style="color:#8b98a5;">To change the lab, edit the repo and push to <code>main</code> - the next
+        session picks it up automatically.</p>
+      </html>
+    </panel>
+  </row>
+</dashboard>
