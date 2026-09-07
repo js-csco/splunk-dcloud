@@ -66,8 +66,13 @@ splunk_is_running() {
 # times out. Detect the unit so we can drive systemd directly as root instead.
 # Echoes the unit name (e.g. "Splunkd") if managed, empty otherwise.
 splunk_service_unit() {
-  systemctl list-unit-files --type=service 2>/dev/null \
-    | awk '{print $1}' | grep -iE '^splunkd\.service$' | head -1 | sed 's/\.service$//' || true
+  local u
+  for u in Splunkd splunk SplunkForwarder; do
+    if [ "$(systemctl show -p LoadState --value "$u" 2>/dev/null)" = "loaded" ]; then
+      echo "$u"; return 0
+    fi
+  done
+  return 0
 }
 
 # Start Splunk the right way for this host (systemd if managed, else CLI).
@@ -92,12 +97,19 @@ splunk_restart() {
   fi
 }
 
-# Wait until splunkd answers an authenticated REST call (or time out).
+# Wait until splunkd's management port answers an authenticated REST call.
+# Uses curl against the mgmt port (self-signed cert -> -k), which is reliable
+# across versions; falls back to 'splunk status' if curl isn't present.
 wait_for_splunk() {
-  local tries="${1:-30}" i=1
+  local tries="${1:-45}" i=1
+  local uri="${SPLUNK_MGMT_URI:-https://127.0.0.1:8089}/services/server/info"
   while [ "$i" -le "$tries" ]; do
-    if splunk_cli rest --quiet /services/server/info >/dev/null 2>&1; then
-      return 0
+    if command -v curl >/dev/null 2>&1; then
+      if curl -skf -u "${SPLUNK_ADMIN_USER}:${SPLUNK_ADMIN_PASSWORD}" "$uri" >/dev/null 2>&1; then
+        return 0
+      fi
+    else
+      if splunk_is_running; then sleep 5; return 0; fi
     fi
     sleep 2; i=$((i+1))
   done
