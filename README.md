@@ -28,14 +28,28 @@ dCloud Startup Automation (session.xml)
 
 ## The one command (dCloud Startup Automation)
 
-Point dCloud's Startup Automation at a single line:
+dCloud pods often boot with a **broken DNS resolver** (pod cloning remaps IPs,
+leaving the configured nameserver unreachable — `ping 1.1.1.1` works but
+`ping google.com` fails). Because the resolver must be fixed *before* the repo
+can be fetched, the startup command is self-contained: it fixes DNS, ensures
+`git`, clones, and runs `apply.sh`. Point dCloud Startup Automation at this
+single line:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/js-csco/splunk-dcloud/main/bootstrap.sh | sudo bash
+sudo bash -c 'getent hosts github.com >/dev/null 2>&1 || { rm -f /etc/resolv.conf; printf "nameserver 1.1.1.1\nnameserver 8.8.8.8\n" > /etc/resolv.conf; }; command -v git >/dev/null || { apt-get update -y && apt-get install -y git; }; rm -rf /opt/dcloud-splunk; git clone https://github.com/js-csco/splunk-dcloud.git /opt/dcloud-splunk && exec bash /opt/dcloud-splunk/apply.sh'
 ```
 
-(`sudo` is optional — the scripts also run fine as root.) You can override
-defaults inline, e.g. `DCLOUD_BRANCH=some-branch curl ... | bash`.
+`apply.sh` also self-heals DNS on its own, so re-running it directly is safe.
+To manually pull the latest and re-apply an existing checkout, use
+`sudo bash /opt/dcloud-splunk/bootstrap.sh`.
+
+### If DNS is broken and you just want to unblock a shell
+
+```bash
+sudo rm -f /etc/resolv.conf
+printf 'nameserver 1.1.1.1\nnameserver 8.8.8.8\noptions timeout:2 attempts:2\n' | sudo tee /etc/resolv.conf
+getent hosts github.com   # should print an IP
+```
 
 ## Location-based RBAC (the core design)
 

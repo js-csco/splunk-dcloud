@@ -23,6 +23,9 @@ source "${SCRIPT_DIR}/lib/common.sh"
 
 CHANGED=0   # set to 1 by sync_dir when Splunk config actually changes
 
+# Self-heal DNS in case this is run directly on a pod with a broken resolver.
+fix_dns || warn "DNS still not resolving - later network steps may fail."
+
 log "Applying dCloud Splunk lab config (app: ${LAB_APP})"
 
 # --- sanity checks --------------------------------------------------------
@@ -40,16 +43,16 @@ chown -R "${SPLUNK_USER}:${SPLUNK_USER}" "${SPLUNK_HOME}/etc/apps/${LAB_APP}" 2>
 # ===========================================================================
 if ! splunk_is_running; then
   log "Splunk is not running - starting it..."
-  as_splunk "$(splunk_bin)" start --accept-license --answer-yes --no-prompt
+  splunk_start
 elif [ "${CHANGED}" = "1" ]; then
   log "Config changed - restarting Splunk to apply indexes/roles..."
-  as_splunk "$(splunk_bin)" restart
+  splunk_restart
 else
   log "No config changes detected - skipping restart."
 fi
 
 log "Waiting for splunkd to become ready..."
-wait_for_splunk 30 || die "splunkd did not become ready in time."
+wait_for_splunk 45 || die "splunkd did not become ready in time."
 
 # ===========================================================================
 # 3. Reconcile lab users (CLI; roles from step 1 already exist by now)

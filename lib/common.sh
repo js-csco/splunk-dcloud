@@ -11,6 +11,28 @@ die()  { printf '[%s] ERROR: %s\n' "$(date '+%H:%M:%S')" "$*" >&2; exit 1; }
 # The splunk binary.
 splunk_bin() { echo "${SPLUNK_HOME}/bin/splunk"; }
 
+# Run a command as root when we aren't already (via sudo if needed).
+as_root() {
+  if [ "$(id -u)" = "0" ]; then "$@"
+  elif command -v sudo >/dev/null 2>&1; then sudo "$@"
+  else "$@"; fi
+}
+
+# Ensure DNS works. On dCloud, pod cloning remaps IPs and can leave the
+# configured resolver unreachable - L3 egress still works (ping 1.1.1.1) but
+# name resolution fails (ping google.com). If github.com can't be resolved,
+# drop in a static public resolver. Idempotent: no-op when DNS already works.
+fix_dns() {
+  if getent hosts github.com >/dev/null 2>&1; then
+    return 0
+  fi
+  warn "DNS cannot resolve github.com - installing static resolver (1.1.1.1/8.8.8.8)"
+  as_root rm -f /etc/resolv.conf
+  printf 'nameserver 1.1.1.1\nnameserver 8.8.8.8\noptions timeout:2 attempts:2\n' \
+    | as_root tee /etc/resolv.conf >/dev/null
+  getent hosts github.com >/dev/null 2>&1
+}
+
 # Run a command as the splunk user. If we're already that user (or sudo isn't
 # available), run it directly. Works whether the bootstrap runs as root or not.
 as_splunk() {
@@ -39,12 +61,55 @@ splunk_is_running() {
   as_splunk "$(splunk_bin)" status 2>/dev/null | grep -qi 'is running'
 }
 
-# Wait until splunkd answers an authenticated REST call (or time out).
+# If Splunk is systemd-managed (boot-start), the CLI's start/restart drops to
+# the splunk user and then calls systemctl, which triggers a polkit prompt and
+# times out. Detect the unit so we can drive systemd directly as root instead.
+# Echoes the unit name (e.g. "Splunkd") if managed, empty otherwise.
+splunk_service_unit() {
+  local u
+  for u in Splunkd splunk SplunkForwarder; do
+    if [ "$(systemctl show -p LoadState --value "$u" 2>/dev/null)" = "loaded" ]; then
+      echo "$u"; return 0
+    fi
+  done
+  return 0
+}
+
+# Start Splunk the right way for this host (systemd if managed, else CLI).
+splunk_start() {
+  local unit; unit="$(splunk_service_unit)"
+  if [ -n "$unit" ]; then
+    log "Starting Splunk via systemd (${unit}.service)..."
+    as_root systemctl start "$unit"
+  else
+    as_splunk "$(splunk_bin)" start --accept-license --answer-yes --no-prompt
+  fi
+}
+
+# Restart Splunk the right way for this host.
+splunk_restart() {
+  local unit; unit="$(splunk_service_unit)"
+  if [ -n "$unit" ]; then
+    log "Restarting Splunk via systemd (${unit}.service)..."
+    as_root systemctl restart "$unit"
+  else
+    as_splunk "$(splunk_bin)" restart
+  fi
+}
+
+# Wait until splunkd's management port answers an authenticated REST call.
+# Uses curl against the mgmt port (self-signed cert -> -k), which is reliable
+# across versions; falls back to 'splunk status' if curl isn't present.
 wait_for_splunk() {
-  local tries="${1:-30}" i=1
+  local tries="${1:-45}" i=1
+  local uri="${SPLUNK_MGMT_URI:-https://127.0.0.1:8089}/services/server/info"
   while [ "$i" -le "$tries" ]; do
-    if splunk_cli rest --quiet /services/server/info >/dev/null 2>&1; then
-      return 0
+    if command -v curl >/dev/null 2>&1; then
+      if curl -skf -u "${SPLUNK_ADMIN_USER}:${SPLUNK_ADMIN_PASSWORD}" "$uri" >/dev/null 2>&1; then
+        return 0
+      fi
+    else
+      if splunk_is_running; then sleep 5; return 0; fi
     fi
     sleep 2; i=$((i+1))
   done
@@ -67,14 +132,15 @@ sync_dir() {
 }
 
 # Create or update a Splunk user idempotently, mapped to a role.
+# Tries 'add' first; if the user already exists, falls back to 'edit'. This
+# avoids parsing 'list user' output, whose format varies across versions.
 # Usage: ensure_user <username> <password> <role> <full name>
 ensure_user() {
   local name="$1" pw="$2" role="$3" full="$4"
-  if splunk_cli list user 2>/dev/null | grep -Eq "^[[:space:]]*${name}[[:space:]]*$|^[[:space:]]*${name}:"; then
-    log "  user '${name}' exists - reconciling role=${role}"
-    splunk_cli edit user "${name}" -password "${pw}" -role "${role}" -full-name "${full}" >/dev/null
+  if splunk_cli add user "${name}" -password "${pw}" -role "${role}" -full-name "${full}" >/dev/null 2>&1; then
+    log "  created user '${name}' (role=${role})"
   else
-    log "  creating user '${name}' (role=${role})"
-    splunk_cli add user "${name}" -password "${pw}" -role "${role}" -full-name "${full}" >/dev/null
+    log "  user '${name}' exists - updating (role=${role})"
+    splunk_cli edit user "${name}" -password "${pw}" -role "${role}" -full-name "${full}" >/dev/null
   fi
 }
