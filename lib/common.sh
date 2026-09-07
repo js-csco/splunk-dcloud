@@ -151,6 +151,37 @@ splunk_role_live() {
   fi
 }
 
+# Thin curl wrapper for authenticated Splunk REST calls (self-signed -> -k).
+splunk_rest() {
+  curl -sk -u "${SPLUNK_ADMIN_USER}:${SPLUNK_ADMIN_PASSWORD}" "$@"
+}
+
+# Create or update a role at RUNTIME via REST - immediate, no restart, and
+# independent of whether authorize.conf loads. Multi-value fields accept a
+# ';' or ',' separated list.
+# Usage: ensure_role <role> <imported_roles> <srchIndexesAllowed> [srchIndexesDefault]
+ensure_role() {
+  local role="$1" imports="$2" allowed="$3" default="${4:-$3}"
+  local base="${SPLUNK_MGMT_URI:-https://127.0.0.1:8089}/services/authorization/roles"
+  local args=() arr tok code
+  IFS=';,' read -ra arr <<< "$imports"; for tok in "${arr[@]}"; do [ -n "$tok" ] && args+=(--data-urlencode "imported_roles=${tok}"); done
+  IFS=';,' read -ra arr <<< "$allowed"; for tok in "${arr[@]}"; do [ -n "$tok" ] && args+=(--data-urlencode "srchIndexesAllowed=${tok}"); done
+  IFS=';,' read -ra arr <<< "$default"; for tok in "${arr[@]}"; do [ -n "$tok" ] && args+=(--data-urlencode "srchIndexesDefault=${tok}"); done
+
+  code="$(splunk_rest -o /dev/null -w '%{http_code}' "${base}/${role}" 2>/dev/null || true)"
+  if [ "$code" = "200" ]; then
+    log "  role '${role}' exists - updating"
+    code="$(splunk_rest -o /dev/null -w '%{http_code}' -X POST "${args[@]}" "${base}/${role}" 2>/dev/null || true)"
+  else
+    log "  creating role '${role}'"
+    code="$(splunk_rest -o /dev/null -w '%{http_code}' --data-urlencode "name=${role}" "${args[@]}" "${base}" 2>/dev/null || true)"
+  fi
+  case "$code" in
+    2??) return 0 ;;
+    *)   warn "  role '${role}' REST call returned HTTP ${code}"; return 1 ;;
+  esac
+}
+
 # Create or update a Splunk user idempotently, mapped to a role.
 # Tries 'add' first; if the user already exists, falls back to 'edit'. This
 # avoids parsing 'list user' output, whose format varies across versions.

@@ -68,8 +68,10 @@ whole location with a single wildcard.
 | loc2 | 198.18.2.0/24 | ubuntu-loc2, windows-server-2022, cisco-iq-link | `loc2_linux`, `loc2_windows`, `loc2_network` | `role_loc2`, `role_global` |
 | loc3 | 198.18.3.0/24 | proxmox-9.2, ubuntu-loc3 | `loc3_linux`, `loc3_proxmox` | `role_global` |
 
-**Roles** (`authorize.conf`): `role_loc1 → loc1_*`, `role_loc2 → loc2_*`,
-`role_global → loc1_*;loc2_*;loc3_*`.
+**Roles** (created at runtime via REST in `apply.sh`): `role_loc1 → loc1_*`,
+`role_loc2 → loc2_*`, `role_global → loc1_*;loc2_*;loc3_*` (+ `_*` for the
+health dashboard). REST is used instead of `authorize.conf` because it takes
+effect immediately and doesn't depend on a restart reloading app config.
 
 **Users** (`config/lab_users.csv`, created at boot):
 

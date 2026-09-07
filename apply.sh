@@ -57,14 +57,19 @@ fi
 log "Waiting for splunkd to become ready..."
 wait_for_splunk 45 || die "splunkd did not become ready in time."
 
-# Roles come from authorize.conf and need a restart to load. A prior run may
-# have deployed the files without a successful restart (leaving CHANGED=0 on
-# this run), so verify a canonical role is live and heal with a restart if not.
-if ! splunk_role_live role_global; then
-  log "Roles not live yet - restarting Splunk to load authorize.conf..."
-  splunk_restart
-  wait_for_splunk 45 || die "splunkd did not become ready after role reload."
-fi
+# ---------------------------------------------------------------------------
+# Roles - created at runtime via REST (immediate, restart-independent). This
+# is the authoritative source for the lab's RBAC roles.
+#   role_loc1  -> loc1_* only
+#   role_loc2  -> loc2_* only
+#   role_global-> all locations (+ internal indexes for the health dashboard)
+# ---------------------------------------------------------------------------
+log "Reconciling RBAC roles via REST ..."
+rfails=0
+ensure_role role_loc1   "user" "loc1_*"                   "loc1_*"                || rfails=$((rfails+1))
+ensure_role role_loc2   "user" "loc2_*"                   "loc2_*"                || rfails=$((rfails+1))
+ensure_role role_global "user" "loc1_*;loc2_*;loc3_*;_*"  "loc1_*;loc2_*;loc3_*"  || rfails=$((rfails+1))
+[ "${rfails}" -eq 0 ] || warn "${rfails} role(s) failed to reconcile - see errors above."
 
 # ===========================================================================
 # 3. Reconcile lab users (CLI; roles from step 1 already exist by now)
