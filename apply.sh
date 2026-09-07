@@ -117,7 +117,27 @@ fi
 chmod +x "${SPLUNK_HOME}/etc/apps/"*/bin/*.sh 2>/dev/null || true
 
 # ===========================================================================
-# 5. Data integrations   (placeholder - added in a later step)
+# 5. Feed the Splunk host's own logs into loc1_linux
+# ===========================================================================
+# The Splunk server IS the Location 1 device, so forward its OS logs to the
+# loc1 receiver (127.0.0.1:5513 -> loc1_linux). Reuses the same rsyslog path as
+# the Ubuntu senders and runs as root, so there are no file-permission issues.
+if command -v rsyslogd >/dev/null 2>&1; then
+  RS_CONF="/etc/rsyslog.d/99-splunk-dcloud-loc1.conf"
+  cat > "${RS_CONF}" <<'RSEOF'
+# Managed by splunk-dcloud/apply.sh
+# Forward this host's (loc1) logs to Splunk -> index loc1_linux
+*.* @@127.0.0.1:5513
+RSEOF
+  systemctl restart rsyslog 2>/dev/null || service rsyslog restart 2>/dev/null || true
+  logger "dcloud-splunk: loc1 self-forwarding enabled (this host -> loc1_linux)" 2>/dev/null || true
+  log "loc1 self-forwarding configured (this host -> loc1_linux)."
+else
+  warn "rsyslog not present - loc1_linux will have no data."
+fi
+
+# ===========================================================================
+# 6. Data integrations   (placeholder - added in a later step)
 # ===========================================================================
 # HEC tokens / forwarder inputs for the Ubuntu + Proxmox senders.
 
