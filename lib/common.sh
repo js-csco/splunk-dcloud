@@ -128,7 +128,10 @@ sync_dir() {
     # with identical config doesn't trigger a needless Splunk restart.
     local out
     out="$(rsync -rlc --no-perms --no-owner --no-group --delete --itemize-changes "$src"/ "$dst"/)"
-    [ -n "$out" ] && CHANGED=1
+    # Use a full if - a bare "test && x" returns non-zero when the test is
+    # false, which under 'set -e' would abort the script when there are no
+    # changes to sync.
+    if [ -n "$out" ]; then CHANGED=1; fi
   else
     cp -a "$src"/. "$dst"/
     CHANGED=1

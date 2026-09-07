@@ -13,6 +13,9 @@
 # ===========================================================================
 set -euo pipefail
 
+# Never fail silently: report the line where an errexit aborts the script.
+trap 'rc=$?; [ "$rc" -ne 0 ] && echo "[apply.sh] aborted (exit $rc) at line ${LINENO}" >&2' ERR
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # --- load config + helpers ------------------------------------------------
