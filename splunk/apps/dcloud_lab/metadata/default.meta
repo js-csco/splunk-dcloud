@@ -1,0 +1,12 @@
+# Make the app's knowledge objects visible globally and readable by all,
+# writable by admin/power. Keeps the lab simple and shareable.
+
+[]
+access = read : [ * ], write : [ admin, power ]
+export = system
+
+[views]
+export = system
+
+[nav]
+export = system

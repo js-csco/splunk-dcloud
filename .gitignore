@@ -1,0 +1,8 @@
+# Never commit real secrets or local overrides.
+*.secret
+secrets.env
+config/lab.local.env
+
+# Editor / OS noise
+.DS_Store
+*.swp
