@@ -64,13 +64,20 @@ splunk_is_running() {
 # If Splunk is systemd-managed (boot-start), the CLI's start/restart drops to
 # the splunk user and then calls systemctl, which triggers a polkit prompt and
 # times out. Detect the unit so we can drive systemd directly as root instead.
-# Echoes the unit name (e.g. "Splunkd") if managed, empty otherwise.
+# Echoes the unit name (e.g. "Splunkd") if managed, empty otherwise. Tries
+# several detection methods because output/columns vary across systemd builds.
 splunk_service_unit() {
-  local u
+  local u f d
   for u in Splunkd splunk SplunkForwarder; do
-    if [ "$(systemctl show -p LoadState --value "$u" 2>/dev/null)" = "loaded" ]; then
-      echo "$u"; return 0
-    fi
+    # 'systemctl cat' exits 0 iff a unit file exists - most reliable probe.
+    if systemctl cat "$u" >/dev/null 2>&1; then echo "$u"; return 0; fi
+  done
+  # Fallback: look for the unit file directly on disk.
+  for d in /etc/systemd/system /lib/systemd/system /usr/lib/systemd/system; do
+    for u in Splunkd splunk SplunkForwarder; do
+      f="$d/$u.service"
+      [ -f "$f" ] && { echo "$u"; return 0; }
+    done
   done
   return 0
 }
@@ -97,19 +104,14 @@ splunk_restart() {
   fi
 }
 
-# Wait until splunkd's management port answers an authenticated REST call.
-# Uses curl against the mgmt port (self-signed cert -> -k), which is reliable
-# across versions; falls back to 'splunk status' if curl isn't present.
+# Wait until an authenticated CLI call succeeds - this proves splunkd's mgmt
+# port is up AND the admin credentials work, which is exactly what user
+# reconciliation needs. Verified to return in ~1s once splunkd is ready.
 wait_for_splunk() {
   local tries="${1:-45}" i=1
-  local uri="${SPLUNK_MGMT_URI:-https://127.0.0.1:8089}/services/server/info"
   while [ "$i" -le "$tries" ]; do
-    if command -v curl >/dev/null 2>&1; then
-      if curl -skf -u "${SPLUNK_ADMIN_USER}:${SPLUNK_ADMIN_PASSWORD}" "$uri" >/dev/null 2>&1; then
-        return 0
-      fi
-    else
-      if splunk_is_running; then sleep 5; return 0; fi
+    if splunk_cli list user >/dev/null 2>&1; then
+      return 0
     fi
     sleep 2; i=$((i+1))
   done
@@ -122,8 +124,10 @@ sync_dir() {
   local src="$1" dst="$2"
   mkdir -p "$dst"
   if command -v rsync >/dev/null 2>&1; then
+    # Compare by content (checksum), ignoring owner/perms/times, so a re-run
+    # with identical config doesn't trigger a needless Splunk restart.
     local out
-    out="$(rsync -a --itemize-changes --delete "$src"/ "$dst"/)"
+    out="$(rsync -rlc --no-perms --no-owner --no-group --delete --itemize-changes "$src"/ "$dst"/)"
     [ -n "$out" ] && CHANGED=1
   else
     cp -a "$src"/. "$dst"/

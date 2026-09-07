@@ -36,8 +36,12 @@ can be fetched, the startup command is self-contained: it fixes DNS, ensures
 single line:
 
 ```bash
-sudo bash -c 'getent hosts github.com >/dev/null 2>&1 || { rm -f /etc/resolv.conf; printf "nameserver 1.1.1.1\nnameserver 8.8.8.8\n" > /etc/resolv.conf; }; command -v git >/dev/null || { apt-get update -y && apt-get install -y git; }; rm -rf /opt/dcloud-splunk; git clone https://github.com/js-csco/splunk-dcloud.git /opt/dcloud-splunk && exec bash /opt/dcloud-splunk/apply.sh'
+sudo bash -c 'getent hosts github.com >/dev/null 2>&1 || { rm -f /etc/resolv.conf; printf "nameserver 1.1.1.1\nnameserver 8.8.8.8\n" > /etc/resolv.conf; }; command -v git >/dev/null || { apt-get update -y && apt-get install -y git; }; rm -rf /opt/dcloud-splunk; git clone -b main https://github.com/js-csco/splunk-dcloud.git /opt/dcloud-splunk && exec bash /opt/dcloud-splunk/apply.sh'
 ```
+
+> **Always clone with `-b main`.** A plain `git clone` pulls the repo's
+> *default* branch, which may not be `main` — pinning the branch avoids
+> running stale code.
 
 `apply.sh` also self-heals DNS on its own, so re-running it directly is safe.
 To manually pull the latest and re-apply an existing checkout, use
