@@ -61,6 +61,37 @@ splunk_is_running() {
   as_splunk "$(splunk_bin)" status 2>/dev/null | grep -qi 'is running'
 }
 
+# If Splunk is systemd-managed (boot-start), the CLI's start/restart drops to
+# the splunk user and then calls systemctl, which triggers a polkit prompt and
+# times out. Detect the unit so we can drive systemd directly as root instead.
+# Echoes the unit name (e.g. "Splunkd") if managed, empty otherwise.
+splunk_service_unit() {
+  systemctl list-unit-files --type=service 2>/dev/null \
+    | awk '{print $1}' | grep -iE '^splunkd\.service$' | head -1 | sed 's/\.service$//' || true
+}
+
+# Start Splunk the right way for this host (systemd if managed, else CLI).
+splunk_start() {
+  local unit; unit="$(splunk_service_unit)"
+  if [ -n "$unit" ]; then
+    log "Starting Splunk via systemd (${unit}.service)..."
+    as_root systemctl start "$unit"
+  else
+    as_splunk "$(splunk_bin)" start --accept-license --answer-yes --no-prompt
+  fi
+}
+
+# Restart Splunk the right way for this host.
+splunk_restart() {
+  local unit; unit="$(splunk_service_unit)"
+  if [ -n "$unit" ]; then
+    log "Restarting Splunk via systemd (${unit}.service)..."
+    as_root systemctl restart "$unit"
+  else
+    as_splunk "$(splunk_bin)" restart
+  fi
+}
+
 # Wait until splunkd answers an authenticated REST call (or time out).
 wait_for_splunk() {
   local tries="${1:-30}" i=1
@@ -89,14 +120,15 @@ sync_dir() {
 }
 
 # Create or update a Splunk user idempotently, mapped to a role.
+# Tries 'add' first; if the user already exists, falls back to 'edit'. This
+# avoids parsing 'list user' output, whose format varies across versions.
 # Usage: ensure_user <username> <password> <role> <full name>
 ensure_user() {
   local name="$1" pw="$2" role="$3" full="$4"
-  if splunk_cli list user 2>/dev/null | grep -Eq "^[[:space:]]*${name}[[:space:]]*$|^[[:space:]]*${name}:"; then
-    log "  user '${name}' exists - reconciling role=${role}"
-    splunk_cli edit user "${name}" -password "${pw}" -role "${role}" -full-name "${full}" >/dev/null
+  if splunk_cli add user "${name}" -password "${pw}" -role "${role}" -full-name "${full}" >/dev/null 2>&1; then
+    log "  created user '${name}' (role=${role})"
   else
-    log "  creating user '${name}' (role=${role})"
-    splunk_cli add user "${name}" -password "${pw}" -role "${role}" -full-name "${full}" >/dev/null
+    log "  user '${name}' exists - updating (role=${role})"
+    splunk_cli edit user "${name}" -password "${pw}" -role "${role}" -full-name "${full}" >/dev/null
   fi
 }
