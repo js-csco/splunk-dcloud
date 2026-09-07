@@ -31,7 +31,7 @@
       <title>Hosts reporting</title>
       <single>
         <search>
-          <query>| tstats dc(host) as hosts where index=loc*</query>
+          <query>| tstats count where index=loc* by index host | stats count as hosts</query>
           <earliest>$tr.earliest$</earliest>
           <latest>$tr.latest$</latest>
         </search>
@@ -88,10 +88,10 @@
   <!-- where from -->
   <row>
     <panel>
-      <title>Events by host</title>
+      <title>Events by source (host + index)</title>
       <chart>
         <search>
-          <query>index=loc* | stats count by host | sort - count</query>
+          <query>index=loc* | eval source=host." @ ".index | stats count by source | sort - count</query>
           <earliest>$tr.earliest$</earliest>
           <latest>$tr.latest$</latest>
         </search>
