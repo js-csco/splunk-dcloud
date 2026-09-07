@@ -83,7 +83,7 @@
     <panel>
       <title>Topology</title>
       <html>
-        <img src="/static/app/dcloud_lab/topology.svg" alt="dCloud Splunk lab topology" style="max-width:100%;height:auto;"/>
+        <img src="/static/app/dcloud_lab/topology.svg" alt="dCloud Splunk lab topology" style="width:100%;max-width:640px;height:auto;display:block;"/>
       </html>
     </panel>
   </row>

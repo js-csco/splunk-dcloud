@@ -9,7 +9,7 @@ configured by hand; the lab is identical every time.
 To change the lab, edit files here and `git push` to `main` — the next session
 picks it up automatically. The dCloud startup command never changes.
 
-![Lab topology](splunk/apps/dcloud_lab/appserver/static/topology.svg)
+<img src="splunk/apps/dcloud_lab/appserver/static/topology.svg" alt="Lab topology" width="640">
 
 ---
 
