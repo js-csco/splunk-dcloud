@@ -34,6 +34,53 @@
 
   <row>
     <panel>
+      <title>Demo logins</title>
+      <html>
+        <!-- Demo credentials for a throwaway lab. If you change the password in
+             config/lab_users.csv, update it here too. -->
+        <p style="color:#8b98a5;">Web UI: <a href="http://198.18.1.124:8000" target="_blank">http://198.18.1.124:8000</a> — all demo accounts use the same password.</p>
+        <table style="border-collapse:collapse;width:100%;font-size:13px;">
+          <thead>
+            <tr style="background:#1b2430;color:#cdd9e5;text-align:left;">
+              <th style="padding:8px;border:1px solid #2b3a4a;">User</th>
+              <th style="padding:8px;border:1px solid #2b3a4a;">Password</th>
+              <th style="padding:8px;border:1px solid #2b3a4a;">Role</th>
+              <th style="padding:8px;border:1px solid #2b3a4a;">Can search</th>
+            </tr>
+          </thead>
+          <tbody style="color:#e6edf3;">
+            <tr>
+              <td style="padding:8px;border:1px solid #2b3a4a;"><b>admin</b></td>
+              <td style="padding:8px;border:1px solid #2b3a4a;"><code>C1sco12345</code></td>
+              <td style="padding:8px;border:1px solid #2b3a4a;">admin</td>
+              <td style="padding:8px;border:1px solid #2b3a4a;">Everything (full admin)</td>
+            </tr>
+            <tr>
+              <td style="padding:8px;border:1px solid #2b3a4a;"><b>user_global</b></td>
+              <td style="padding:8px;border:1px solid #2b3a4a;"><code>C1sco12345</code></td>
+              <td style="padding:8px;border:1px solid #2b3a4a;">role_global</td>
+              <td style="padding:8px;border:1px solid #2b3a4a;">All locations — loc1_*, loc2_*, loc3_*</td>
+            </tr>
+            <tr>
+              <td style="padding:8px;border:1px solid #2b3a4a;"><b>user_loc1</b></td>
+              <td style="padding:8px;border:1px solid #2b3a4a;"><code>C1sco12345</code></td>
+              <td style="padding:8px;border:1px solid #2b3a4a;">role_loc1</td>
+              <td style="padding:8px;border:1px solid #2b3a4a;">Location 1 only — loc1_*</td>
+            </tr>
+            <tr>
+              <td style="padding:8px;border:1px solid #2b3a4a;"><b>user_loc2</b></td>
+              <td style="padding:8px;border:1px solid #2b3a4a;"><code>C1sco12345</code></td>
+              <td style="padding:8px;border:1px solid #2b3a4a;">role_loc2</td>
+              <td style="padding:8px;border:1px solid #2b3a4a;">Location 2 only — loc2_*</td>
+            </tr>
+          </tbody>
+        </table>
+      </html>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
       <title>Topology</title>
       <html>
         <img src="/static/app/dcloud_lab/topology.svg" alt="dCloud Splunk lab topology" style="max-width:100%;height:auto;"/>
