@@ -1,0 +1,5 @@
+<nav search_view="search" color="#4a90d9">
+  <view name="onboarding_overview" default="true" />
+  <view name="search" />
+  <view name="dashboards" />
+</nav>

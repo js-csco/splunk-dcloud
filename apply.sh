@@ -35,11 +35,17 @@ log "Applying dCloud Splunk lab config (app: ${LAB_APP})"
 [ -x "$(splunk_bin)" ] || die "Splunk not found at ${SPLUNK_HOME}. Set SPLUNK_HOME."
 
 # ===========================================================================
-# 1. Deploy the Splunk app: indexes + roles (authorize.conf) + dashboards
+# 1. Deploy every Splunk app under splunk/apps/ (indexes, dashboards,
+#    receivers, etc.)
 # ===========================================================================
-log "Deploying app '${LAB_APP}' into \$SPLUNK_HOME/etc/apps ..."
-sync_dir "${SCRIPT_DIR}/splunk/apps/${LAB_APP}" "${SPLUNK_HOME}/etc/apps/${LAB_APP}"
-chown -R "${SPLUNK_USER}:${SPLUNK_USER}" "${SPLUNK_HOME}/etc/apps/${LAB_APP}" 2>/dev/null || true
+log "Deploying Splunk apps into \$SPLUNK_HOME/etc/apps ..."
+for app_src in "${SCRIPT_DIR}"/splunk/apps/*/; do
+  [ -d "$app_src" ] || continue
+  app_name="$(basename "$app_src")"
+  log "  app: ${app_name}"
+  sync_dir "$app_src" "${SPLUNK_HOME}/etc/apps/${app_name}"
+  chown -R "${SPLUNK_USER}:${SPLUNK_USER}" "${SPLUNK_HOME}/etc/apps/${app_name}" 2>/dev/null || true
+done
 
 # ===========================================================================
 # 2. Apply declarative config (start Splunk, or restart if config changed)
@@ -104,8 +110,8 @@ if [ -n "${GITHUB_TOKEN:-}" ]; then
 else
   log "Save-to-GitHub: no GITHUB_TOKEN provided - button will report 'no token' until one is set."
 fi
-# Make the labsync scripts executable in the deployed app.
-chmod +x "${SPLUNK_HOME}/etc/apps/${LAB_APP}/bin/"*.sh 2>/dev/null || true
+# Make any deployed app bin scripts executable.
+chmod +x "${SPLUNK_HOME}/etc/apps/"*/bin/*.sh 2>/dev/null || true
 
 # ===========================================================================
 # 5. Data integrations   (placeholder - added in a later step)

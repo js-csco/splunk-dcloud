@@ -137,6 +137,35 @@ sudo -u splunk env SPLUNK_HOME=/opt/splunk bash /opt/splunk/etc/apps/dcloud_lab/
 > is restricted to `admin`. It pushes only to `lab-snapshot`, never directly to
 > `main`.
 
+## Sending data in (Ubuntu → Splunk)
+
+The **Infrastructure Monitoring** app enables receivers on the indexer, one
+syslog (TCP) port per location so RBAC is preserved — data can only land in its
+own location's index:
+
+| Sender | → Port | → Index | Seen by |
+|---|---|---|---|
+| ubuntu-loc2 (and loc2 devices) | 5514 | `loc2_linux` | role_loc2, role_global |
+| ubuntu-loc3, proxmox-9.2-loc3 | 5515 | `loc3_linux` | role_global |
+| loc1 devices | 5513 | `loc1_linux` | role_loc1, role_global |
+
+Port `9997` is also enabled for a Universal Forwarder as a future upgrade.
+
+On each **Ubuntu** box, run (location auto-detected from the hostname):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/js-csco/splunk-dcloud/main/ubuntu/forward-to-splunk.sh | sudo bash
+# or force it:  sudo bash forward-to-splunk.sh loc2
+```
+
+It configures rsyslog (built into Ubuntu — no downloads, forwards to the
+indexer IP so no DNS needed) to ship all logs to the right port, and emits a
+marker event. Verify in Splunk: `index=loc2_linux host=ubuntu-loc2`, or open
+**Infrastructure Monitoring → Data Onboarding Overview**.
+
+> If `raw.githubusercontent.com` doesn't resolve on the Ubuntu box, clone the
+> repo (like the Splunk box) and run `ubuntu/forward-to-splunk.sh` from it.
+
 ## Repo layout
 
 ```
