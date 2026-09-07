@@ -11,6 +11,28 @@ die()  { printf '[%s] ERROR: %s\n' "$(date '+%H:%M:%S')" "$*" >&2; exit 1; }
 # The splunk binary.
 splunk_bin() { echo "${SPLUNK_HOME}/bin/splunk"; }
 
+# Run a command as root when we aren't already (via sudo if needed).
+as_root() {
+  if [ "$(id -u)" = "0" ]; then "$@"
+  elif command -v sudo >/dev/null 2>&1; then sudo "$@"
+  else "$@"; fi
+}
+
+# Ensure DNS works. On dCloud, pod cloning remaps IPs and can leave the
+# configured resolver unreachable - L3 egress still works (ping 1.1.1.1) but
+# name resolution fails (ping google.com). If github.com can't be resolved,
+# drop in a static public resolver. Idempotent: no-op when DNS already works.
+fix_dns() {
+  if getent hosts github.com >/dev/null 2>&1; then
+    return 0
+  fi
+  warn "DNS cannot resolve github.com - installing static resolver (1.1.1.1/8.8.8.8)"
+  as_root rm -f /etc/resolv.conf
+  printf 'nameserver 1.1.1.1\nnameserver 8.8.8.8\noptions timeout:2 attempts:2\n' \
+    | as_root tee /etc/resolv.conf >/dev/null
+  getent hosts github.com >/dev/null 2>&1
+}
+
 # Run a command as the splunk user. If we're already that user (or sudo isn't
 # available), run it directly. Works whether the bootstrap runs as root or not.
 as_splunk() {

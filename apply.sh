@@ -23,6 +23,9 @@ source "${SCRIPT_DIR}/lib/common.sh"
 
 CHANGED=0   # set to 1 by sync_dir when Splunk config actually changes
 
+# Self-heal DNS in case this is run directly on a pod with a broken resolver.
+fix_dns || warn "DNS still not resolving - later network steps may fail."
+
 log "Applying dCloud Splunk lab config (app: ${LAB_APP})"
 
 # --- sanity checks --------------------------------------------------------
