@@ -57,6 +57,15 @@ fi
 log "Waiting for splunkd to become ready..."
 wait_for_splunk 45 || die "splunkd did not become ready in time."
 
+# Roles come from authorize.conf and need a restart to load. A prior run may
+# have deployed the files without a successful restart (leaving CHANGED=0 on
+# this run), so verify a canonical role is live and heal with a restart if not.
+if ! splunk_role_live role_global; then
+  log "Roles not live yet - restarting Splunk to load authorize.conf..."
+  splunk_restart
+  wait_for_splunk 45 || die "splunkd did not become ready after role reload."
+fi
+
 # ===========================================================================
 # 3. Reconcile lab users (CLI; roles from step 1 already exist by now)
 # ===========================================================================
@@ -64,10 +73,12 @@ USERS_CSV="${SCRIPT_DIR}/config/lab_users.csv"
 if [ -f "${USERS_CSV}" ]; then
   log "Reconciling lab users from $(basename "${USERS_CSV}") ..."
   # Skip comment lines and the header row; tolerate spaces after commas.
+  fails=0
   while IFS=',' read -r username password role full_name; do
     case "${username}" in ''|\#*|username) continue ;; esac
-    ensure_user "${username// /}" "${password// /}" "${role// /}" "${full_name}"
+    ensure_user "${username// /}" "${password// /}" "${role// /}" "${full_name}" || fails=$((fails+1))
   done < "${USERS_CSV}"
+  [ "${fails}" -eq 0 ] || warn "${fails} user(s) failed to reconcile - see errors above."
 else
   warn "No ${USERS_CSV} found - skipping user creation."
 fi

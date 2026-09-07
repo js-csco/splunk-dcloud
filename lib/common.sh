@@ -138,6 +138,19 @@ sync_dir() {
   fi
 }
 
+# Is a role actually loaded in the RUNNING splunkd? Roles come from
+# authorize.conf and only take effect after a restart, so checking the live
+# REST endpoint tells us whether a restart is still needed. Returns 0 if live.
+splunk_role_live() {
+  local role="$1"
+  local uri="${SPLUNK_MGMT_URI:-https://127.0.0.1:8089}/services/authorization/roles/${role}"
+  if command -v curl >/dev/null 2>&1; then
+    curl -skf -u "${SPLUNK_ADMIN_USER}:${SPLUNK_ADMIN_PASSWORD}" "$uri" >/dev/null 2>&1
+  else
+    return 1   # can't verify -> caller should restart to be safe
+  fi
+}
+
 # Create or update a Splunk user idempotently, mapped to a role.
 # Tries 'add' first; if the user already exists, falls back to 'edit'. This
 # avoids parsing 'list user' output, whose format varies across versions.
