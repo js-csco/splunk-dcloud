@@ -1,6 +1,6 @@
 <dashboard version="1.1" theme="dark">
-  <label>Lab Overview</label>
-  <description>Health and ingestion overview for the dCloud Splunk lab (per-location indexes).</description>
+  <label>Ingestion &amp; Health</label>
+  <description>Ingestion volume and Splunk health for the dCloud lab (per-location indexes).</description>
 
   <row>
     <panel>
@@ -59,16 +59,4 @@
     </panel>
   </row>
 
-  <row>
-    <panel>
-      <title>Recent internal errors (last 60m)</title>
-      <table>
-        <search>
-          <query>index=_internal log_level IN (ERROR, WARN) earliest=-60m | stats count by component log_level | sort - count | head 20</query>
-        </search>
-        <option name="drilldown">none</option>
-        <option name="count">20</option>
-      </table>
-    </panel>
-  </row>
 </dashboard>

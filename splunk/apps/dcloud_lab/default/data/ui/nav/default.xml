@@ -1,5 +1,6 @@
 <nav search_view="search" color="#65a637">
-  <view name="lab_overview" default="true" />
+  <view name="setup" default="true" />
+  <view name="lab_overview" />
   <view name="search" />
   <view name="datasets" />
   <view name="reports" />
