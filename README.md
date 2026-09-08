@@ -246,24 +246,41 @@ splunkd's context, so outbound calls work, unlike the search sandbox).
 | Method | How | Status |
 |---|---|---|
 | Syslog | rsyslog → per-location ports | ✅ live |
-| REST / API (Proxmox) | `poll_proxmox.py` scripted input, every 60s → `berlin_proxmox` | ✅ live once a Proxmox token is set |
+| REST / API (Proxmox) | `poll_proxmox.py` scripted input, every 60s → `berlin_proxmox` | ✅ live (Berlin 198.18.3.170) |
 | SSH (Cisco Catalyst) | scripted input SSHes in, runs show commands → `london_network`/`berlin_network` | ✅ live (London 198.18.2.32, Berlin 198.18.3.32) |
 | SNMP | Splunk Connect for SNMP (SC4SNMP) | ⏳ planned |
 | SOAP | XML web service | ⏸ parked |
 
-**Enable the Proxmox REST poller** — create an API token in Proxmox
-(*Datacenter → Permissions → API Tokens*), then supply it at startup:
+**Proxmox REST poller** — works out of the box using the committed lab creds in
+`splunk/apps/get_data_in/bin/proxmox_config.env` (Berlin Proxmox `198.18.3.170`,
+`root` / `cisco`, **ticket auth** — no API token needed). To override without
+editing the repo (e.g. real creds/token), set env at startup or drop
+`$SPLUNK_HOME/var/lib/dcloud/proxmox.env`:
 
 ```bash
-# In the dCloud startup command (prefix before apply.sh):
-export PROXMOX_HOST=198.18.3.x
+# either username/password (ticket auth) …
+export PROXMOX_HOST=198.18.3.170 PROXMOX_USER='root@pam' PROXMOX_PASSWORD='cisco'
+# … or an API token
 export PROXMOX_TOKEN='user@pam!lab=xxxxxxxx-....'
-# …or drop /opt/splunk/var/lib/dcloud/proxmox.env on the running box (see the
-# "REST API — Proxmox" dashboard for the exact commands).
 ```
 
-`apply.sh` stores it at `$SPLUNK_HOME/var/lib/dcloud/proxmox.env` (600, splunk-owned,
-outside any app dir). The poller self-guards if no token is set, so it deploys safely.
+Precedence: committed config → `var/lib/dcloud/proxmox.env` → env vars.
+
+### Lab systems &amp; access (demo creds)
+
+| System | Location | Address | Access | User / Pass |
+|---|---|---|---|---|
+| Proxmox | Berlin | 198.18.3.170 (web 8006 / SSH) | Web + SSH | `root` / `cisco` |
+| Cisco Cat8kv | London | 198.18.2.32 | SSH | `cisco` / `cisco` |
+| Cisco Cat8kv | Berlin | 198.18.3.32 | SSH | `cisco` / `cisco` |
+
+> These are throwaway lab creds (also shown on the **Lab Info** dashboard). Don't
+> reuse real secrets in the repo.
+
+**Architecture note:** the REST/SSH pollers run centrally on the Splunk host as
+scripted inputs. In production you'd run them on a forwarder *in each location*;
+data still lands in the correct per-location index either way, so RBAC is
+unaffected — only the collection topology differs.
 
 ## Repo layout
 

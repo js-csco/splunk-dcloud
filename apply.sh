@@ -135,18 +135,21 @@ fi
 
 # Get Data In: persist Proxmox API creds (if provided) for the REST poller.
 # Stored outside any app dir; the poll_proxmox.py scripted input reads it.
-if [ -n "${PROXMOX_HOST:-}" ] || [ -n "${PROXMOX_TOKEN:-}" ]; then
+# Only needed to OVERRIDE the committed lab defaults (proxmox_config.env).
+if [ -n "${PROXMOX_HOST:-}" ] || [ -n "${PROXMOX_TOKEN:-}" ] || [ -n "${PROXMOX_USER:-}" ]; then
   mkdir -p "${TOKEN_DIR}"
   {
-    [ -n "${PROXMOX_HOST:-}" ]  && echo "PROXMOX_HOST=${PROXMOX_HOST}"
-    [ -n "${PROXMOX_TOKEN:-}" ] && echo "PROXMOX_TOKEN=${PROXMOX_TOKEN}"
-    [ -n "${PROXMOX_PORT:-}" ]  && echo "PROXMOX_PORT=${PROXMOX_PORT}"
+    [ -n "${PROXMOX_HOST:-}" ]     && echo "PROXMOX_HOST=${PROXMOX_HOST}"
+    [ -n "${PROXMOX_PORT:-}" ]     && echo "PROXMOX_PORT=${PROXMOX_PORT}"
+    [ -n "${PROXMOX_USER:-}" ]     && echo "PROXMOX_USER=${PROXMOX_USER}"
+    [ -n "${PROXMOX_PASSWORD:-}" ] && echo "PROXMOX_PASSWORD=${PROXMOX_PASSWORD}"
+    [ -n "${PROXMOX_TOKEN:-}" ]    && echo "PROXMOX_TOKEN=${PROXMOX_TOKEN}"
   } > "${TOKEN_DIR}/proxmox.env"
   chmod 700 "${TOKEN_DIR}"; chmod 600 "${TOKEN_DIR}/proxmox.env"
   chown -R "${SPLUNK_USER}:${SPLUNK_USER}" "${TOKEN_DIR}" 2>/dev/null || true
-  log "Get Data In: Proxmox creds stored (REST poller active)."
+  log "Get Data In: Proxmox override creds stored."
 else
-  log "Get Data In: no PROXMOX_HOST/PROXMOX_TOKEN - Proxmox REST poller idle until set."
+  log "Get Data In: using committed Proxmox config (proxmox_config.env)."
 fi
 
 # Make any deployed app bin scripts executable.

@@ -6,30 +6,31 @@
 # Proxmox API endpoints, and prints one JSON event per resource to stdout,
 # which Splunk indexes (sourcetype=proxmox:api -> index berlin_proxmox).
 #
-# Scripted inputs run in splunkd's context (NOT the search sandbox), so the
-# outbound HTTPS call works. Credentials are read from a file written by
-# apply.sh at boot: $SPLUNK_HOME/var/lib/dcloud/proxmox.env
-#   PROXMOX_HOST=198.18.3.x
-#   PROXMOX_TOKEN=user@pam!tokenid=xxxxxxxx-....
-#   PROXMOX_PORT=8006            (optional; defaults to 8006)
+# Config is read from (later overrides earlier):
+#   1. <app>/bin/proxmox_config.env   (committed lab defaults)
+#   2. $SPLUNK_HOME/var/lib/dcloud/proxmox.env   (runtime override / secrets)
+#   3. environment variables
+# Keys: PROXMOX_HOST, PROXMOX_PORT, and either PROXMOX_TOKEN (API token) or
+#       PROXMOX_USER + PROXMOX_PASSWORD (ticket auth).
 #
-# If no creds are present it emits one explanatory event and exits cleanly, so
-# the input never hard-fails.
+# Scripted inputs run in splunkd's context (not the search sandbox), so the
+# outbound HTTPS works. Self-guards if nothing is configured.
 # ===========================================================================
 import json
 import os
 import ssl
 import sys
 import time
-from urllib import request
+from urllib import request, parse
 
 SPLUNK_HOME = os.environ.get("SPLUNK_HOME", "/opt/splunk")
-ENV_FILE = os.path.join(SPLUNK_HOME, "var", "lib", "dcloud", "proxmox.env")
+APP_CFG = os.path.join(os.path.dirname(os.path.abspath(__file__)), "proxmox_config.env")
+VAR_CFG = os.path.join(SPLUNK_HOME, "var", "lib", "dcloud", "proxmox.env")
 ENDPOINTS = ["version", "cluster/resources", "nodes"]
+KEYS = ("PROXMOX_HOST", "PROXMOX_PORT", "PROXMOX_USER", "PROXMOX_PASSWORD", "PROXMOX_TOKEN")
 
 
-def load_env(path):
-    cfg = {}
+def load_into(path, cfg):
     try:
         with open(path) as fh:
             for line in fh:
@@ -40,32 +41,58 @@ def load_env(path):
                 cfg[k.strip()] = v.strip()
     except FileNotFoundError:
         pass
-    return cfg
 
 
 def emit(obj):
     sys.stdout.write(json.dumps(obj) + "\n")
 
 
-def main():
-    cfg = load_env(ENV_FILE)
-    host = cfg.get("PROXMOX_HOST") or os.environ.get("PROXMOX_HOST")
-    token = cfg.get("PROXMOX_TOKEN") or os.environ.get("PROXMOX_TOKEN")
-    port = cfg.get("PROXMOX_PORT") or os.environ.get("PROXMOX_PORT") or "8006"
-    now = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+def get_ticket(base, user, password, ctx):
+    data = parse.urlencode({"username": user, "password": password}).encode("utf-8")
+    req = request.Request(base + "/access/ticket", data=data, method="POST")
+    with request.urlopen(req, timeout=15, context=ctx) as resp:
+        return json.loads(resp.read().decode("utf-8"))["data"]["ticket"]
 
-    if not host or not token:
-        emit({"poll_time": now, "endpoint": "config", "status": "not_configured",
-              "message": "No Proxmox creds. Set PROXMOX_HOST/PROXMOX_TOKEN (see README - Get Data In)."})
-        return
+
+def main():
+    cfg = {}
+    load_into(APP_CFG, cfg)
+    load_into(VAR_CFG, cfg)
+    for k in KEYS:
+        if os.environ.get(k):
+            cfg[k] = os.environ[k]
+
+    host = cfg.get("PROXMOX_HOST")
+    port = cfg.get("PROXMOX_PORT") or "8006"
+    token = cfg.get("PROXMOX_TOKEN")
+    user = cfg.get("PROXMOX_USER")
+    password = cfg.get("PROXMOX_PASSWORD")
+    now = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+    base = "https://%s:%s/api2/json" % (host, port) if host else None
 
     ctx = ssl.create_default_context()
     ctx.check_hostname = False
     ctx.verify_mode = ssl.CERT_NONE
 
+    if not host or not (token or (user and password)):
+        emit({"poll_time": now, "endpoint": "config", "status": "not_configured",
+              "message": "No Proxmox host/creds. Set PROXMOX_HOST + PROXMOX_TOKEN or "
+                         "PROXMOX_USER/PROXMOX_PASSWORD (see Get Data In - REST dashboard)."})
+        return
+
+    headers = {}
+    if token:
+        headers["Authorization"] = "PVEAPIToken=%s" % token
+    else:
+        try:
+            headers["Cookie"] = "PVEAuthCookie=%s" % get_ticket(base, user, password, ctx)
+        except Exception as exc:  # noqa: BLE001
+            emit({"poll_time": now, "endpoint": "access/ticket", "status": "error",
+                  "message": "login failed: %s" % exc})
+            return
+
     for ep in ENDPOINTS:
-        url = "https://%s:%s/api2/json/%s" % (host, port, ep)
-        req = request.Request(url, headers={"Authorization": "PVEAPIToken=%s" % token})
+        req = request.Request(base + "/" + ep, headers=headers)
         try:
             with request.urlopen(req, timeout=15, context=ctx) as resp:
                 payload = json.loads(resp.read().decode("utf-8"))

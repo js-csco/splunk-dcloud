@@ -85,6 +85,32 @@
 
   <row>
     <panel>
+      <title>Lab systems &amp; access (demo creds)</title>
+      <html>
+        <table style="border-collapse:collapse;width:100%;font-size:13px;">
+          <thead>
+            <tr style="background:#1b2430;color:#cdd9e5;text-align:left;">
+              <th style="padding:8px;border:1px solid #2b3a4a;">System</th>
+              <th style="padding:8px;border:1px solid #2b3a4a;">Location</th>
+              <th style="padding:8px;border:1px solid #2b3a4a;">Address</th>
+              <th style="padding:8px;border:1px solid #2b3a4a;">Access</th>
+              <th style="padding:8px;border:1px solid #2b3a4a;">User</th>
+              <th style="padding:8px;border:1px solid #2b3a4a;">Password</th>
+            </tr>
+          </thead>
+          <tbody style="color:#e6edf3;">
+            <tr><td style="padding:8px;border:1px solid #2b3a4a;"><b>Proxmox</b></td><td style="padding:8px;border:1px solid #2b3a4a;">Berlin</td><td style="padding:8px;border:1px solid #2b3a4a;">198.18.3.170 (web 8006 / SSH)</td><td style="padding:8px;border:1px solid #2b3a4a;">Web + SSH</td><td style="padding:8px;border:1px solid #2b3a4a;">root</td><td style="padding:8px;border:1px solid #2b3a4a;">cisco</td></tr>
+            <tr><td style="padding:8px;border:1px solid #2b3a4a;"><b>Cisco Cat8kv</b></td><td style="padding:8px;border:1px solid #2b3a4a;">London</td><td style="padding:8px;border:1px solid #2b3a4a;">198.18.2.32</td><td style="padding:8px;border:1px solid #2b3a4a;">SSH</td><td style="padding:8px;border:1px solid #2b3a4a;">cisco</td><td style="padding:8px;border:1px solid #2b3a4a;">cisco</td></tr>
+            <tr><td style="padding:8px;border:1px solid #2b3a4a;"><b>Cisco Cat8kv</b></td><td style="padding:8px;border:1px solid #2b3a4a;">Berlin</td><td style="padding:8px;border:1px solid #2b3a4a;">198.18.3.32</td><td style="padding:8px;border:1px solid #2b3a4a;">SSH</td><td style="padding:8px;border:1px solid #2b3a4a;">cisco</td><td style="padding:8px;border:1px solid #2b3a4a;">cisco</td></tr>
+          </tbody>
+        </table>
+        <p style="color:#8b98a5;">These feed the <b>Get Data In</b> app (Proxmox via REST API polling → berlin_proxmox; routers via SSH → london_network / berlin_network).</p>
+      </html>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
       <title>Topology</title>
       <html>
         <img src="/static/app/dcloud_lab/topology.svg" alt="dCloud Splunk lab topology" style="width:100%;max-width:1200px;height:auto;display:block;"/>
