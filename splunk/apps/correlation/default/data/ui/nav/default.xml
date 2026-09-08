@@ -1,0 +1,5 @@
+<nav search_view="search" color="#9b59b6">
+  <view name="correlation_2_sources" default="true" />
+  <view name="correlation_3_sources" />
+  <view name="search" />
+</nav>

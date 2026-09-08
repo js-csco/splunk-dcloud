@@ -1,0 +1,11 @@
+# Correlation - globally visible, readable by all.
+
+[]
+access = read : [ * ], write : [ admin, power ]
+export = system
+
+[views]
+export = system
+
+[nav]
+export = system

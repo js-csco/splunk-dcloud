@@ -103,6 +103,14 @@ whereas REST creation is immediate and reliable.
 | **Ingestion & Health** | Event volume per location index and Splunk health. |
 | **Save to GitHub** (admin-only) | A button that commits the current lab state (including dashboards made this session) to the `lab-snapshot` branch. See below. |
 
+Plus two other apps:
+
+- **Infrastructure Monitoring** → *Data Onboarding Overview* (what data is arriving, by host/index/sourcetype).
+- **Correlation** → *Correlation 2 Sources* and *Correlation 3 Sources*: pick the
+  sources and a correlation key (service / user / host) and find the same entity
+  across separate sources in a time window (the canonical
+  `stats count(eval(source=A)) … by key` technique, with the SPL shown on-screen).
+
 ## Save to GitHub (persisting demo changes)
 
 The lab wipes each session, so anything a customer builds live (e.g. a new

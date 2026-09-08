@@ -1,0 +1,121 @@
+<form version="1.1" theme="dark">
+  <label>Correlation 3 Sources</label>
+  <description>Find an entity across THREE data sources and measure how wide its footprint is (2-of-3 vs 3-of-3).</description>
+
+  <fieldset submitButton="false" autoRun="true">
+    <input type="time" token="tr">
+      <label>Time range</label>
+      <default><earliest>-24h@h</earliest><latest>now</latest></default>
+    </input>
+    <input type="dropdown" token="srcA">
+      <label>Source A</label>
+      <search><query>| rest /services/data/indexes | search (title=london_* OR title=berlin_* OR title=loc1_*) | table title | sort title</query></search>
+      <fieldForLabel>title</fieldForLabel>
+      <fieldForValue>title</fieldForValue>
+      <default>london_linux</default>
+    </input>
+    <input type="dropdown" token="srcB">
+      <label>Source B</label>
+      <search><query>| rest /services/data/indexes | search (title=london_* OR title=berlin_* OR title=loc1_*) | table title | sort title</query></search>
+      <fieldForLabel>title</fieldForLabel>
+      <fieldForValue>title</fieldForValue>
+      <default>berlin_linux</default>
+    </input>
+    <input type="dropdown" token="srcC">
+      <label>Source C</label>
+      <search><query>| rest /services/data/indexes | search (title=london_* OR title=berlin_* OR title=loc1_*) | table title | sort title</query></search>
+      <fieldForLabel>title</fieldForLabel>
+      <fieldForValue>title</fieldForValue>
+      <default>loc1_linux</default>
+    </input>
+    <input type="dropdown" token="key">
+      <label>Correlate by</label>
+      <choice value="service">Service (syslog tag: sshd, sudo, cron…)</choice>
+      <choice value="user">User</choice>
+      <choice value="host">Host</choice>
+      <default>service</default>
+    </input>
+  </fieldset>
+
+  <row>
+    <panel>
+      <html>
+        <h2>Correlating three data sources</h2>
+        <p>Same idea as two sources, extended: for each <b>$key$</b> we count events in
+        <b>$srcA$</b>, <b>$srcB$</b> and <b>$srcC$</b>, then compute how many of the
+        three it appears in. A key seen in all three has the widest footprint.</p>
+      </html>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
+      <title>Keys in ALL 3 sources</title>
+      <single>
+        <search>
+          <query>(index=$srcA$ OR index=$srcB$ OR index=$srcC$) | rex field=_raw "\s(?&lt;service&gt;[A-Za-z][A-Za-z0-9_\-./]*)(?:\[\d+\])?:\s" | rex field=_raw "(?i)(?:user[=:\s]+|for\s+)(?&lt;user&gt;[A-Za-z0-9_.\-$]+)" | eval src=case(index=="$srcA$","A",index=="$srcB$","B",index=="$srcC$","C") | stats count(eval(src=="A")) as A, count(eval(src=="B")) as B, count(eval(src=="C")) as C by $key$ | eval sp=(if(A&gt;0,1,0)+if(B&gt;0,1,0)+if(C&gt;0,1,0)) | where sp==3 | stats count as all_three</query>
+          <earliest>$tr.earliest$</earliest>
+          <latest>$tr.latest$</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="colorBy">value</option>
+        <option name="rangeColors">["0x53a051","0x53a051"]</option>
+      </single>
+    </panel>
+    <panel>
+      <title>Events over time — all three sources</title>
+      <chart>
+        <search>
+          <query>(index=$srcA$ OR index=$srcB$ OR index=$srcC$) | timechart span=5m count by index</query>
+          <earliest>$tr.earliest$</earliest>
+          <latest>$tr.latest$</latest>
+        </search>
+        <option name="charting.chart">line</option>
+        <option name="charting.legend.placement">bottom</option>
+        <option name="charting.axisTitleY.text">Events</option>
+      </chart>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
+      <title>Correlation matrix — $key$ across the three sources (2-of-3 and 3-of-3)</title>
+      <table>
+        <search>
+          <query>(index=$srcA$ OR index=$srcB$ OR index=$srcC$)
+| rex field=_raw "\s(?&lt;service&gt;[A-Za-z][A-Za-z0-9_\-./]*)(?:\[\d+\])?:\s"
+| rex field=_raw "(?i)(?:user[=:\s]+|for\s+)(?&lt;user&gt;[A-Za-z0-9_.\-$]+)"
+| eval src=case(index=="$srcA$","A",index=="$srcB$","B",index=="$srcC$","C")
+| stats count(eval(src=="A")) as A_events, count(eval(src=="B")) as B_events, count(eval(src=="C")) as C_events, min(_time) as first, max(_time) as last by $key$
+| eval Sources=(if(A_events&gt;0,1,0)+if(B_events&gt;0,1,0)+if(C_events&gt;0,1,0))
+| where Sources&gt;=2
+| eval "First seen"=strftime(first,"%F %T"), "Last seen"=strftime(last,"%F %T")
+| rename A_events as "$srcA$", B_events as "$srcB$", C_events as "$srcC$"
+| table $key$ Sources "$srcA$" "$srcB$" "$srcC$" "First seen" "Last seen"
+| sort - Sources - "$srcA$"</query>
+          <earliest>$tr.earliest$</earliest>
+          <latest>$tr.latest$</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="count">25</option>
+        <format type="color" field="Sources">
+          <colorPalette type="map">{"3":#53a051,"2":#c8a21a}</colorPalette>
+        </format>
+      </table>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
+      <title>The SPL behind this</title>
+      <html>
+        <pre style="white-space:pre-wrap;background:#11151a;padding:12px;border-radius:6px;color:#cdd9e5;">(index=$srcA$ OR index=$srcB$ OR index=$srcC$)
+| eval src=case(index=="$srcA$","A",index=="$srcB$","B",index=="$srcC$","C")
+| stats count(eval(src=="A")) as A, count(eval(src=="B")) as B,
+        count(eval(src=="C")) as C by $key$
+| eval Sources = (if(A&gt;0,1,0)+if(B&gt;0,1,0)+if(C&gt;0,1,0))
+| where Sources&gt;=2          &#42; 3 = seen everywhere, 2 = partial footprint</pre>
+      </html>
+    </panel>
+  </row>
+</form>

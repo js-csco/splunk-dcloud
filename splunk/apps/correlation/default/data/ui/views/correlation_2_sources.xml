@@ -1,0 +1,120 @@
+<form version="1.1" theme="dark">
+  <label>Correlation 2 Sources</label>
+  <description>Find the same entity (service, user, or host) active across TWO data sources within a time window.</description>
+
+  <fieldset submitButton="false" autoRun="true">
+    <input type="time" token="tr">
+      <label>Time range</label>
+      <default><earliest>-24h@h</earliest><latest>now</latest></default>
+    </input>
+    <input type="dropdown" token="srcA">
+      <label>Source A</label>
+      <search>
+        <query>| rest /services/data/indexes | search (title=london_* OR title=berlin_* OR title=loc1_*) | table title | sort title</query>
+      </search>
+      <fieldForLabel>title</fieldForLabel>
+      <fieldForValue>title</fieldForValue>
+      <default>london_linux</default>
+    </input>
+    <input type="dropdown" token="srcB">
+      <label>Source B</label>
+      <search>
+        <query>| rest /services/data/indexes | search (title=london_* OR title=berlin_* OR title=loc1_*) | table title | sort title</query>
+      </search>
+      <fieldForLabel>title</fieldForLabel>
+      <fieldForValue>title</fieldForValue>
+      <default>berlin_linux</default>
+    </input>
+    <input type="dropdown" token="key">
+      <label>Correlate by</label>
+      <choice value="service">Service (syslog tag: sshd, sudo, cron…)</choice>
+      <choice value="user">User</choice>
+      <choice value="host">Host</choice>
+      <default>service</default>
+    </input>
+  </fieldset>
+
+  <row>
+    <panel>
+      <html>
+        <h2>Correlating two data sources</h2>
+        <p>A single source only tells part of the story. <b>Correlation</b> links the
+        same entity — a service, user, or host — across separate sources, in the same
+        time window. Below, we compare <b>$srcA$</b> and <b>$srcB$</b> by
+        <b>$key$</b>: the table shows only the keys that appear in <i>both</i>.</p>
+        <p style="color:#8b98a5;">The core technique is one search over both indexes,
+        then <code>stats count(eval(source=A)) count(eval(source=B)) by key</code>,
+        keeping rows where both counts are &gt; 0.</p>
+      </html>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
+      <title>Correlated keys (in BOTH sources)</title>
+      <single>
+        <search>
+          <query>(index=$srcA$ OR index=$srcB$) | rex field=_raw "\s(?&lt;service&gt;[A-Za-z][A-Za-z0-9_\-./]*)(?:\[\d+\])?:\s" | rex field=_raw "(?i)(?:user[=:\s]+|for\s+)(?&lt;user&gt;[A-Za-z0-9_.\-$]+)" | eval src=if(index=="$srcA$","A","B") | stats count(eval(src=="A")) as A, count(eval(src=="B")) as B by $key$ | where A&gt;0 AND B&gt;0 | stats count as correlated</query>
+          <earliest>$tr.earliest$</earliest>
+          <latest>$tr.latest$</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="colorBy">value</option>
+        <option name="rangeColors">["0x53a051","0x53a051"]</option>
+      </single>
+    </panel>
+    <panel>
+      <title>Events over time — do the sources light up together?</title>
+      <chart>
+        <search>
+          <query>(index=$srcA$ OR index=$srcB$) | timechart span=5m count by index</query>
+          <earliest>$tr.earliest$</earliest>
+          <latest>$tr.latest$</latest>
+        </search>
+        <option name="charting.chart">line</option>
+        <option name="charting.legend.placement">bottom</option>
+        <option name="charting.axisTitleY.text">Events</option>
+      </chart>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
+      <title>Correlation table — $key$ present in both $srcA$ and $srcB$</title>
+      <table>
+        <search>
+          <query>(index=$srcA$ OR index=$srcB$)
+| rex field=_raw "\s(?&lt;service&gt;[A-Za-z][A-Za-z0-9_\-./]*)(?:\[\d+\])?:\s"
+| rex field=_raw "(?i)(?:user[=:\s]+|for\s+)(?&lt;user&gt;[A-Za-z0-9_.\-$]+)"
+| eval src=if(index=="$srcA$","A","B")
+| stats count(eval(src=="A")) as A_events, count(eval(src=="B")) as B_events, min(_time) as first, max(_time) as last by $key$
+| where A_events&gt;0 AND B_events&gt;0
+| eval "First seen"=strftime(first,"%F %T"), "Last seen"=strftime(last,"%F %T")
+| rename A_events as "$srcA$", B_events as "$srcB$"
+| table $key$ "$srcA$" "$srcB$" "First seen" "Last seen"
+| sort - "$srcA$"</query>
+          <earliest>$tr.earliest$</earliest>
+          <latest>$tr.latest$</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="count">25</option>
+      </table>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
+      <title>The SPL behind this</title>
+      <html>
+        <pre style="white-space:pre-wrap;background:#11151a;padding:12px;border-radius:6px;color:#cdd9e5;">(index=$srcA$ OR index=$srcB$)
+| eval src=if(index=="$srcA$","A","B")
+| stats count(eval(src=="A")) as A_events,
+        count(eval(src=="B")) as B_events by $key$
+| where A_events&gt;0 AND B_events&gt;0</pre>
+        <p style="color:#8b98a5;">Swap the <b>Correlate by</b> field or the two sources
+        above to tell a different story (same user on two hosts, same service across
+        sites, etc.).</p>
+      </html>
+    </panel>
+  </row>
+</form>
