@@ -181,6 +181,45 @@ marker event. Verify in Splunk: `index=london_linux host=ubuntu-london`, or open
 > If `raw.githubusercontent.com` doesn't resolve on the Ubuntu box, clone the
 > repo (like the Splunk box) and run `ubuntu/forward-to-splunk.sh` from it.
 
+## Splunk MCP Server (Claude Desktop) — manual, for now
+
+Splunk ships a first-party **MCP Server** app ([Splunkbase app 7931](https://splunkbase.splunk.com/app/7931))
+that exposes an MCP endpoint on the management port: `https://<host>:8089/services/mcp`.
+It is **not** yet wired into `apply.sh` — the app is Splunkbase-only (authenticated
+download + license acceptance), so it can't be fetched unattended. Until we pick a
+sourcing method (vendor the `.tgz` in this repo, or download at boot with Splunkbase
+creds), install it by hand each session:
+
+1. **Install the app** on the Splunk box: Splunk Web → *Apps → Manage Apps →
+   Install app from file*, upload the app 7931 `.tgz`, then restart Splunk.
+2. **Grant the MCP capabilities** to a role (e.g. add to `role_global`):
+   `mcp_tool_execute` (and `mcp_tool_admin` for full control).
+3. **Create a bearer token**: Splunk Web → *Settings → Tokens* (enable token auth
+   if prompted) → new token for the MCP user; copy it.
+4. **Point Claude Desktop at it** via the `mcp-remote` proxy
+   (`claude_desktop_config.json`):
+
+   ```json
+   {
+     "mcpServers": {
+       "splunk": {
+         "command": "npx",
+         "args": ["-y", "mcp-remote",
+           "https://198.18.1.124:8089/services/mcp",
+           "--header", "Authorization: Bearer <YOUR_TOKEN>"]
+       }
+     }
+   }
+   ```
+
+> Caveat: app 7931 is certified for Splunk **8.0–10.2**; this box is **10.4.0**, so
+> confirm it loads before relying on it. For a self-signed cert you may need to allow
+> insecure TLS in the app's `mcp.conf` (`[mcp] ssl_verify = false`).
+>
+> Because the VM resets each session, this is manual until automated. When ready,
+> the plan is: drop the `.tgz` in `splunk/vendor/`, and `apply.sh` extracts + enables
+> it, grants the capability, and prints this snippet.
+
 ## Repo layout
 
 ```
