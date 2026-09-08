@@ -104,13 +104,19 @@ splunk_restart() {
   fi
 }
 
-# Wait until an authenticated CLI call succeeds - this proves splunkd's mgmt
-# port is up AND the admin credentials work, which is exactly what user
-# reconciliation needs. Verified to return in ~1s once splunkd is ready.
+# Wait until splunkd's REST/HTTPS management endpoint answers an authenticated
+# request. Gate on the SAME transport ensure_role uses (curl to :8089), because
+# the CLI reports "ready" a beat before the HTTPS listener actually accepts
+# connections - which was creating roles a second too early (HTTP 000).
 wait_for_splunk() {
-  local tries="${1:-45}" i=1
+  local tries="${1:-60}" i=1
+  local uri="${SPLUNK_MGMT_URI:-https://127.0.0.1:8089}/services/server/info?output_mode=json"
   while [ "$i" -le "$tries" ]; do
-    if splunk_cli list user >/dev/null 2>&1; then
+    if command -v curl >/dev/null 2>&1; then
+      if curl -skf -u "${SPLUNK_ADMIN_USER}:${SPLUNK_ADMIN_PASSWORD}" "$uri" >/dev/null 2>&1; then
+        return 0
+      fi
+    elif splunk_cli list user >/dev/null 2>&1; then
       return 0
     fi
     sleep 2; i=$((i+1))
@@ -182,11 +188,21 @@ ensure_role() {
   fi
 
   log "  creating role '${role}' (indexes: ${allowed}; imports: ${imports:-none})"
-  code="$(splunk_rest -o /dev/null -w '%{http_code}' --data-urlencode "name=${role}" "${args[@]}" "${base}" 2>/dev/null || true)"
-  case "$code" in
-    2??) return 0 ;;
-    *)   warn "  role '${role}' create returned HTTP ${code}"; return 1 ;;
-  esac
+  local attempt=1 max=5
+  while [ "$attempt" -le "$max" ]; do
+    code="$(splunk_rest -o /dev/null -w '%{http_code}' --data-urlencode "name=${role}" "${args[@]}" "${base}" 2>/dev/null || true)"
+    case "$code" in
+      2??) return 0 ;;
+      000|""|5??)  # mgmt/HTTPS not ready yet or transient - retry
+        warn "  role '${role}': mgmt not ready (HTTP ${code:-000}, attempt ${attempt}/${max}) - retrying"
+        sleep 3
+        splunk_rest -o /dev/null -X DELETE "${base}/${role}" >/dev/null 2>&1 || true ;;
+      *)   warn "  role '${role}' create returned HTTP ${code}"; return 1 ;;
+    esac
+    attempt=$((attempt+1))
+  done
+  warn "  role '${role}' failed to create after ${max} attempts"
+  return 1
 }
 
 # Create or update a Splunk user idempotently, mapped to a role.
