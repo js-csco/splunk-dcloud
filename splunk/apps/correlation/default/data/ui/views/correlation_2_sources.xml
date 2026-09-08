@@ -73,6 +73,20 @@
 
   <row>
     <panel>
+      <title>No data yet? Generate correlated demo activity</title>
+      <html>
+        <p>Run this on <b>ubuntu-london</b> and <b>ubuntu-berlin</b> (it needs no root).
+        It emits syslog events sharing services + users, so the same keys appear in both
+        sources:</p>
+        <pre style="white-space:pre-wrap;background:#11151a;padding:12px;border-radius:6px;color:#cdd9e5;">curl -fsSL https://raw.githubusercontent.com/js-csco/splunk-dcloud/main/ubuntu/generate-activity.sh | bash</pre>
+        <p style="color:#8b98a5;">Then refresh this page and set <b>Correlate by</b> to
+        <b>service</b> or <b>user</b>.</p>
+      </html>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
       <title>Correlated keys (in BOTH sources)</title>
       <single>
         <search>
