@@ -1,0 +1,67 @@
+<dashboard version="1.1" theme="dark">
+  <label>Get Data In — Overview</label>
+  <description>The ways to get data into Splunk, and which are live in this lab.</description>
+
+  <row>
+    <panel>
+      <html>
+        <h2>Getting data into Splunk</h2>
+        <p><b>New to Splunk?</b> Before Splunk can search or visualize anything, the data
+        has to arrive. There are a few common ways to bring it in — this app demonstrates
+        each one:</p>
+        <ul>
+          <li><b>Syslog</b> — devices/servers stream their logs to Splunk over the network
+          (push). Already live here from the Ubuntu hosts and the Splunk server.</li>
+          <li><b>REST / API polling</b> — Splunk periodically <i>pulls</i> data from a
+          system's API. Here we poll the <b>Proxmox</b> virtualization API every 60s.</li>
+          <li><b>SSH</b> — Splunk logs into a device (e.g. a Cisco router), runs commands
+          (license, certificates, NTP), and indexes the output.</li>
+          <li><b>SNMP</b> — poll network devices for interface/health metrics (via Splunk
+          Connect for SNMP).</li>
+          <li><b>SOAP</b> — an older XML web-service style; parked for now.</li>
+        </ul>
+        <p style="color:#8b98a5;">Under the hood, the pull-based methods (REST, SSH, SNMP)
+        use Splunk <b>scripted/modular inputs</b>: a small script Splunk runs on a schedule
+        whose output becomes events.</p>
+      </html>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
+      <title>Ingestion methods — status</title>
+      <html>
+        <table style="border-collapse:collapse;width:100%;font-size:13px;">
+          <thead>
+            <tr style="background:#1b2430;color:#cdd9e5;text-align:left;">
+              <th style="padding:8px;border:1px solid #2b3a4a;">Method</th>
+              <th style="padding:8px;border:1px solid #2b3a4a;">How</th>
+              <th style="padding:8px;border:1px solid #2b3a4a;">Status</th>
+            </tr>
+          </thead>
+          <tbody style="color:#e6edf3;">
+            <tr><td style="padding:8px;border:1px solid #2b3a4a;"><b>Syslog</b></td><td style="padding:8px;border:1px solid #2b3a4a;">rsyslog → per-location ports</td><td style="padding:8px;border:1px solid #2b3a4a;color:#7bd88f;">● Live</td></tr>
+            <tr><td style="padding:8px;border:1px solid #2b3a4a;"><b>REST / API (Proxmox)</b></td><td style="padding:8px;border:1px solid #2b3a4a;">scripted input polls the Proxmox API every 60s</td><td style="padding:8px;border:1px solid #2b3a4a;color:#e0c341;">● Live once the Proxmox token is set</td></tr>
+            <tr><td style="padding:8px;border:1px solid #2b3a4a;"><b>SSH (Cisco Catalyst)</b></td><td style="padding:8px;border:1px solid #2b3a4a;">scripted input runs show commands over SSH</td><td style="padding:8px;border:1px solid #2b3a4a;color:#8b98a5;">○ Planned (device pending)</td></tr>
+            <tr><td style="padding:8px;border:1px solid #2b3a4a;"><b>SNMP</b></td><td style="padding:8px;border:1px solid #2b3a4a;">Splunk Connect for SNMP (SC4SNMP)</td><td style="padding:8px;border:1px solid #2b3a4a;color:#8b98a5;">○ Planned</td></tr>
+            <tr><td style="padding:8px;border:1px solid #2b3a4a;"><b>SOAP</b></td><td style="padding:8px;border:1px solid #2b3a4a;">XML web service</td><td style="padding:8px;border:1px solid #2b3a4a;color:#8b98a5;">— Parked</td></tr>
+          </tbody>
+        </table>
+      </html>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
+      <title>What's actually arriving right now (by sourcetype, last 24h)</title>
+      <table>
+        <search>
+          <query>(index=london_* OR index=berlin_* OR index=loc1_*) | stats count as Events, dc(index) as Indexes, latest(_time) as last by sourcetype | eval "Last seen"=strftime(last,"%F %T") | rename sourcetype as Sourcetype | table Sourcetype Events Indexes "Last seen" | sort - Events</query>
+          <earliest>-24h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+      </table>
+    </panel>
+  </row>
+</dashboard>

@@ -237,6 +237,34 @@ creds), install it by hand each session:
 > the plan is: drop the `.tgz` in `splunk/vendor/`, and `apply.sh` extracts + enables
 > it, grants the capability, and prints this snippet.
 
+## Get Data In (ingestion methods)
+
+The **Get Data In** app demonstrates the ways to bring data into Splunk. Pull-based
+methods use **scripted inputs** (a script Splunk runs on a schedule — runs in
+splunkd's context, so outbound calls work, unlike the search sandbox).
+
+| Method | How | Status |
+|---|---|---|
+| Syslog | rsyslog → per-location ports | ✅ live |
+| REST / API (Proxmox) | `poll_proxmox.py` scripted input, every 60s → `berlin_proxmox` | ✅ live once a Proxmox token is set |
+| SSH (Cisco Catalyst) | scripted input runs show commands over SSH → `london_network`/`berlin_network` | ⏳ planned (device pending) |
+| SNMP | Splunk Connect for SNMP (SC4SNMP) | ⏳ planned |
+| SOAP | XML web service | ⏸ parked |
+
+**Enable the Proxmox REST poller** — create an API token in Proxmox
+(*Datacenter → Permissions → API Tokens*), then supply it at startup:
+
+```bash
+# In the dCloud startup command (prefix before apply.sh):
+export PROXMOX_HOST=198.18.3.x
+export PROXMOX_TOKEN='user@pam!lab=xxxxxxxx-....'
+# …or drop /opt/splunk/var/lib/dcloud/proxmox.env on the running box (see the
+# "REST API — Proxmox" dashboard for the exact commands).
+```
+
+`apply.sh` stores it at `$SPLUNK_HOME/var/lib/dcloud/proxmox.env` (600, splunk-owned,
+outside any app dir). The poller self-guards if no token is set, so it deploys safely.
+
 ## Repo layout
 
 ```

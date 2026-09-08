@@ -1,0 +1,5 @@
+<nav search_view="search" color="#e67e22">
+  <view name="get_data_in_overview" default="true" />
+  <view name="rest_proxmox" />
+  <view name="search" />
+</nav>

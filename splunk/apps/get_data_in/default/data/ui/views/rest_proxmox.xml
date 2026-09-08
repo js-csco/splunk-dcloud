@@ -1,0 +1,95 @@
+<dashboard version="1.1" theme="dark">
+  <label>REST API — Proxmox</label>
+  <description>Pulling data from a system's REST API on a schedule (Proxmox virtualization, Berlin).</description>
+
+  <row>
+    <panel>
+      <html>
+        <h2>REST / API polling</h2>
+        <p><b>What this shows:</b> instead of a device pushing logs, Splunk periodically
+        <i>pulls</i> data from a system's REST API. Here a small script
+        (<b>poll_proxmox.py</b>) runs on the Splunk host every <b>60 seconds</b>, calls the
+        <b>Proxmox</b> API (<code>https://proxmox-berlin:8006/api2/json/…</code>) with an
+        API token, and turns each result into an event in <b>berlin_proxmox</b>.</p>
+        <p style="color:#8b98a5;">This is the <b>scripted input</b> pattern — the standard
+        way to pull from any REST/JSON API. Swap the endpoint + parser and you can ingest
+        almost any product's API the same way.</p>
+      </html>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
+      <title>Last poll</title>
+      <single>
+        <search>
+          <query>index=berlin_proxmox sourcetype=proxmox:api | stats latest(_time) as last | eval last=strftime(last,"%F %T")</query>
+          <earliest>-60m</earliest><latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+      </single>
+    </panel>
+    <panel>
+      <title>Nodes</title>
+      <single>
+        <search>
+          <query>index=berlin_proxmox sourcetype=proxmox:api endpoint="cluster/resources" type=node | stats dc(node) as nodes</query>
+          <earliest>-60m</earliest><latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+      </single>
+    </panel>
+    <panel>
+      <title>VMs / containers</title>
+      <single>
+        <search>
+          <query>index=berlin_proxmox sourcetype=proxmox:api endpoint="cluster/resources" (type=qemu OR type=lxc) | stats dc(name) as vms</query>
+          <earliest>-60m</earliest><latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+      </single>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
+      <title>Proxmox resources (latest poll)</title>
+      <table>
+        <search>
+          <query>index=berlin_proxmox sourcetype=proxmox:api endpoint="cluster/resources"
+| dedup type, id
+| eval CPU=round('cpu'*100,1), "Mem %"=round('mem'/'maxmem'*100,1)
+| rename type as Type, name as Name, node as Node, status as Status, CPU as "CPU %"
+| table Type Name Node Status "CPU %" "Mem %"
+| sort Type Name</query>
+          <earliest>-60m</earliest><latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="count">30</option>
+      </table>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
+      <title>Setup &amp; how it works</title>
+      <html>
+        <p><b>No data yet?</b> The poller needs a Proxmox API token. Create one in Proxmox
+        (<i>Datacenter → Permissions → API Tokens</i>), then provide it to the lab at
+        startup (like the GitHub token):</p>
+        <pre style="white-space:pre-wrap;background:#11151a;padding:12px;border-radius:6px;color:#cdd9e5;"># Option A - in the dCloud startup command (prefix before apply.sh):
+export PROXMOX_HOST=198.18.3.x
+export PROXMOX_TOKEN='user@pam!lab=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx'
+
+# Option B - drop it on the running Splunk box:
+sudo mkdir -p /opt/splunk/var/lib/dcloud
+printf 'PROXMOX_HOST=198.18.3.x\nPROXMOX_TOKEN=user@pam!lab=xxxx\n' | sudo tee /opt/splunk/var/lib/dcloud/proxmox.env
+sudo chmod 600 /opt/splunk/var/lib/dcloud/proxmox.env
+sudo chown splunk:splunk /opt/splunk/var/lib/dcloud/proxmox.env</pre>
+        <p style="color:#8b98a5;">The scripted input (<code>inputs.conf [script://./bin/poll_proxmox.py] interval=60</code>)
+        then polls every minute. Data lands in <b>berlin_proxmox</b>, so <b>ben</b> and
+        <b>gary</b> can see it (RBAC preserved).</p>
+      </html>
+    </panel>
+  </row>
+</dashboard>

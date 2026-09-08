@@ -124,6 +124,23 @@ if [ -n "${GITHUB_TOKEN:-}" ]; then
 else
   log "Save-to-GitHub: no GITHUB_TOKEN provided - button will report 'no token' until one is set."
 fi
+
+# Get Data In: persist Proxmox API creds (if provided) for the REST poller.
+# Stored outside any app dir; the poll_proxmox.py scripted input reads it.
+if [ -n "${PROXMOX_HOST:-}" ] || [ -n "${PROXMOX_TOKEN:-}" ]; then
+  mkdir -p "${TOKEN_DIR}"
+  {
+    [ -n "${PROXMOX_HOST:-}" ]  && echo "PROXMOX_HOST=${PROXMOX_HOST}"
+    [ -n "${PROXMOX_TOKEN:-}" ] && echo "PROXMOX_TOKEN=${PROXMOX_TOKEN}"
+    [ -n "${PROXMOX_PORT:-}" ]  && echo "PROXMOX_PORT=${PROXMOX_PORT}"
+  } > "${TOKEN_DIR}/proxmox.env"
+  chmod 700 "${TOKEN_DIR}"; chmod 600 "${TOKEN_DIR}/proxmox.env"
+  chown -R "${SPLUNK_USER}:${SPLUNK_USER}" "${TOKEN_DIR}" 2>/dev/null || true
+  log "Get Data In: Proxmox creds stored (REST poller active)."
+else
+  log "Get Data In: no PROXMOX_HOST/PROXMOX_TOKEN - Proxmox REST poller idle until set."
+fi
+
 # Make any deployed app bin scripts executable.
 chmod +x "${SPLUNK_HOME}/etc/apps/"*/bin/*.sh 2>/dev/null || true
 
