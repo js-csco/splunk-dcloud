@@ -24,8 +24,8 @@
         <h3>What gets pre-loaded on each session</h3>
         <ul>
           <li><b>6 indexes</b>, one namespace per location: loc1_*, loc2_*, loc3_*</li>
-          <li><b>3 roles</b>: role_loc1 (loc1 only), role_loc2 (loc2 only), role_global (all)</li>
-          <li><b>3 users</b>: user_loc1, user_loc2, user_global</li>
+          <li><b>3 roles</b>: role_loc2 (loc2 only), role_loc3 (loc3 only), role_global (all)</li>
+          <li><b>3 users</b>: user_loc2, user_loc3, user_global</li>
           <li><b>Dashboards</b>: Lab Info (this page), Setup Status, Ingestion &amp; Health</li>
         </ul>
         <p>
@@ -66,16 +66,16 @@
               <td style="padding:8px;border:1px solid #2b3a4a;">All locations — loc1_*, loc2_*, loc3_*</td>
             </tr>
             <tr>
-              <td style="padding:8px;border:1px solid #2b3a4a;"><b>user_loc1</b></td>
-              <td style="padding:8px;border:1px solid #2b3a4a;">C1sco12345</td>
-              <td style="padding:8px;border:1px solid #2b3a4a;">role_loc1</td>
-              <td style="padding:8px;border:1px solid #2b3a4a;">Location 1 only — loc1_*</td>
-            </tr>
-            <tr>
               <td style="padding:8px;border:1px solid #2b3a4a;"><b>user_loc2</b></td>
               <td style="padding:8px;border:1px solid #2b3a4a;">C1sco12345</td>
               <td style="padding:8px;border:1px solid #2b3a4a;">role_loc2</td>
               <td style="padding:8px;border:1px solid #2b3a4a;">Location 2 only — loc2_*</td>
+            </tr>
+            <tr>
+              <td style="padding:8px;border:1px solid #2b3a4a;"><b>user_loc3</b></td>
+              <td style="padding:8px;border:1px solid #2b3a4a;">C1sco12345</td>
+              <td style="padding:8px;border:1px solid #2b3a4a;">role_loc3</td>
+              <td style="padding:8px;border:1px solid #2b3a4a;">Location 3 only — loc3_*</td>
             </tr>
           </tbody>
         </table>

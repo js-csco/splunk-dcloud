@@ -73,13 +73,13 @@
   <!-- ===== RBAC legend ===== -->
   <text x="30" y="470" fill="#cdd9e5" font-size="14" font-weight="700">RBAC</text>
   <rect x="30" y="482" width="360" height="150" rx="8" fill="#141b24" stroke="#2b3a4a"/>
-  <text x="46" y="508" fill="#9bd06a" font-size="13" font-weight="600">role_loc1</text>
-  <text x="150" y="508" fill="#8b98a5" font-size="13">→ loc1_* only</text>
-  <text x="46" y="536" fill="#5aa9e6" font-size="13" font-weight="600">role_loc2</text>
-  <text x="150" y="536" fill="#8b98a5" font-size="13">→ loc2_* only</text>
-  <text x="46" y="564" fill="#d6a25a" font-size="13" font-weight="600">role_loc3*</text>
-  <text x="150" y="564" fill="#8b98a5" font-size="13">→ (global-only for now)</text>
-  <text x="46" y="592" fill="#e6edf3" font-size="13" font-weight="600">role_global</text>
-  <text x="150" y="592" fill="#8b98a5" font-size="13">→ all locations</text>
-  <text x="46" y="616" fill="#6b7684" font-size="11">Users: user_loc1 / user_loc2 / user_global</text>
+  <text x="46" y="508" fill="#5aa9e6" font-size="13" font-weight="600">role_loc2</text>
+  <text x="150" y="508" fill="#8b98a5" font-size="13">→ loc2_* only</text>
+  <text x="46" y="536" fill="#d6a25a" font-size="13" font-weight="600">role_loc3</text>
+  <text x="150" y="536" fill="#8b98a5" font-size="13">→ loc3_* only</text>
+  <text x="46" y="564" fill="#e6edf3" font-size="13" font-weight="600">role_global</text>
+  <text x="150" y="564" fill="#8b98a5" font-size="13">→ all locations</text>
+  <text x="46" y="592" fill="#9bd06a" font-size="13" font-weight="600">loc1</text>
+  <text x="150" y="592" fill="#8b98a5" font-size="13">→ infrastructure (global only)</text>
+  <text x="46" y="616" fill="#6b7684" font-size="11">Users: user_loc2 / user_loc3 / user_global</text>
 </svg>

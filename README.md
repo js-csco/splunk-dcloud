@@ -64,32 +64,32 @@ whole location with a single wildcard.
 
 | Location | Network | Devices | Indexes | Roles with access |
 |---|---|---|---|---|
-| loc1 | 198.18.1.0/24 | splunk | `loc1_linux` | `role_loc1`, `role_global` |
+| loc1 | 198.18.1.0/24 | splunk (infrastructure) | `loc1_linux` | `role_global` only |
 | loc2 | 198.18.2.0/24 | ubuntu-loc2, windows-server-2022-loc2, cisco-iq-link | `loc2_linux`, `loc2_windows`, `loc2_network` | `role_loc2`, `role_global` |
-| loc3 | 198.18.3.0/24 | proxmox-9.2-loc3, ubuntu-loc3 | `loc3_linux`, `loc3_proxmox` | `role_global` |
+| loc3 | 198.18.3.0/24 | proxmox-9.2-loc3, ubuntu-loc3 | `loc3_linux`, `loc3_proxmox` | `role_loc3`, `role_global` |
 
-**Roles** (created at runtime via REST in `apply.sh`): `role_loc1 → loc1_*`,
-`role_loc2 → loc2_*`, `role_global → loc1_*;loc2_*;loc3_*` (+ `_*` for the
+> Location 1 is the Splunk server itself (infrastructure), so it has **no
+> dedicated analyst** — its data is visible to `role_global` only.
+
+**Roles** (created at runtime via REST in `apply.sh`): `role_loc2 → loc2_*`,
+`role_loc3 → loc3_*`, `role_global → loc1_*;loc2_*;loc3_*` (+ `_*` for the
 health dashboard). REST is used instead of `authorize.conf` because on this
 image app-level `authorize.conf` roles did not register even after a restart,
 whereas REST creation is immediate and reliable.
 
 > **Roles do NOT import the built-in `user` role.** On this image `user` grants
 > `srchIndexesAllowed = *`, and Splunk *unions* inherited index access — so
-> importing `user` would let `role_loc1` see every index. Instead each role is
-> given explicit capabilities (search, rtsearch, …) and only its own indexes,
-> which keeps the location wall airtight.
+> importing `user` would let a location role see every index. Instead each role
+> is given explicit capabilities (search, rtsearch, …) and only its own
+> indexes, which keeps the location wall airtight.
 
 **Users** (`config/lab_users.csv`, created at boot):
 
 | User | Role | Sees |
 |---|---|---|
 | `user_global` | `role_global` | all locations |
-| `user_loc1` | `role_loc1` | Location 1 only |
 | `user_loc2` | `role_loc2` | Location 2 only |
-
-> Location 3 has no dedicated user yet, so its data is **global-only**. Add a
-> `role_loc3` + `user_loc3` later exactly like the others.
+| `user_loc3` | `role_loc3` | Location 3 only |
 
 > Demo passwords live in `config/lab_users.csv` and are intended for a
 > throwaway lab. Do not put real passwords there.
@@ -152,8 +152,8 @@ own location's index:
 | Sender | → Port | → Index | Seen by |
 |---|---|---|---|
 | ubuntu-loc2 (and loc2 devices) | 5514 | `loc2_linux` | role_loc2, role_global |
-| ubuntu-loc3, proxmox-9.2-loc3 | 5515 | `loc3_linux` | role_global |
-| loc1 devices | 5513 | `loc1_linux` | role_loc1, role_global |
+| ubuntu-loc3, proxmox-9.2-loc3 | 5515 | `loc3_linux` | role_loc3, role_global |
+| Splunk host itself (loc1) | 5513 | `loc1_linux` | role_global |
 
 Port `9997` is also enabled for a Universal Forwarder as a future upgrade.
 
@@ -209,7 +209,7 @@ splunk/apps/dcloud_lab/
 ## Roadmap
 
 - [x] Per-location indexes
-- [x] RBAC roles (created via REST) + users mapped to them
+- [x] RBAC: role_loc2, role_loc3, role_global + matching users (loc1 = infra, global-only)
 - [x] Dashboards: Lab Info, Setup Status, Ingestion & Health
-- [ ] `role_loc3` / `user_loc3` (if/when Location 3 needs its own user)
-- [ ] Data integrations: forwarders / HEC / syslog for the Ubuntu VMs and Proxmox
+- [x] Data onboarding: rsyslog from Ubuntu boxes + Splunk host self-forward (loc1)
+- [ ] Remaining senders: Proxmox (loc3) and Windows server (loc2 → loc2_windows)

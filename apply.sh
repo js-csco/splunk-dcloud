@@ -75,10 +75,21 @@ wait_for_splunk 45 || die "splunkd did not become ready in time."
 LOC_CAPS="search;rtsearch;get_metadata;get_typeahead;schedule_search;edit_own_objects;list_metrics_catalog"
 log "Reconciling RBAC roles via REST ..."
 rfails=0
-ensure_role role_loc1   "" "loc1_*"                   "loc1_*"                "$LOC_CAPS" || rfails=$((rfails+1))
 ensure_role role_loc2   "" "loc2_*"                   "loc2_*"                "$LOC_CAPS" || rfails=$((rfails+1))
+ensure_role role_loc3   "" "loc3_*"                   "loc3_*"                "$LOC_CAPS" || rfails=$((rfails+1))
 ensure_role role_global "" "loc1_*;loc2_*;loc3_*;_*"  "loc1_*;loc2_*;loc3_*"  "$LOC_CAPS" || rfails=$((rfails+1))
 [ "${rfails}" -eq 0 ] || warn "${rfails} role(s) failed to reconcile - see errors above."
+
+# Prune retired RBAC objects (loc1 is infrastructure-only now - no dedicated
+# user/role). Safe if they don't exist. Keeps re-runs on a live box clean.
+ROLES_BASE="${SPLUNK_MGMT_URI:-https://127.0.0.1:8089}/services/authorization/roles"
+USERS_BASE="${SPLUNK_MGMT_URI:-https://127.0.0.1:8089}/services/authentication/users"
+for legacy_user in user_loc1; do
+  splunk_rest -o /dev/null -X DELETE "${USERS_BASE}/${legacy_user}" >/dev/null 2>&1 || true
+done
+for legacy_role in role_loc1; do
+  splunk_rest -o /dev/null -X DELETE "${ROLES_BASE}/${legacy_role}" >/dev/null 2>&1 || true
+done
 
 # ===========================================================================
 # 3. Reconcile lab users (CLI; roles from step 1 already exist by now)
