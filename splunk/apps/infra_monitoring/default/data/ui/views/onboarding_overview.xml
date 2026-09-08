@@ -18,7 +18,7 @@
       <title>Total events</title>
       <single>
         <search>
-          <query>| tstats count where index=loc*</query>
+          <query>| tstats count where (index=london_* OR index=berlin_* OR index=loc1_*)</query>
           <earliest>$tr.earliest$</earliest>
           <latest>$tr.latest$</latest>
         </search>
@@ -31,7 +31,7 @@
       <title>Hosts reporting</title>
       <single>
         <search>
-          <query>| tstats count where index=loc* by index host | stats count as hosts</query>
+          <query>| tstats count where (index=london_* OR index=berlin_* OR index=loc1_*) by index host | stats count as hosts</query>
           <earliest>$tr.earliest$</earliest>
           <latest>$tr.latest$</latest>
         </search>
@@ -46,7 +46,7 @@
       <title>Indexes receiving data</title>
       <single>
         <search>
-          <query>| tstats count where index=loc* by index | stats count</query>
+          <query>| tstats count where (index=london_* OR index=berlin_* OR index=loc1_*) by index | stats count</query>
           <earliest>$tr.earliest$</earliest>
           <latest>$tr.latest$</latest>
         </search>
@@ -57,7 +57,7 @@
       <title>Sourcetypes</title>
       <single>
         <search>
-          <query>| tstats count where index=loc* by sourcetype | stats count</query>
+          <query>| tstats count where (index=london_* OR index=berlin_* OR index=loc1_*) by sourcetype | stats count</query>
           <earliest>$tr.earliest$</earliest>
           <latest>$tr.latest$</latest>
         </search>
@@ -72,7 +72,7 @@
       <title>Events over time, by index</title>
       <chart>
         <search>
-          <query>index=loc* | timechart span=10m count by index</query>
+          <query>(index=london_* OR index=berlin_* OR index=loc1_*) | timechart span=10m count by index</query>
           <earliest>$tr.earliest$</earliest>
           <latest>$tr.latest$</latest>
         </search>
@@ -91,7 +91,7 @@
       <title>Events by source (host + index)</title>
       <chart>
         <search>
-          <query>index=loc* | eval source=host." @ ".index | stats count by source | sort - count</query>
+          <query>(index=london_* OR index=berlin_* OR index=loc1_*) | eval source=host." @ ".index | stats count by source | sort - count</query>
           <earliest>$tr.earliest$</earliest>
           <latest>$tr.latest$</latest>
         </search>
@@ -103,7 +103,7 @@
       <title>Events by index</title>
       <chart>
         <search>
-          <query>| tstats count where index=loc* by index | sort - count</query>
+          <query>| tstats count where (index=london_* OR index=berlin_* OR index=loc1_*) by index | sort - count</query>
           <earliest>$tr.earliest$</earliest>
           <latest>$tr.latest$</latest>
         </search>
@@ -114,7 +114,7 @@
       <title>Events by sourcetype</title>
       <chart>
         <search>
-          <query>index=loc* | stats count by sourcetype | sort - count</query>
+          <query>(index=london_* OR index=berlin_* OR index=loc1_*) | stats count by sourcetype | sort - count</query>
           <earliest>$tr.earliest$</earliest>
           <latest>$tr.latest$</latest>
         </search>
@@ -130,7 +130,7 @@
       <title>Data sources — host / index / sourcetype</title>
       <table>
         <search>
-          <query>index=loc* | stats count as Events, min(_time) as first, max(_time) as last by host index sourcetype | eval "First seen"=strftime(first,"%F %T"), "Last seen"=strftime(last,"%F %T") | rename host as Host, index as Index, sourcetype as Sourcetype | table Host Index Sourcetype Events "First seen" "Last seen" | sort - Events</query>
+          <query>(index=london_* OR index=berlin_* OR index=loc1_*) | stats count as Events, min(_time) as first, max(_time) as last by host index sourcetype | eval "First seen"=strftime(first,"%F %T"), "Last seen"=strftime(last,"%F %T") | rename host as Host, index as Index, sourcetype as Sourcetype | table Host Index Sourcetype Events "First seen" "Last seen" | sort - Events</query>
           <earliest>$tr.earliest$</earliest>
           <latest>$tr.latest$</latest>
         </search>

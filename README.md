@@ -65,15 +65,15 @@ whole location with a single wildcard.
 | Location | Network | Devices | Indexes | Roles with access |
 |---|---|---|---|---|
 | loc1 | 198.18.1.0/24 | splunk (infrastructure) | `loc1_linux` | `role_global` only |
-| loc2 | 198.18.2.0/24 | ubuntu-loc2, windows-server-2022-loc2, cisco-iq-link | `loc2_linux`, `loc2_windows`, `loc2_network` | `role_loc2`, `role_global` |
-| loc3 | 198.18.3.0/24 | proxmox-9.2-loc3, ubuntu-loc3 | `loc3_linux`, `loc3_proxmox` | `role_loc3`, `role_global` |
+| London (loc2) | 198.18.2.0/24 | ubuntu-loc2, windows-server-2022-loc2, cisco-iq-link | `london_linux`, `london_windows`, `london_network` | `role_london`, `role_global` |
+| Berlin (loc3) | 198.18.3.0/24 | proxmox-9.2-loc3, ubuntu-loc3 | `berlin_linux`, `berlin_proxmox` | `role_berlin`, `role_global` |
 
 > Location 1 is the Splunk server itself (infrastructure), so it has **no
-> dedicated analyst** — its data is visible to `role_global` only.
+> dedicated analyst** — `loc1_linux` is visible to `role_global` only.
 
-**Roles** (created at runtime via REST in `apply.sh`): `role_loc2 → loc2_*`,
-`role_loc3 → loc3_*`, `role_global → loc1_*;loc2_*;loc3_*` (+ `_*` for the
-health dashboard). REST is used instead of `authorize.conf` because on this
+**Roles** (created at runtime via REST in `apply.sh`): `role_london → london_*`,
+`role_berlin → berlin_*`, `role_global → london_*;berlin_*;loc1_*` (+ `_*` for
+internal). REST is used instead of `authorize.conf` because on this
 image app-level `authorize.conf` roles did not register even after a restart,
 whereas REST creation is immediate and reliable.
 
@@ -87,9 +87,9 @@ whereas REST creation is immediate and reliable.
 
 | User | Role | Sees |
 |---|---|---|
-| `user_global` | `role_global` | all locations |
-| `user_loc2` | `role_loc2` | Location 2 only |
-| `user_loc3` | `role_loc3` | Location 3 only |
+| `gary` | `role_global` | everything (London + Berlin + loc1 infra) |
+| `leo` | `role_london` | London only (`london_*`) |
+| `ben` | `role_berlin` | Berlin only (`berlin_*`) |
 
 > Demo passwords live in `config/lab_users.csv` and are intended for a
 > throwaway lab. Do not put real passwords there.
@@ -151,8 +151,8 @@ own location's index:
 
 | Sender | → Port | → Index | Seen by |
 |---|---|---|---|
-| ubuntu-loc2 (and loc2 devices) | 5514 | `loc2_linux` | role_loc2, role_global |
-| ubuntu-loc3, proxmox-9.2-loc3 | 5515 | `loc3_linux` | role_loc3, role_global |
+| ubuntu-loc2 (London devices) | 5514 | `london_linux` | role_london, role_global |
+| ubuntu-loc3, proxmox-9.2-loc3 (Berlin) | 5515 | `berlin_linux` | role_berlin, role_global |
 | Splunk host itself (loc1) | 5513 | `loc1_linux` | role_global |
 
 Port `9997` is also enabled for a Universal Forwarder as a future upgrade.
@@ -161,12 +161,12 @@ On each **Ubuntu** box, run (location auto-detected from the hostname):
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/js-csco/splunk-dcloud/main/ubuntu/forward-to-splunk.sh | sudo bash
-# or force it:  sudo bash forward-to-splunk.sh loc2
+# or force it:  curl -fsSL <url> | sudo bash -s -- london   (also: berlin | loc1)
 ```
 
 It configures rsyslog (built into Ubuntu — no downloads, forwards to the
 indexer IP so no DNS needed) to ship all logs to the right port, and emits a
-marker event. Verify in Splunk: `index=loc2_linux host=ubuntu-loc2`, or open
+marker event. Verify in Splunk: `index=london_linux host=ubuntu-loc2`, or open
 **Infrastructure Monitoring → Data Onboarding Overview**.
 
 > If `raw.githubusercontent.com` doesn't resolve on the Ubuntu box, clone the
@@ -209,7 +209,7 @@ splunk/apps/dcloud_lab/
 ## Roadmap
 
 - [x] Per-location indexes
-- [x] RBAC: role_loc2, role_loc3, role_global + matching users (loc1 = infra, global-only)
+- [x] RBAC: role_london (Leo), role_berlin (Ben), role_global (Gary); loc1 = infra, global-only
 - [x] Dashboards: Lab Info, Setup Status, Ingestion & Health
 - [x] Data onboarding: rsyslog from Ubuntu boxes + Splunk host self-forward (loc1)
-- [ ] Remaining senders: Proxmox (loc3) and Windows server (loc2 → loc2_windows)
+- [ ] Remaining senders: Proxmox (Berlin) and Windows server (London → london_windows)

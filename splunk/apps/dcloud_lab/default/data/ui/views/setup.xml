@@ -8,42 +8,42 @@
       <title>Indexes (expect 6)</title>
       <single>
         <search>
-          <query>| rest /services/data/indexes | search title=loc* | stats count</query>
+          <query>| rest /services/data/indexes | search (title=london_* OR title=berlin_* OR title=loc1_*) | stats count</query>
         </search>
         <option name="drilldown">none</option>
         <option name="useColors">1</option>
         <option name="colorMode">block</option>
         <option name="rangeValues">[5.5]</option>
         <option name="rangeColors">["0xd93f3c","0x53a051"]</option>
-        <option name="underLabel">loc1/loc2/loc3 indexes</option>
+        <option name="underLabel">london / berlin / loc1 indexes</option>
       </single>
     </panel>
     <panel>
       <title>Roles (expect 3)</title>
       <single>
         <search>
-          <query>| rest /services/authorization/roles | search title IN (role_loc2, role_loc3, role_global) | stats count</query>
+          <query>| rest /services/authorization/roles | search title IN (role_london, role_berlin, role_global) | stats count</query>
         </search>
         <option name="drilldown">none</option>
         <option name="useColors">1</option>
         <option name="colorMode">block</option>
         <option name="rangeValues">[2.5]</option>
         <option name="rangeColors">["0xd93f3c","0x53a051"]</option>
-        <option name="underLabel">role_loc2 / role_loc3 / role_global</option>
+        <option name="underLabel">role_london / role_berlin / role_global</option>
       </single>
     </panel>
     <panel>
       <title>Users (expect 3)</title>
       <single>
         <search>
-          <query>| rest /services/authentication/users | search title IN (user_loc2, user_loc3, user_global) | stats count</query>
+          <query>| rest /services/authentication/users | search title IN (leo, ben, gary) | stats count</query>
         </search>
         <option name="drilldown">none</option>
         <option name="useColors">1</option>
         <option name="colorMode">block</option>
         <option name="rangeValues">[2.5]</option>
         <option name="rangeColors">["0xd93f3c","0x53a051"]</option>
-        <option name="underLabel">user_loc2 / user_loc3 / user_global</option>
+        <option name="underLabel">leo / ben / gary</option>
       </single>
     </panel>
     <panel>
@@ -68,9 +68,9 @@
       <title>Setup checklist</title>
       <table>
         <search>
-          <query>| rest /services/data/indexes | search title=loc* | stats count as Found | eval Check="Indexes (loc*)", Expected=6
-| append [| rest /services/authorization/roles | search title IN (role_loc2, role_loc3, role_global) | stats count as Found | eval Check="Roles (role_loc2/3/global)", Expected=3]
-| append [| rest /services/authentication/users | search title IN (user_loc2, user_loc3, user_global) | stats count as Found | eval Check="Users (user_loc2/3/global)", Expected=3]
+          <query>| rest /services/data/indexes | search (title=london_* OR title=berlin_* OR title=loc1_*) | stats count as Found | eval Check="Indexes (london/berlin/loc1)", Expected=6
+| append [| rest /services/authorization/roles | search title IN (role_london, role_berlin, role_global) | stats count as Found | eval Check="Roles (london/berlin/global)", Expected=3]
+| append [| rest /services/authentication/users | search title IN (leo, ben, gary) | stats count as Found | eval Check="Users (leo/ben/gary)", Expected=3]
 | append [| rest /services/apps/local | search title=dcloud_lab disabled=0 | stats count as Found | eval Check="App enabled (dcloud_lab)", Expected=1]
 | eval Status=if(Found>=Expected, "✓ OK", "✗ CHECK")
 | table Check Expected Found Status</query>
@@ -90,7 +90,7 @@
       <title>Roles &amp; their index access (RBAC)</title>
       <table>
         <search>
-          <query>| rest /services/authorization/roles | search title IN (role_loc2, role_loc3, role_global) | eval indexes_allowed=mvjoin(srchIndexesAllowed, ", ") | eval inherits=mvjoin(imported_roles, ", ") | rename title as Role | table Role indexes_allowed inherits</query>
+          <query>| rest /services/authorization/roles | search title IN (role_london, role_berlin, role_global) | eval indexes_allowed=mvjoin(srchIndexesAllowed, ", ") | eval inherits=mvjoin(imported_roles, ", ") | rename title as Role | table Role indexes_allowed inherits</query>
         </search>
         <option name="drilldown">none</option>
       </table>
@@ -99,7 +99,7 @@
       <title>Users &amp; assigned roles</title>
       <table>
         <search>
-          <query>| rest /services/authentication/users | search title IN (user_loc2, user_loc3, user_global) | eval assigned_roles=mvjoin(roles, ", ") | rename title as User, realname as "Full name" | table User "Full name" assigned_roles</query>
+          <query>| rest /services/authentication/users | search title IN (leo, ben, gary) | eval assigned_roles=mvjoin(roles, ", ") | rename title as User, realname as "Full name" | table User "Full name" assigned_roles</query>
         </search>
         <option name="drilldown">none</option>
       </table>
@@ -111,7 +111,7 @@
       <title>Lab indexes (size &amp; event counts)</title>
       <table>
         <search>
-          <query>| rest /services/data/indexes | search title=loc* | rename title as Index, currentDBSizeMB as "Size (MB)", totalEventCount as Events | table Index "Size (MB)" Events | sort Index</query>
+          <query>| rest /services/data/indexes | search (title=london_* OR title=berlin_* OR title=loc1_*) | rename title as Index, currentDBSizeMB as "Size (MB)", totalEventCount as Events | table Index "Size (MB)" Events | sort Index</query>
         </search>
         <option name="drilldown">none</option>
         <option name="count">10</option>

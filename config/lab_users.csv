@@ -3,10 +3,9 @@
 # Format:  username,password,role,full name
 #
 # NOTE: These are DEMO credentials for a throwaway dCloud lab. Do NOT reuse
-# real passwords here. To change a password without editing this file, the
-# apply step will honor an override if you prefer (see README).
+# real passwords here.
 #
 username,password,role,full_name
-user_global,C1sco12345,role_global,Global Analyst
-user_loc2,C1sco12345,role_loc2,Location 2 Analyst
-user_loc3,C1sco12345,role_loc3,Location 3 Analyst
+gary,C1sco12345,role_global,Gary (Global - London + Berlin)
+leo,C1sco12345,role_london,Leo (London)
+ben,C1sco12345,role_berlin,Ben (Berlin)

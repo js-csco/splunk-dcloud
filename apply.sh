@@ -66,28 +66,28 @@ wait_for_splunk 45 || die "splunkd did not become ready in time."
 # ---------------------------------------------------------------------------
 # Roles - created at runtime via REST (immediate, restart-independent). This
 # is the authoritative source for the lab's RBAC roles.
-#   role_loc1  -> loc1_* only
-#   role_loc2  -> loc2_* only
-#   role_global-> all locations (+ internal indexes for the health dashboard)
-# ---------------------------------------------------------------------------
+#   role_london -> london_* only        (Location 2)
+#   role_berlin -> berlin_* only        (Location 3)
+#   role_global -> London + Berlin + loc1 infra + internal (everything)
 # Roles get EXPLICIT capabilities and do NOT import the built-in 'user' role
 # (which grants srchIndexesAllowed=* and would leak every index).
+# ---------------------------------------------------------------------------
 LOC_CAPS="search;rtsearch;get_metadata;get_typeahead;schedule_search;edit_own_objects;list_metrics_catalog"
 log "Reconciling RBAC roles via REST ..."
 rfails=0
-ensure_role role_loc2   "" "loc2_*"                   "loc2_*"                "$LOC_CAPS" || rfails=$((rfails+1))
-ensure_role role_loc3   "" "loc3_*"                   "loc3_*"                "$LOC_CAPS" || rfails=$((rfails+1))
-ensure_role role_global "" "loc1_*;loc2_*;loc3_*;_*"  "loc1_*;loc2_*;loc3_*"  "$LOC_CAPS" || rfails=$((rfails+1))
+ensure_role role_london "" "london_*"                    "london_*"                 "$LOC_CAPS" || rfails=$((rfails+1))
+ensure_role role_berlin "" "berlin_*"                    "berlin_*"                 "$LOC_CAPS" || rfails=$((rfails+1))
+ensure_role role_global "" "london_*;berlin_*;loc1_*;_*" "london_*;berlin_*;loc1_*" "$LOC_CAPS" || rfails=$((rfails+1))
 [ "${rfails}" -eq 0 ] || warn "${rfails} role(s) failed to reconcile - see errors above."
 
-# Prune retired RBAC objects (loc1 is infrastructure-only now - no dedicated
-# user/role). Safe if they don't exist. Keeps re-runs on a live box clean.
+# Prune retired RBAC objects from earlier naming schemes. Safe if absent.
+# Keeps re-runs on a live box clean (fresh sessions never have them).
 ROLES_BASE="${SPLUNK_MGMT_URI:-https://127.0.0.1:8089}/services/authorization/roles"
 USERS_BASE="${SPLUNK_MGMT_URI:-https://127.0.0.1:8089}/services/authentication/users"
-for legacy_user in user_loc1; do
+for legacy_user in user_loc1 user_loc2 user_loc3 user_global; do
   splunk_rest -o /dev/null -X DELETE "${USERS_BASE}/${legacy_user}" >/dev/null 2>&1 || true
 done
-for legacy_role in role_loc1; do
+for legacy_role in role_loc1 role_loc2 role_loc3; do
   splunk_rest -o /dev/null -X DELETE "${ROLES_BASE}/${legacy_role}" >/dev/null 2>&1 || true
 done
 

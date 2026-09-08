@@ -23,9 +23,9 @@
         </p>
         <h3>What gets pre-loaded on each session</h3>
         <ul>
-          <li><b>6 indexes</b>, one namespace per location: loc1_*, loc2_*, loc3_*</li>
-          <li><b>3 roles</b>: role_loc2 (loc2 only), role_loc3 (loc3 only), role_global (all)</li>
-          <li><b>3 users</b>: user_loc2, user_loc3, user_global</li>
+          <li><b>6 indexes</b>, one namespace per location: london_* (London), berlin_* (Berlin), loc1_* (infra)</li>
+          <li><b>3 roles</b>: role_london (London only), role_berlin (Berlin only), role_global (everything)</li>
+          <li><b>3 users</b>: Leo (London), Ben (Berlin), Gary (global)</li>
           <li><b>Dashboards</b>: Lab Info (this page), Setup Status, Ingestion &amp; Health</li>
         </ul>
         <p>
@@ -60,22 +60,22 @@
               <td style="padding:8px;border:1px solid #2b3a4a;">Everything (full admin)</td>
             </tr>
             <tr>
-              <td style="padding:8px;border:1px solid #2b3a4a;"><b>user_global</b></td>
+              <td style="padding:8px;border:1px solid #2b3a4a;"><b>gary</b></td>
               <td style="padding:8px;border:1px solid #2b3a4a;">C1sco12345</td>
               <td style="padding:8px;border:1px solid #2b3a4a;">role_global</td>
-              <td style="padding:8px;border:1px solid #2b3a4a;">All locations — loc1_*, loc2_*, loc3_*</td>
+              <td style="padding:8px;border:1px solid #2b3a4a;">Everything — London + Berlin + loc1 infra</td>
             </tr>
             <tr>
-              <td style="padding:8px;border:1px solid #2b3a4a;"><b>user_loc2</b></td>
+              <td style="padding:8px;border:1px solid #2b3a4a;"><b>leo</b></td>
               <td style="padding:8px;border:1px solid #2b3a4a;">C1sco12345</td>
-              <td style="padding:8px;border:1px solid #2b3a4a;">role_loc2</td>
-              <td style="padding:8px;border:1px solid #2b3a4a;">Location 2 only — loc2_*</td>
+              <td style="padding:8px;border:1px solid #2b3a4a;">role_london</td>
+              <td style="padding:8px;border:1px solid #2b3a4a;">London only — london_*</td>
             </tr>
             <tr>
-              <td style="padding:8px;border:1px solid #2b3a4a;"><b>user_loc3</b></td>
+              <td style="padding:8px;border:1px solid #2b3a4a;"><b>ben</b></td>
               <td style="padding:8px;border:1px solid #2b3a4a;">C1sco12345</td>
-              <td style="padding:8px;border:1px solid #2b3a4a;">role_loc3</td>
-              <td style="padding:8px;border:1px solid #2b3a4a;">Location 3 only — loc3_*</td>
+              <td style="padding:8px;border:1px solid #2b3a4a;">role_berlin</td>
+              <td style="padding:8px;border:1px solid #2b3a4a;">Berlin only — berlin_*</td>
             </tr>
           </tbody>
         </table>
