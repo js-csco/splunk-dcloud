@@ -31,29 +31,55 @@ dCloud Startup Automation (session.xml)
 checkout and hands off to `apply.sh`; the canonical startup command below runs
 `apply.sh` directly.
 
-## The one command (dCloud Startup Automation)
+## Startup (each session)
 
-dCloud pods often boot with a **broken DNS resolver** (pod cloning remaps IPs,
-leaving the configured nameserver unreachable — `ping 1.1.1.1` works but
-`ping google.com` fails). Because the resolver must be fixed *before* the repo
-can be fetched, the startup command is self-contained: it fixes DNS, ensures
-`git`, clones `main`, and runs `apply.sh`:
+Everything resets each session. Run these in order.
+
+**1. Splunk box** — build the whole Splunk config (indexes, roles, users,
+dashboards, SSH router polling). One self-contained command (fixes DNS, clones
+`main`, runs `apply.sh`):
 
 ```bash
 sudo bash -c 'getent hosts github.com >/dev/null 2>&1 || { rm -f /etc/resolv.conf; printf "nameserver 1.1.1.1\nnameserver 8.8.8.8\n" > /etc/resolv.conf; }; command -v git >/dev/null || { apt-get update -y && apt-get install -y git; }; rm -rf /opt/dcloud-splunk; git clone -b main https://github.com/js-csco/splunk-dcloud.git /opt/dcloud-splunk && exec bash /opt/dcloud-splunk/apply.sh'
 ```
 
-> **Always clone with `-b main`.** A plain `git clone` pulls the repo's
-> *default* branch, which may not be `main` — pinning the branch avoids
-> running stale code.
+**2. ubuntu-london** — forward logs (syslog → `london_linux`):
 
-### If DNS is broken and you just want to unblock a shell
+```bash
+curl -fsSL https://raw.githubusercontent.com/js-csco/splunk-dcloud/main/ubuntu/forward-to-splunk.sh | sudo bash -s -- london
+```
+
+**3. ubuntu-berlin** — forward logs, then install the Universal Forwarder
+(pulls the local Proxmox API → `berlin_proxmox`):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/js-csco/splunk-dcloud/main/ubuntu/forward-to-splunk.sh | sudo bash -s -- berlin
+curl -fsSL https://raw.githubusercontent.com/js-csco/splunk-dcloud/main/ubuntu/install-uf.sh   | sudo bash
+```
+
+**4. (optional) demo data** — correlated events on the Ubuntu boxes:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/js-csco/splunk-dcloud/main/ubuntu/generate-activity.sh | bash
+```
+
+Then open `http://198.18.1.124:8000` → **Lab Overview → Setup Status** (all
+green) and log in as `leo` / `ben` / `gary` (password `C1sco12345`).
+
+> The Cisco routers (London/Berlin) are polled automatically by the Splunk box —
+> nothing to run there.
+
+### Troubleshooting: DNS
+
+If a box can't resolve `github.com` (`ping 1.1.1.1` works but `ping google.com`
+fails), fix the resolver, then re-run:
 
 ```bash
 sudo rm -f /etc/resolv.conf
 printf 'nameserver 1.1.1.1\nnameserver 8.8.8.8\noptions timeout:2 attempts:2\n' | sudo tee /etc/resolv.conf
-getent hosts github.com   # should print an IP
 ```
+
+> Always clone with `-b main` (a plain `git clone` may pull an older default branch).
 
 ## Location-based RBAC (the core design)
 
