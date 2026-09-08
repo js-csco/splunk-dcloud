@@ -283,6 +283,16 @@ deploys `TA-dcloud-proxmox` (localized Berlin config, runs via the host's
 `python3` since the UF has no bundled Python). To go back to central polling,
 set the `poll_proxmox.py` input `disabled=0` in `get_data_in` and skip the UF.
 
+**Change guest state live (API write demo).** `ubuntu/proxmox-guest.py` starts/stops
+VMs & containers via the API (ticket auth — no token; nothing to pre-create even
+though Proxmox resets each session). Run from any box that can reach Proxmox:
+```bash
+curl -fsSL https://raw.githubusercontent.com/js-csco/splunk-dcloud/main/ubuntu/proxmox-guest.py | python3 - list
+curl -fsSL https://raw.githubusercontent.com/js-csco/splunk-dcloud/main/ubuntu/proxmox-guest.py | python3 - stop 101
+```
+Within ~60s the **Running guests over time** chart on the *REST API — Proxmox*
+dashboard reflects it. Each action also logs a `proxmox-ctl` syslog event.
+
 ### Lab systems &amp; access (demo creds)
 
 | System | Location | Address | Access | User / Pass |

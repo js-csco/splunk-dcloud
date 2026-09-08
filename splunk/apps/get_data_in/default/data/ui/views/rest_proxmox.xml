@@ -94,23 +94,69 @@
 
   <row>
     <panel>
+      <title>Running guests over time (watch it change when you start/stop one)</title>
+      <chart>
+        <search>
+          <query>index=berlin_proxmox sourcetype=proxmox:api endpoint="cluster/resources" (type=qemu OR type=lxc) status=running | timechart span=1m dc(name) as "Running guests"</query>
+          <earliest>-4h</earliest><latest>now</latest>
+        </search>
+        <option name="charting.chart">line</option>
+        <option name="charting.chart.nullValueMode">connect</option>
+        <option name="charting.axisTitleY.text">Running</option>
+      </chart>
+    </panel>
+    <panel>
+      <title>Guests — latest status</title>
+      <table>
+        <search>
+          <query>index=berlin_proxmox sourcetype=proxmox:api endpoint="cluster/resources" (type=qemu OR type=lxc) | stats latest(status) as Status, latest(type) as Type, latest(node) as Node, latest(vmid) as VMID by name | rename name as Name | table VMID Type Name Status Node | sort VMID</query>
+          <earliest>-60m</earliest><latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="count">20</option>
+        <format type="color" field="Status">
+          <colorPalette type="map">{"running":#53a051,"stopped":#d93f3c}</colorPalette>
+        </format>
+      </table>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
+      <title>Change guest state via the API (then watch the chart above)</title>
+      <html>
+        <p>Run from any box that can reach Proxmox (ubuntu-berlin or the Splunk host).
+        It logs in with the lab creds (ticket auth) and issues the API call — no token
+        needed. The next poll (≤60s) reflects the change here.</p>
+        <pre style="white-space:pre-wrap;background:#11151a;padding:12px;border-radius:6px;color:#cdd9e5;"># list guests (get the VMID/name)
+curl -fsSL https://raw.githubusercontent.com/js-csco/splunk-dcloud/main/ubuntu/proxmox-guest.py | python3 - list
+
+# start / stop / reboot one (by VMID or name)
+curl -fsSL https://raw.githubusercontent.com/js-csco/splunk-dcloud/main/ubuntu/proxmox-guest.py | python3 - stop 101
+curl -fsSL https://raw.githubusercontent.com/js-csco/splunk-dcloud/main/ubuntu/proxmox-guest.py | python3 - start 101</pre>
+        <p style="color:#8b98a5;">Each action also emits a <code>proxmox-ctl</code> syslog
+        event on the box it runs from, so the action itself is searchable too.</p>
+      </html>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
       <title>Setup &amp; how it works</title>
       <html>
-        <p><b>No data yet?</b> The poller needs a Proxmox API token. Create one in Proxmox
-        (<i>Datacenter → Permissions → API Tokens</i>), then provide it to the lab at
-        startup (like the GitHub token):</p>
-        <pre style="white-space:pre-wrap;background:#11151a;padding:12px;border-radius:6px;color:#cdd9e5;"># Option A - in the dCloud startup command (prefix before apply.sh):
-export PROXMOX_HOST=198.18.3.x
-export PROXMOX_TOKEN='user@pam!lab=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx'
-
-# Option B - drop it on the running Splunk box:
-sudo mkdir -p /opt/splunk/var/lib/dcloud
-printf 'PROXMOX_HOST=198.18.3.x\nPROXMOX_TOKEN=user@pam!lab=xxxx\n' | sudo tee /opt/splunk/var/lib/dcloud/proxmox.env
-sudo chmod 600 /opt/splunk/var/lib/dcloud/proxmox.env
-sudo chown splunk:splunk /opt/splunk/var/lib/dcloud/proxmox.env</pre>
-        <p style="color:#8b98a5;">The scripted input (<code>inputs.conf [script://./bin/poll_proxmox.py] interval=60</code>)
-        then polls every minute. Data lands in <b>berlin_proxmox</b>, so <b>ben</b> and
-        <b>gary</b> can see it (RBAC preserved).</p>
+        <p>Collection runs on the <b>Universal Forwarder on ubuntu-berlin</b> (in-location):
+        it pulls the local Proxmox API every 60s and forwards to the indexer →
+        <b>berlin_proxmox</b> (so <b>ben</b> and <b>gary</b> see it; RBAC preserved).
+        Install it with <code>ubuntu/install-uf.sh</code>.</p>
+        <p><b>Auth = ticket (username/password), no token needed.</b> The poller logs in
+        with the lab creds (<code>root</code> / <code>cisco</code>, in
+        <code>proxmox_config.env</code>) each run and gets a short-lived session ticket —
+        nothing to create, even though Proxmox resets each session. Override the target
+        with env (<code>PROXMOX_HOST/USER/PASSWORD</code>) or
+        <code>$SPLUNK_HOME/var/lib/dcloud/proxmox.env</code> if needed.</p>
+        <p style="color:#8b98a5;">No data yet? Make sure the UF is installed on
+        ubuntu-berlin and can reach 198.18.3.170:8006. (A central poll on the indexer
+        exists but is disabled by default — see get_data_in/inputs.conf.)</p>
       </html>
     </panel>
   </row>
