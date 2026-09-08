@@ -36,11 +36,10 @@ checkout and hands off to `apply.sh`; the canonical startup command below runs
 Everything resets each session. Run these in order.
 
 **1. Splunk box** — build the whole Splunk config (indexes, roles, users,
-dashboards, SSH router polling). One self-contained command (fixes DNS, clones
-`main`, runs `apply.sh`):
+dashboards, SSH router polling):
 
 ```bash
-sudo bash -c 'getent hosts github.com >/dev/null 2>&1 || { rm -f /etc/resolv.conf; printf "nameserver 1.1.1.1\nnameserver 8.8.8.8\n" > /etc/resolv.conf; }; command -v git >/dev/null || { apt-get update -y && apt-get install -y git; }; rm -rf /opt/dcloud-splunk; git clone -b main https://github.com/js-csco/splunk-dcloud.git /opt/dcloud-splunk && exec bash /opt/dcloud-splunk/apply.sh'
+sudo rm -rf /opt/dcloud-splunk && sudo git clone -b main https://github.com/js-csco/splunk-dcloud.git /opt/dcloud-splunk && sudo bash /opt/dcloud-splunk/apply.sh
 ```
 
 **2. ubuntu-london** — forward logs (syslog → `london_linux`):
