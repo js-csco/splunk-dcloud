@@ -246,7 +246,7 @@ splunkd's context, so outbound calls work, unlike the search sandbox).
 | Method | How | Status |
 |---|---|---|
 | Syslog | rsyslog → per-location ports | ✅ live |
-| REST / API (Proxmox) | `poll_proxmox.py` scripted input, every 60s → `berlin_proxmox` | ✅ live (Berlin 198.18.3.170) |
+| REST / API (Proxmox) | UF on ubuntu-berlin polls the local Proxmox API every 60s → `berlin_proxmox` (in-location collection) | ✅ live after `install-uf.sh` |
 | SSH (Cisco Catalyst) | scripted input SSHes in, runs show commands → `london_network`/`berlin_network` | ✅ live (London 198.18.2.32, Berlin 198.18.3.32) |
 | SNMP | Splunk Connect for SNMP (SC4SNMP) | ⏳ planned |
 | SOAP | XML web service | ⏸ parked |
@@ -265,6 +265,23 @@ export PROXMOX_TOKEN='user@pam!lab=xxxxxxxx-....'
 ```
 
 Precedence: committed config → `var/lib/dcloud/proxmox.env` → env vars.
+
+**Distributed collection (UF in-location) — the recommended architecture.** Instead
+of the indexer reaching across to Proxmox, run a **Universal Forwarder on
+ubuntu-berlin** that pulls the *local* Proxmox API and forwards to the indexer —
+"one agent collects everything (files + the local API)". The central poll is
+disabled by default (`get_data_in` proxmox input `disabled=1`); the UF does it.
+
+On **ubuntu-berlin**:
+```bash
+curl -fsSL https://raw.githubusercontent.com/js-csco/splunk-dcloud/main/ubuntu/install-uf.sh | sudo bash
+# if the pinned UF version 404s, pass the current URL from splunk.com:
+#   ... | sudo SPLUNK_UF_URL='https://download.splunk.com/.../splunkforwarder-XX-Linux-x86_64.tgz' bash
+```
+It installs the UF, points `outputs.conf` at the indexer's `9997` receiver, and
+deploys `TA-dcloud-proxmox` (localized Berlin config, runs via the host's
+`python3` since the UF has no bundled Python). To go back to central polling,
+set the `poll_proxmox.py` input `disabled=0` in `get_data_in` and skip the UF.
 
 ### Lab systems &amp; access (demo creds)
 

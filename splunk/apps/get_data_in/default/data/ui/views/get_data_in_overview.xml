@@ -41,7 +41,7 @@
           </thead>
           <tbody style="color:#e6edf3;">
             <tr><td style="padding:8px;border:1px solid #2b3a4a;"><b>Syslog</b></td><td style="padding:8px;border:1px solid #2b3a4a;">rsyslog → per-location ports</td><td style="padding:8px;border:1px solid #2b3a4a;color:#7bd88f;">● Live</td></tr>
-            <tr><td style="padding:8px;border:1px solid #2b3a4a;"><b>REST / API (Proxmox)</b></td><td style="padding:8px;border:1px solid #2b3a4a;">scripted input polls the Proxmox API every 60s</td><td style="padding:8px;border:1px solid #2b3a4a;color:#e0c341;">● Live once the Proxmox token is set</td></tr>
+            <tr><td style="padding:8px;border:1px solid #2b3a4a;"><b>REST / API (Proxmox)</b></td><td style="padding:8px;border:1px solid #2b3a4a;">UF on ubuntu-berlin polls the local Proxmox API every 60s (in-location)</td><td style="padding:8px;border:1px solid #2b3a4a;color:#7bd88f;">● Live after install-uf.sh</td></tr>
             <tr><td style="padding:8px;border:1px solid #2b3a4a;"><b>SSH (Cisco Catalyst)</b></td><td style="padding:8px;border:1px solid #2b3a4a;">scripted input runs show commands over SSH (London + Berlin)</td><td style="padding:8px;border:1px solid #2b3a4a;color:#7bd88f;">● Live</td></tr>
             <tr><td style="padding:8px;border:1px solid #2b3a4a;"><b>SNMP</b></td><td style="padding:8px;border:1px solid #2b3a4a;">Splunk Connect for SNMP (SC4SNMP)</td><td style="padding:8px;border:1px solid #2b3a4a;color:#8b98a5;">○ Planned</td></tr>
             <tr><td style="padding:8px;border:1px solid #2b3a4a;"><b>SOAP</b></td><td style="padding:8px;border:1px solid #2b3a4a;">XML web service</td><td style="padding:8px;border:1px solid #2b3a4a;color:#8b98a5;">— Parked</td></tr>
