@@ -65,8 +65,8 @@ whole location with a single wildcard.
 | Location | Network | Devices | Indexes | Roles with access |
 |---|---|---|---|---|
 | loc1 | 198.18.1.0/24 | splunk (infrastructure) | `loc1_linux` | `role_global` only |
-| London (loc2) | 198.18.2.0/24 | ubuntu-loc2, windows-server-2022-loc2, cisco-iq-link | `london_linux`, `london_windows`, `london_network` | `role_london`, `role_global` |
-| Berlin (loc3) | 198.18.3.0/24 | proxmox-9.2-loc3, ubuntu-loc3 | `berlin_linux`, `berlin_proxmox` | `role_berlin`, `role_global` |
+| London (loc2) | 198.18.2.0/24 | ubuntu-london, windows-server-2022-london | `london_linux`, `london_windows`, `london_network` | `role_london`, `role_global` |
+| Berlin (loc3) | 198.18.3.0/24 | proxmox-9.2-berlin, ubuntu-berlin | `berlin_linux`, `berlin_proxmox` | `role_berlin`, `role_global` |
 
 > Location 1 is the Splunk server itself (infrastructure), so it has **no
 > dedicated analyst** — `loc1_linux` is visible to `role_global` only.
@@ -151,8 +151,8 @@ own location's index:
 
 | Sender | → Port | → Index | Seen by |
 |---|---|---|---|
-| ubuntu-loc2 (London devices) | 5514 | `london_linux` | role_london, role_global |
-| ubuntu-loc3, proxmox-9.2-loc3 (Berlin) | 5515 | `berlin_linux` | role_berlin, role_global |
+| ubuntu-london (London devices) | 5514 | `london_linux` | role_london, role_global |
+| ubuntu-berlin, proxmox-9.2-berlin | 5515 | `berlin_linux` | role_berlin, role_global |
 | Splunk host itself (loc1) | 5513 | `loc1_linux` | role_global |
 
 Port `9997` is also enabled for a Universal Forwarder as a future upgrade.
@@ -166,7 +166,7 @@ curl -fsSL https://raw.githubusercontent.com/js-csco/splunk-dcloud/main/ubuntu/f
 
 It configures rsyslog (built into Ubuntu — no downloads, forwards to the
 indexer IP so no DNS needed) to ship all logs to the right port, and emits a
-marker event. Verify in Splunk: `index=london_linux host=ubuntu-loc2`, or open
+marker event. Verify in Splunk: `index=london_linux host=ubuntu-london`, or open
 **Infrastructure Monitoring → Data Onboarding Overview**.
 
 > If `raw.githubusercontent.com` doesn't resolve on the Ubuntu box, clone the

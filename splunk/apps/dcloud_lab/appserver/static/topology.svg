@@ -40,35 +40,31 @@
   <text x="674" y="108" fill="#e6edf3" font-size="14" font-weight="600">splunk</text>
   <text x="674" y="128" fill="#9bd06a" font-size="12">index: loc1_linux</text>
 
-  <!-- ===== Location 2 ===== -->
-  <rect x="640" y="248" width="470" height="172" rx="10" fill="#141b24" stroke="#2b3a4a"/>
-  <text x="660" y="276" fill="#cdd9e5" font-size="15" font-weight="700">London (Location 2)</text>
-  <text x="770" y="276" fill="#8b98a5" font-size="13">198.18.2.0/24</text>
-  <!-- ubuntu-loc2 -->
-  <rect x="660" y="292" width="200" height="54" rx="6" fill="#1b2430" stroke="#3a4a5a"/>
-  <text x="674" y="314" fill="#e6edf3" font-size="13" font-weight="600">ubuntu-loc2</text>
-  <text x="674" y="333" fill="#5aa9e6" font-size="12">index: london_linux</text>
-  <!-- windows-server-2022-loc2 -->
-  <rect x="660" y="352" width="200" height="54" rx="6" fill="#1b2430" stroke="#3a4a5a"/>
-  <text x="674" y="374" fill="#e6edf3" font-size="13" font-weight="600">windows-server-2022</text>
-  <text x="674" y="393" fill="#5aa9e6" font-size="12">index: london_windows</text>
-  <!-- cisco-iq-link -->
-  <rect x="884" y="292" width="206" height="54" rx="6" fill="#1b2430" stroke="#3a4a5a"/>
-  <text x="898" y="314" fill="#e6edf3" font-size="13" font-weight="600">cisco-iq-link</text>
-  <text x="898" y="333" fill="#5aa9e6" font-size="12">index: london_network</text>
+  <!-- ===== Location 2 = London ===== -->
+  <rect x="640" y="250" width="470" height="140" rx="10" fill="#141b24" stroke="#c9a227"/>
+  <text x="660" y="278" fill="#cdd9e5" font-size="15" font-weight="700">London (Location 2)</text>
+  <text x="800" y="278" fill="#8b98a5" font-size="13">198.18.2.0/24</text>
+  <!-- ubuntu-london -->
+  <rect x="660" y="298" width="200" height="72" rx="6" fill="#1b2430" stroke="#3a4a5a"/>
+  <text x="674" y="326" fill="#e6edf3" font-size="13" font-weight="600">ubuntu-london</text>
+  <text x="674" y="348" fill="#5aa9e6" font-size="12">index: london_linux</text>
+  <!-- windows-server-2022-london -->
+  <rect x="884" y="298" width="206" height="72" rx="6" fill="#1b2430" stroke="#3a4a5a"/>
+  <text x="898" y="326" fill="#e6edf3" font-size="12" font-weight="600">windows-server-2022-london</text>
+  <text x="898" y="348" fill="#5aa9e6" font-size="12">index: london_windows</text>
 
-  <!-- ===== Location 3 ===== -->
-  <rect x="640" y="470" width="470" height="150" rx="10" fill="#141b24" stroke="#2b3a4a"/>
+  <!-- ===== Location 3 = Berlin ===== -->
+  <rect x="640" y="470" width="470" height="140" rx="10" fill="#141b24" stroke="#c9a227"/>
   <text x="660" y="498" fill="#cdd9e5" font-size="15" font-weight="700">Berlin (Location 3)</text>
-  <text x="770" y="498" fill="#8b98a5" font-size="13">198.18.3.0/24</text>
-  <!-- proxmox -->
-  <rect x="660" y="514" width="200" height="54" rx="6" fill="#1b2430" stroke="#3a4a5a"/>
-  <text x="674" y="536" fill="#e6edf3" font-size="13" font-weight="600">proxmox-9.2-loc3</text>
-  <text x="674" y="555" fill="#d6a25a" font-size="12">index: berlin_proxmox</text>
-  <!-- ubuntu-loc3 -->
-  <rect x="884" y="514" width="206" height="54" rx="6" fill="#1b2430" stroke="#3a4a5a"/>
-  <text x="898" y="536" fill="#e6edf3" font-size="13" font-weight="600">ubuntu-loc3</text>
-  <text x="898" y="555" fill="#d6a25a" font-size="12">index: berlin_linux</text>
+  <text x="800" y="498" fill="#8b98a5" font-size="13">198.18.3.0/24</text>
+  <!-- proxmox-9.2-berlin -->
+  <rect x="660" y="518" width="200" height="72" rx="6" fill="#1b2430" stroke="#3a4a5a"/>
+  <text x="674" y="546" fill="#e6edf3" font-size="13" font-weight="600">proxmox-9.2-berlin</text>
+  <text x="674" y="568" fill="#d6a25a" font-size="12">index: berlin_proxmox</text>
+  <!-- ubuntu-berlin -->
+  <rect x="884" y="518" width="206" height="72" rx="6" fill="#1b2430" stroke="#3a4a5a"/>
+  <text x="898" y="546" fill="#e6edf3" font-size="13" font-weight="600">ubuntu-berlin</text>
+  <text x="898" y="568" fill="#d6a25a" font-size="12">index: berlin_linux</text>
 
   <!-- ===== RBAC legend ===== -->
   <text x="30" y="470" fill="#cdd9e5" font-size="14" font-weight="700">RBAC</text>
