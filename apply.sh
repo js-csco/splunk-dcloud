@@ -34,6 +34,14 @@ log "Applying dCloud Splunk lab config (app: ${LAB_APP})"
 # --- sanity checks --------------------------------------------------------
 [ -x "$(splunk_bin)" ] || die "Splunk not found at ${SPLUNK_HOME}. Set SPLUNK_HOME."
 
+# --- tools for scripted inputs (SSH polling of network devices) -----------
+if ! command -v sshpass >/dev/null 2>&1; then
+  log "Installing sshpass (for the SSH device scripted input)..."
+  export DEBIAN_FRONTEND=noninteractive
+  { apt-get update -y && apt-get install -y sshpass; } >/dev/null 2>&1 \
+    || warn "sshpass install failed - SSH device polling will report an error until it's installed."
+fi
+
 # ===========================================================================
 # 1. Deploy every Splunk app under splunk/apps/ (indexes, dashboards,
 #    receivers, etc.)

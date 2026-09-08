@@ -247,7 +247,7 @@ splunkd's context, so outbound calls work, unlike the search sandbox).
 |---|---|---|
 | Syslog | rsyslog → per-location ports | ✅ live |
 | REST / API (Proxmox) | `poll_proxmox.py` scripted input, every 60s → `berlin_proxmox` | ✅ live once a Proxmox token is set |
-| SSH (Cisco Catalyst) | scripted input runs show commands over SSH → `london_network`/`berlin_network` | ⏳ planned (device pending) |
+| SSH (Cisco Catalyst) | scripted input SSHes in, runs show commands → `london_network`/`berlin_network` | ✅ live (London 198.18.2.32, Berlin 198.18.3.32) |
 | SNMP | Splunk Connect for SNMP (SC4SNMP) | ⏳ planned |
 | SOAP | XML web service | ⏸ parked |
 

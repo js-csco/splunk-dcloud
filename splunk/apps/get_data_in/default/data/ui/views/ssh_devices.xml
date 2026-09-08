@@ -1,0 +1,125 @@
+<form version="1.1" theme="dark">
+  <label>SSH — Network Devices</label>
+  <description>Pull show version / license / NTP / certificate data from Cisco devices over SSH.</description>
+
+  <fieldset submitButton="false" autoRun="true">
+    <input type="dropdown" token="site">
+      <label>Device site</label>
+      <choice value="london">London (198.18.2.32)</choice>
+      <choice value="berlin">Berlin (198.18.3.32)</choice>
+      <default>london</default>
+    </input>
+    <input type="time" token="tr">
+      <label>Time range</label>
+      <default><earliest>-24h@h</earliest><latest>now</latest></default>
+    </input>
+  </fieldset>
+
+  <row>
+    <panel>
+      <html>
+        <h2>SSH ingestion</h2>
+        <p>Some data lives only on a device's CLI. Here Splunk logs into the Cisco router
+        over <b>SSH</b> every 5 minutes (scripted input <code>ssh_router.sh</code>), runs a
+        set of <b>show</b> commands, and indexes the output — no agent on the device.
+        London → <b>london_network</b>, Berlin → <b>berlin_network</b> (so Leo/Ben see
+        their own site, Gary sees both).</p>
+        <p style="color:#8b98a5;">Pick a site above. Each panel shows the latest captured
+        output for that command.</p>
+      </html>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
+      <title>Last capture</title>
+      <single>
+        <search>
+          <query>(index=london_network OR index=berlin_network) sourcetype=cisco:ios site=$site$ | stats latest(_time) as last | eval last=strftime(last,"%F %T")</query>
+          <earliest>$tr.earliest$</earliest><latest>$tr.latest$</latest>
+        </search>
+        <option name="drilldown">none</option>
+      </single>
+    </panel>
+    <panel>
+      <title>Commands captured (latest run)</title>
+      <table>
+        <search>
+          <query>(index=london_network OR index=berlin_network) sourcetype=cisco:ios site=$site$ | stats latest(_time) as last by command host | eval "Last seen"=strftime(last,"%F %T") | rename command as Command, host as Device | table Command Device "Last seen" | sort Command</query>
+          <earliest>$tr.earliest$</earliest><latest>$tr.latest$</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="count">15</option>
+      </table>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
+      <title>show version</title>
+      <event>
+        <search>
+          <query>(index=london_network OR index=berlin_network) sourcetype=cisco:ios site=$site$ command="show version" | sort -_time | head 1</query>
+          <earliest>$tr.earliest$</earliest><latest>$tr.latest$</latest>
+        </search>
+        <option name="list.drilldown">none</option>
+        <option name="maxLines">25</option>
+      </event>
+    </panel>
+    <panel>
+      <title>show license summary</title>
+      <event>
+        <search>
+          <query>(index=london_network OR index=berlin_network) sourcetype=cisco:ios site=$site$ command="show license summary" | sort -_time | head 1</query>
+          <earliest>$tr.earliest$</earliest><latest>$tr.latest$</latest>
+        </search>
+        <option name="list.drilldown">none</option>
+        <option name="maxLines">25</option>
+      </event>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
+      <title>show ntp status</title>
+      <event>
+        <search>
+          <query>(index=london_network OR index=berlin_network) sourcetype=cisco:ios site=$site$ command="show ntp status" | sort -_time | head 1</query>
+          <earliest>$tr.earliest$</earliest><latest>$tr.latest$</latest>
+        </search>
+        <option name="list.drilldown">none</option>
+        <option name="maxLines">20</option>
+      </event>
+    </panel>
+    <panel>
+      <title>show crypto pki certificates</title>
+      <event>
+        <search>
+          <query>(index=london_network OR index=berlin_network) sourcetype=cisco:ios site=$site$ command="show crypto pki certificates" | sort -_time | head 1</query>
+          <earliest>$tr.earliest$</earliest><latest>$tr.latest$</latest>
+        </search>
+        <option name="list.drilldown">none</option>
+        <option name="maxLines">25</option>
+      </event>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
+      <title>How it works &amp; setup</title>
+      <html>
+        <p>Devices are listed in <code>bin/routers.csv</code> (site, host, user, password).
+        <code>inputs.conf</code> runs one scripted input per site:</p>
+        <pre style="white-space:pre-wrap;background:#11151a;padding:12px;border-radius:6px;color:#cdd9e5;">[script://./bin/ssh_router.sh london]
+index = london_network
+sourcetype = cisco:ios
+interval = 300</pre>
+        <p style="color:#8b98a5;">Needs <b>sshpass</b> on the Splunk host (apply.sh installs
+        it). If a panel is empty, check the "Commands captured" table — a command that
+        errors (e.g. not supported / no privilege) still indexes its error text so you can
+        see what happened. SSH legacy algorithms are enabled in the script in case the IOS
+        device only offers older KEX/ciphers.</p>
+      </html>
+    </panel>
+  </row>
+</form>

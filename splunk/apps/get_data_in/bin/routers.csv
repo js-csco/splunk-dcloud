@@ -1,0 +1,6 @@
+# Router inventory for the SSH scripted input (ssh_router.sh).
+# DEMO credentials for a throwaway lab - do not put real passwords here.
+# Columns: site,name,host,username,password
+site,name,host,username,password
+london,london-cat8kv,198.18.2.32,cisco,cisco
+berlin,berlin-cat8kv,198.18.3.32,cisco,cisco
