@@ -157,12 +157,21 @@ own location's index:
 
 Port `9997` is also enabled for a Universal Forwarder as a future upgrade.
 
-On each **Ubuntu** box, run (location auto-detected from the hostname):
+Run the matching line on each Ubuntu box (location passed explicitly for a
+clean setup flow):
 
+**On `ubuntu-london`:**
 ```bash
-curl -fsSL https://raw.githubusercontent.com/js-csco/splunk-dcloud/main/ubuntu/forward-to-splunk.sh | sudo bash
-# or force it:  curl -fsSL <url> | sudo bash -s -- london   (also: berlin | loc1)
+curl -fsSL https://raw.githubusercontent.com/js-csco/splunk-dcloud/main/ubuntu/forward-to-splunk.sh | sudo bash -s -- london
 ```
+
+**On `ubuntu-berlin`:**
+```bash
+curl -fsSL https://raw.githubusercontent.com/js-csco/splunk-dcloud/main/ubuntu/forward-to-splunk.sh | sudo bash -s -- berlin
+```
+
+(Or omit the argument to auto-detect the location from the hostname/IP:
+`curl -fsSL <url> | sudo bash`.)
 
 It configures rsyslog (built into Ubuntu — no downloads, forwards to the
 indexer IP so no DNS needed) to ship all logs to the right port, and emits a
