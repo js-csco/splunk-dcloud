@@ -61,9 +61,16 @@ run_root cp -a "${work}/splunk/uf-apps/${TA}" "${UF_HOME}/etc/apps/${TA}"
 run_root chmod +x "${UF_HOME}/etc/apps/${TA}/bin/"*.sh 2>/dev/null || true
 rm -rf "${work}"
 
-# 4) first start (accept licence, seed admin) or restart; enable boot-start
+# 4) first start (fully non-interactive) or restart; enable boot-start
 if ! run_root "${UF_HOME}/bin/splunk" status >/dev/null 2>&1; then
-  run_root "${UF_HOME}/bin/splunk" start --accept-license --answer-yes --no-prompt --seed-passwd "${ADMIN_PW}"
+  # Seed the admin account BEFORE the first start so Splunk never prompts for a
+  # username/password (user-seed.conf is consumed on first run).
+  run_root tee "${UF_HOME}/etc/system/local/user-seed.conf" >/dev/null <<EOF
+[user_info]
+USERNAME = admin
+PASSWORD = ${ADMIN_PW}
+EOF
+  run_root "${UF_HOME}/bin/splunk" start --accept-license --answer-yes --no-prompt
   run_root "${UF_HOME}/bin/splunk" enable boot-start 2>/dev/null || true
 else
   run_root "${UF_HOME}/bin/splunk" restart
