@@ -38,13 +38,35 @@
     <panel>
       <html>
         <h2>Correlating two data sources</h2>
-        <p>A single source only tells part of the story. <b>Correlation</b> links the
-        same entity — a service, user, or host — across separate sources, in the same
-        time window. Below, we compare <b>$srcA$</b> and <b>$srcB$</b> by
-        <b>$key$</b>: the table shows only the keys that appear in <i>both</i>.</p>
-        <p style="color:#8b98a5;">The core technique is one search over both indexes,
-        then <code>stats count(eval(source=A)) count(eval(source=B)) by key</code>,
-        keeping rows where both counts are &gt; 0.</p>
+
+        <p><b>New to Splunk? Start here.</b></p>
+        <ul>
+          <li><b>A data source</b> is a system sending its logs to Splunk. Each one lands
+          in its own <b>index</b> — think of an index as a labelled bucket of events
+          (here: <b>$srcA$</b> and <b>$srcB$</b>).</li>
+          <li><b>Correlation</b> means connecting events from <i>different</i> systems that
+          share something in common — the same user, service, or host — around the same
+          time. One system only shows its own slice; correlation reveals the whole story
+          (e.g. the same user active on two servers).</li>
+          <li><b>How Splunk does it (the pattern):</b>
+            <ol>
+              <li>Search both indexes at once: <b>(index=$srcA$ OR index=$srcB$)</b></li>
+              <li>Pick a shared field to line them up on — the <b>Correlate by</b> control
+              above (service / user / host). That's <b>$key$</b> right now.</li>
+              <li>Group with <b>stats</b> and count how many events came from each source
+              per key.</li>
+              <li>Keep only the keys that appear in <b>both</b> sources — those are the
+              correlated ones.</li>
+            </ol>
+          </li>
+          <li><b>How to read this page:</b> the chart shows whether the two sources are
+          active at the same times; the table lists every <b>$key$</b> seen in <i>both</i>
+          <b>$srcA$</b> and <b>$srcB$</b>, with a count from each. The exact search is
+          shown at the bottom.</li>
+        </ul>
+        <p style="color:#8b98a5;">Tip: change <b>Correlate by</b> to <b>user</b> to show
+        the same person active across both systems — the classic "one identity, many
+        systems" story.</p>
       </html>
     </panel>
   </row>

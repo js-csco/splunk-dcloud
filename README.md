@@ -110,6 +110,15 @@ Plus two other apps:
   sources and a correlation key (service / user / host) and find the same entity
   across separate sources in a time window (the canonical
   `stats count(eval(source=A)) … by key` technique, with the SPL shown on-screen).
+  Each page has a plain-language explainer for Splunk newcomers.
+
+**Generate correlated demo data:** run this on ubuntu-london, ubuntu-berlin (and
+the Splunk host) so the same services/users appear across sources:
+```bash
+curl -fsSL https://raw.githubusercontent.com/js-csco/splunk-dcloud/main/ubuntu/generate-activity.sh | bash
+```
+It emits syslog events (via `logger`) sharing services (authsvc, paymentsvc, …)
+and users (alice, bob, …); correlate by **service** or **user** afterwards.
 
 ## Save to GitHub (persisting demo changes)
 

@@ -41,9 +41,18 @@
     <panel>
       <html>
         <h2>Correlating three data sources</h2>
-        <p>Same idea as two sources, extended: for each <b>$key$</b> we count events in
-        <b>$srcA$</b>, <b>$srcB$</b> and <b>$srcC$</b>, then compute how many of the
-        three it appears in. A key seen in all three has the widest footprint.</p>
+        <p>Same idea as the two-source page, extended to three. For each <b>$key$</b>
+        (service / user / host) we count events in <b>$srcA$</b>, <b>$srcB$</b> and
+        <b>$srcC$</b>, then compute in how many of the three it appears — its
+        <b>footprint</b>.</p>
+        <ul>
+          <li><b>Sources = 3</b> → the entity is active <i>everywhere</i> (green rows).</li>
+          <li><b>Sources = 2</b> → active in two of the three (amber) — a partial footprint.</li>
+        </ul>
+        <p style="color:#8b98a5;">Why it matters: correlating across more sources turns
+        scattered logs into a single picture. A user or service showing up across three
+        systems at once is exactly what a single dashboard could never reveal. The exact
+        search is shown at the bottom.</p>
       </html>
     </panel>
   </row>
