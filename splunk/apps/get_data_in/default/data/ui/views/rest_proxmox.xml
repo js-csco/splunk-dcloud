@@ -40,13 +40,35 @@
       </single>
     </panel>
     <panel>
-      <title>VMs / containers</title>
+      <title>VMs (qemu)</title>
       <single>
         <search>
-          <query>index=berlin_proxmox sourcetype=proxmox:api endpoint="cluster/resources" (type=qemu OR type=lxc) | stats dc(name) as vms</query>
+          <query>index=berlin_proxmox sourcetype=proxmox:api endpoint="cluster/resources" type=qemu | stats dc(name) as vms</query>
           <earliest>-60m</earliest><latest>now</latest>
         </search>
         <option name="drilldown">none</option>
+      </single>
+    </panel>
+    <panel>
+      <title>Containers (lxc)</title>
+      <single>
+        <search>
+          <query>index=berlin_proxmox sourcetype=proxmox:api endpoint="cluster/resources" type=lxc | stats dc(name) as cts</query>
+          <earliest>-60m</earliest><latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+      </single>
+    </panel>
+    <panel>
+      <title>Running guests</title>
+      <single>
+        <search>
+          <query>index=berlin_proxmox sourcetype=proxmox:api endpoint="cluster/resources" (type=qemu OR type=lxc) | dedup name | search status=running | stats count as running</query>
+          <earliest>-60m</earliest><latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="colorBy">value</option>
+        <option name="rangeColors">["0x53a051","0x53a051"]</option>
       </single>
     </panel>
   </row>
