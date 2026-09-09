@@ -176,20 +176,24 @@ and push the branch. Status shows on the dashboard within ~30s. Branch names are
 slugified; if the name already exists a timestamp is appended (nothing is
 overwritten).
 
-**Setup — provide a GitHub token at session start.** Pushing needs write
-access, so create a **fine-grained PAT** with **Contents: Read and write** on
-`js-csco/splunk-dcloud`, and supply it as `GITHUB_TOKEN` when the lab starts.
-`apply.sh` stores it (mode 600, owned by the splunk user) at
-`$SPLUNK_HOME/var/lib/dcloud/gh.token` — **outside** the app dir, so it is
-never captured or committed.
+**Setup — provide a GitHub token.** Pushing needs write access, so create a
+**fine-grained PAT** with **Contents: Read and write** on `js-csco/splunk-dcloud`.
+`apply.sh` **prompts you for it during setup** (reads from the terminal, never
+echoed) and stores it (mode 600, owned by the splunk user) at
+`$SPLUNK_HOME/var/lib/dcloud/gh.token` — **outside** the app dir, so it is never
+captured or committed. Blank at the prompt keeps any existing token.
 
-Two ways to supply it:
+```text
+GitHub token for "Save to GitHub" (fine-grained PAT, Contents: Read+Write; blank to skip): ****
+```
+
+For **unattended** runs (automation, no terminal), supply it another way instead:
 
 ```bash
-# A) In the dCloud startup command, prefix the token before apply.sh:
-sudo bash -c 'export GITHUB_TOKEN=github_pat_xxx; getent hosts github.com >/dev/null 2>&1 || { rm -f /etc/resolv.conf; printf "nameserver 1.1.1.1\nnameserver 8.8.8.8\n" > /etc/resolv.conf; }; rm -rf /opt/dcloud-splunk; git clone -b main https://github.com/js-csco/splunk-dcloud.git /opt/dcloud-splunk && exec bash /opt/dcloud-splunk/apply.sh'
+# A) env var before apply.sh (skips the prompt):
+sudo GITHUB_TOKEN=github_pat_xxx bash /opt/dcloud-splunk/apply.sh
 
-# B) Or drop it onto a running box by hand:
+# B) or drop it onto a running box by hand:
 sudo mkdir -p /opt/splunk/var/lib/dcloud
 printf '%s' 'github_pat_xxx' | sudo tee /opt/splunk/var/lib/dcloud/gh.token >/dev/null
 sudo chmod 600 /opt/splunk/var/lib/dcloud/gh.token
@@ -457,6 +461,11 @@ The **Get Data In** app demonstrates the ways to bring data into Splunk. Pull-ba
 methods use **scripted inputs** (a script Splunk runs on a schedule — runs in
 splunkd's context, so outbound calls work, unlike the search sandbox).
 
+> The app also has an **Indexes and Sourcetypes** dashboard — a live table of every
+> index, the sourcetypes in it, and event counts (via `| tstats`), respecting RBAC.
+> Click any row to open that `index`/`sourcetype` in Search. A good first stop for
+> "what data do I have, and how do I start a search?"
+
 | Method | How | Status |
 |---|---|---|
 | Syslog | rsyslog → per-location ports | ✅ live |
@@ -574,6 +583,8 @@ splunk/apps/dcloud_lab/
 - [x] Alerts: CPU/mem >70% threshold + "forwarder stopped sending" (email js-csco@proton.me + Triggered Alerts + Alerts dashboard)
 - [x] Asset Configuration: per-location KV Store inventory (RBAC-enforced) + automatic event enrichment + Add/Edit dashboard (Infrastructure Monitoring app)
 - [x] Client → App → Hypervisor correlation: web-app LXC on Proxmox + in-container UF, ubuntu-berlin reachability probe, Windows UF (events + perfmon), and a 4-layer correlation dashboard
+- [x] Save to GitHub: branch-per-save via KV queue + splunkd-context watcher (works around the search sandbox); apply.sh prompts for the token
+- [x] Get Data In: "Indexes and Sourcetypes" explorer (tstats, RBAC-aware, click-to-search)
 - [ ] **IT Service Intelligence (ITSI)** — premium, separately-licensed. Plan: (1) interim "Service Health" dashboard built from existing syslog + metrics (KPIs green/amber/red) to show the concept; (2) evaluate a scripted install of the ITSI package + a small service/KPI set (needs the package staged + a license).
 - [ ] Remaining senders: Windows server (London → `london_windows`)
 - [ ] SNMP via SC4SNMP; SOAP (parked)

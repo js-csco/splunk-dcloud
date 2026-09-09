@@ -123,14 +123,25 @@ fi
 # the snapshot. It must be provided at session start via the GITHUB_TOKEN env
 # var (e.g. in the dCloud startup command), since the VM wipes each session.
 TOKEN_DIR="${SPLUNK_HOME}/var/lib/dcloud"
+GH_TOKEN_FILE="${TOKEN_DIR}/gh.token"
+# If not supplied via env, prompt for it interactively (read from the terminal so
+# it works even when apply.sh is piped via `curl | bash`). The token is never
+# echoed. Blank keeps any existing token; if none, the Save button stays inactive.
+if [ -z "${GITHUB_TOKEN:-}" ] && [ -r /dev/tty ]; then
+  printf 'GitHub token for "Save to GitHub" (fine-grained PAT, Contents: Read+Write; blank to skip): ' > /dev/tty
+  IFS= read -rs GITHUB_TOKEN < /dev/tty || true
+  printf '\n' > /dev/tty
+fi
 if [ -n "${GITHUB_TOKEN:-}" ]; then
   mkdir -p "${TOKEN_DIR}"
-  printf '%s' "${GITHUB_TOKEN}" > "${TOKEN_DIR}/gh.token"
-  chmod 700 "${TOKEN_DIR}"; chmod 600 "${TOKEN_DIR}/gh.token"
+  printf '%s' "${GITHUB_TOKEN}" > "${GH_TOKEN_FILE}"
+  chmod 700 "${TOKEN_DIR}"; chmod 600 "${GH_TOKEN_FILE}"
   chown -R "${SPLUNK_USER}:${SPLUNK_USER}" "${TOKEN_DIR}" 2>/dev/null || true
   log "Save-to-GitHub: token stored (button is active)."
+elif [ -s "${GH_TOKEN_FILE}" ]; then
+  log "Save-to-GitHub: keeping existing token on the box."
 else
-  log "Save-to-GitHub: no GITHUB_TOKEN provided - button will report 'no token' until one is set."
+  log "Save-to-GitHub: no token provided - button will report 'no token' until one is set."
 fi
 
 # Get Data In: persist Proxmox API creds (if provided) for the REST poller.

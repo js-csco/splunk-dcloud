@@ -1,0 +1,108 @@
+<form version="1.1" theme="dark">
+  <label>Indexes and Sourcetypes</label>
+  <description>What data you have, and where — a starting point for searches. Click any row to open it in Search.</description>
+
+  <fieldset submitButton="false" autoRun="true">
+    <input type="time" token="tr">
+      <label>Time range</label>
+      <default><earliest>-24h</earliest><latest>now</latest></default>
+    </input>
+  </fieldset>
+
+  <row>
+    <panel>
+      <html>
+        <h2>Where's my data?</h2>
+        <p><b>New to Splunk?</b> Data lives in <b>indexes</b> (buckets of data, e.g.
+        <code>london_linux</code>), and every event has a <b>sourcetype</b> that says what
+        format it is (e.g. <code>syslog</code>, <code>cisco:ios</code>,
+        <code>webapp:access</code>). To search, you almost always start by naming an index
+        and/or sourcetype:</p>
+        <pre style="white-space:pre-wrap;background:#11151a;padding:12px;border-radius:6px;color:#cdd9e5;">index=london_linux
+index=berlin_metrics sourcetype=linux:metrics
+index=* sourcetype=cisco:ios</pre>
+        <p style="color:#8b98a5;">The tables below list exactly what you can see (RBAC applies —
+        Leo sees London, Ben Berlin, Gary all). <b>Click any row</b> to open that
+        <code>index</code>/<code>sourcetype</code> in Search and start exploring. Widen the time
+        range if something looks empty.</p>
+      </html>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
+      <title>Indexes → sourcetypes (click a row to search it)</title>
+      <table>
+        <search>
+          <query>| tstats count as Events, dc(host) as Hosts, min(_time) as first, max(_time) as last WHERE index=* by index, sourcetype
+| eval "First seen"=strftime(first,"%F %T"), "Last seen"=strftime(last,"%F %T")
+| rename index as Index, sourcetype as Sourcetype
+| table Index Sourcetype Events Hosts "First seen" "Last seen"
+| sort Index Sourcetype</query>
+          <earliest>$tr.earliest$</earliest>
+          <latest>$tr.latest$</latest>
+        </search>
+        <option name="count">50</option>
+        <option name="drilldown">row</option>
+        <drilldown>
+          <link target="_blank">/app/get_data_in/search?q=search%20index%3D"$row.Index$"%20sourcetype%3D"$row.Sourcetype$"&amp;earliest=$tr.earliest$&amp;latest=$tr.latest$</link>
+        </drilldown>
+        <format type="color" field="Events">
+          <colorPalette type="minMidMax" minColor="#2b3a4a" maxColor="#4a90d9"></colorPalette>
+          <scale type="minMidMax"></scale>
+        </format>
+      </table>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
+      <title>Per-index summary (click a row to search the whole index)</title>
+      <table>
+        <search>
+          <query>| tstats count as Events, dc(sourcetype) as Sourcetypes, dc(host) as Hosts, max(_time) as last WHERE index=* by index
+| eval "Last seen"=strftime(last,"%F %T")
+| rename index as Index
+| table Index Events Sourcetypes Hosts "Last seen"
+| sort - Events</query>
+          <earliest>$tr.earliest$</earliest>
+          <latest>$tr.latest$</latest>
+        </search>
+        <option name="count">30</option>
+        <option name="drilldown">row</option>
+        <drilldown>
+          <link target="_blank">/app/get_data_in/search?q=search%20index%3D"$row.Index$"&amp;earliest=$tr.earliest$&amp;latest=$tr.latest$</link>
+        </drilldown>
+      </table>
+    </panel>
+    <panel>
+      <title>Events by sourcetype (all visible indexes)</title>
+      <chart>
+        <search>
+          <query>| tstats count as Events WHERE index=* by sourcetype | sort - Events | head 20</query>
+          <earliest>$tr.earliest$</earliest>
+          <latest>$tr.latest$</latest>
+        </search>
+        <option name="charting.chart">bar</option>
+        <option name="charting.legend.placement">none</option>
+        <option name="charting.axisTitleX.text">Events</option>
+      </chart>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
+      <html>
+        <h3>Starting points (copy into Search)</h3>
+        <ul>
+          <li><code>index=&lt;name&gt;</code> — everything in one index.</li>
+          <li><code>index=&lt;name&gt; sourcetype=&lt;type&gt;</code> — one data type in it.</li>
+          <li><code>index=* sourcetype=syslog | stats count by host</code> — who's sending syslog.</li>
+          <li><code>| tstats count by index, sourcetype</code> — the query behind this page (fast, metadata-only).</li>
+        </ul>
+        <p style="color:#8b98a5;">Tip: <code>| tstats</code> reads pre-computed metadata, so it's
+        instant even over long time ranges — great for "what do I have?" questions.</p>
+      </html>
+    </panel>
+  </row>
+</form>
