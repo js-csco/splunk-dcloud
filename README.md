@@ -465,6 +465,12 @@ splunkd's context, so outbound calls work, unlike the search sandbox).
 > index, the sourcetypes in it, and event counts (via `| tstats`), respecting RBAC.
 > Click any row to open that `index`/`sourcetype` in Search. A good first stop for
 > "what data do I have, and how do I start a search?"
+>
+> …and a **Data Model & Pivot** dashboard: a `DCloudLab` data model (datasets *Lab
+> Events*, *Host Metrics*, *Web Requests*, *Network*, plus the asset fields) so
+> newcomers can build tables/charts in **Pivot** with no SPL — point-and-click,
+> RBAC-aware. Model lives in `dcloud_lab/default/data/models/DCloudLab.json`
+> (acceleration off; fine for the lab's volumes).
 
 | Method | How | Status |
 |---|---|---|
@@ -585,6 +591,7 @@ splunk/apps/dcloud_lab/
 - [x] Client → App → Hypervisor correlation: web-app LXC on Proxmox + in-container UF, ubuntu-berlin reachability probe, Windows UF (events + perfmon), and a 4-layer correlation dashboard
 - [x] Save to GitHub: branch-per-save via KV queue + splunkd-context watcher (works around the search sandbox); apply.sh prompts for the token
 - [x] Get Data In: "Indexes and Sourcetypes" explorer (tstats, RBAC-aware, click-to-search)
+- [x] Data model (DCloudLab) + Pivot: point-and-click analytics over the lab data (Host Metrics / Web Requests / Network + asset fields), RBAC-aware, with a Pivot explainer dashboard
 - [ ] **IT Service Intelligence (ITSI)** — premium, separately-licensed. Plan: (1) interim "Service Health" dashboard built from existing syslog + metrics (KPIs green/amber/red) to show the concept; (2) evaluate a scripted install of the ITSI package + a small service/KPI set (needs the package staged + a license).
 - [ ] Remaining senders: Windows server (London → `london_windows`)
 - [ ] SNMP via SC4SNMP; SOAP (parked)

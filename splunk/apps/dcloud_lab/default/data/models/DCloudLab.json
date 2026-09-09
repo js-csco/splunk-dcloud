@@ -1,0 +1,76 @@
+{
+  "modelName": "DCloudLab",
+  "displayName": "dCloud Lab",
+  "description": "Point-and-click data model over the lab's data (RBAC-aware). Use it in Pivot to build tables/charts with no SPL.",
+  "objects": [
+    {
+      "objectName": "LabEvents",
+      "displayName": "Lab Events",
+      "parentName": "BaseEvent",
+      "comment": "",
+      "lineage": "LabEvents",
+      "constraints": [
+        { "search": "index=loc1_* OR index=london_* OR index=berlin_*", "owner": "LabEvents" }
+      ],
+      "calculations": [],
+      "fields": [
+        { "fieldName": "host",         "owner": "BaseEvent", "type": "string", "fieldSearch": "", "required": false, "multivalue": false, "hidden": false, "editable": true, "displayName": "Host",         "comment": "" },
+        { "fieldName": "source",       "owner": "BaseEvent", "type": "string", "fieldSearch": "", "required": false, "multivalue": false, "hidden": false, "editable": true, "displayName": "Source",       "comment": "" },
+        { "fieldName": "sourcetype",   "owner": "BaseEvent", "type": "string", "fieldSearch": "", "required": false, "multivalue": false, "hidden": false, "editable": true, "displayName": "Sourcetype",   "comment": "" },
+        { "fieldName": "index",        "owner": "LabEvents", "type": "string", "fieldSearch": "", "required": false, "multivalue": false, "hidden": false, "editable": true, "displayName": "Index",        "comment": "" },
+        { "fieldName": "site",         "owner": "LabEvents", "type": "string", "fieldSearch": "", "required": false, "multivalue": false, "hidden": false, "editable": true, "displayName": "Site",         "comment": "" },
+        { "fieldName": "asset_name",   "owner": "LabEvents", "type": "string", "fieldSearch": "", "required": false, "multivalue": false, "hidden": false, "editable": true, "displayName": "Asset name",   "comment": "" },
+        { "fieldName": "asset_type",   "owner": "LabEvents", "type": "string", "fieldSearch": "", "required": false, "multivalue": false, "hidden": false, "editable": true, "displayName": "Asset type",   "comment": "" },
+        { "fieldName": "manufacturer", "owner": "LabEvents", "type": "string", "fieldSearch": "", "required": false, "multivalue": false, "hidden": false, "editable": true, "displayName": "Manufacturer", "comment": "" }
+      ]
+    },
+    {
+      "objectName": "HostMetrics",
+      "displayName": "Host Metrics",
+      "parentName": "LabEvents",
+      "comment": "",
+      "lineage": "LabEvents.HostMetrics",
+      "constraints": [
+        { "search": "sourcetype=linux:metrics", "owner": "LabEvents.HostMetrics" }
+      ],
+      "calculations": [],
+      "fields": [
+        { "fieldName": "cpu_pct",       "owner": "LabEvents.HostMetrics", "type": "number", "fieldSearch": "", "required": false, "multivalue": false, "hidden": false, "editable": true, "displayName": "CPU %",       "comment": "" },
+        { "fieldName": "mem_used_pct",  "owner": "LabEvents.HostMetrics", "type": "number", "fieldSearch": "", "required": false, "multivalue": false, "hidden": false, "editable": true, "displayName": "Memory %",    "comment": "" },
+        { "fieldName": "disk_used_pct", "owner": "LabEvents.HostMetrics", "type": "number", "fieldSearch": "", "required": false, "multivalue": false, "hidden": false, "editable": true, "displayName": "Disk %",      "comment": "" },
+        { "fieldName": "load1",         "owner": "LabEvents.HostMetrics", "type": "number", "fieldSearch": "", "required": false, "multivalue": false, "hidden": false, "editable": true, "displayName": "Load (1m)",   "comment": "" }
+      ]
+    },
+    {
+      "objectName": "WebRequests",
+      "displayName": "Web Requests",
+      "parentName": "LabEvents",
+      "comment": "",
+      "lineage": "LabEvents.WebRequests",
+      "constraints": [
+        { "search": "sourcetype=webapp:access", "owner": "LabEvents.WebRequests" }
+      ],
+      "calculations": [],
+      "fields": [
+        { "fieldName": "method", "owner": "LabEvents.WebRequests", "type": "string", "fieldSearch": "", "required": false, "multivalue": false, "hidden": false, "editable": true, "displayName": "Method",    "comment": "" },
+        { "fieldName": "path",   "owner": "LabEvents.WebRequests", "type": "string", "fieldSearch": "", "required": false, "multivalue": false, "hidden": false, "editable": true, "displayName": "Path",      "comment": "" },
+        { "fieldName": "status", "owner": "LabEvents.WebRequests", "type": "string", "fieldSearch": "", "required": false, "multivalue": false, "hidden": false, "editable": true, "displayName": "Status",    "comment": "" },
+        { "fieldName": "src_ip", "owner": "LabEvents.WebRequests", "type": "string", "fieldSearch": "", "required": false, "multivalue": false, "hidden": false, "editable": true, "displayName": "Source IP", "comment": "" }
+      ]
+    },
+    {
+      "objectName": "NetworkShow",
+      "displayName": "Network (Cisco show)",
+      "parentName": "LabEvents",
+      "comment": "",
+      "lineage": "LabEvents.NetworkShow",
+      "constraints": [
+        { "search": "sourcetype=cisco:ios", "owner": "LabEvents.NetworkShow" }
+      ],
+      "calculations": [],
+      "fields": [
+        { "fieldName": "command", "owner": "LabEvents.NetworkShow", "type": "string", "fieldSearch": "", "required": false, "multivalue": false, "hidden": false, "editable": true, "displayName": "Command", "comment": "" }
+      ]
+    }
+  ]
+}

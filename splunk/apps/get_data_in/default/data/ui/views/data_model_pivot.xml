@@ -1,0 +1,76 @@
+<form version="1.1" theme="dark">
+  <label>Data Model &amp; Pivot</label>
+  <description>Analyze the lab's data with no SPL — point-and-click, via the DCloudLab data model.</description>
+
+  <fieldset submitButton="false" autoRun="true">
+    <input type="time" token="tr">
+      <label>Time range</label>
+      <default><earliest>-24h</earliest><latest>now</latest></default>
+    </input>
+  </fieldset>
+
+  <row>
+    <panel>
+      <html>
+        <h2>Data models &amp; Pivot — analytics without writing SPL</h2>
+        <p><b>New to Splunk?</b> A <b>data model</b> is a friendly, named map over your raw
+        data (fields grouped into datasets like <i>Host Metrics</i>, <i>Web Requests</i>,
+        <i>Network</i>). <b>Pivot</b> then lets you build tables and charts by
+        <b>clicking</b> — pick a dataset, choose "split by" and a measure — no search
+        language needed. We shipped a model called <b>dCloudLab</b> covering the whole lab.</p>
+        <p style="color:#8b98a5;">RBAC still applies: the model spans all locations, but
+        Pivot only shows you data your role can read (Leo → London, Ben → Berlin, Gary → all).</p>
+        <h3>Open Pivot</h3>
+        <ol>
+          <li>Top menu: <b>Settings → Data models → dCloud Lab</b>, then click <b>Pivot</b>
+          on a dataset (Lab Events, Host Metrics, Web Requests, Network).</li>
+          <li>Or from the <a href="/app/search/datasets" target="_blank">Datasets page</a> →
+          find a <b>dCloudLab</b> dataset → <b>Explore ▸ Visualize with Pivot</b>.</li>
+        </ol>
+      </html>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
+      <title>Example (via the model) — events by asset type &amp; site</title>
+      <table>
+        <search>
+          <query>| datamodel DCloudLab LabEvents search | stats count as Events by asset_type, site | rename asset_type as "Asset type", site as Site | sort - Events</query>
+          <earliest>$tr.earliest$</earliest><latest>$tr.latest$</latest>
+        </search>
+        <option name="drilldown">none</option>
+      </table>
+    </panel>
+    <panel>
+      <title>Example (via the model) — CPU % over time by site</title>
+      <chart>
+        <search>
+          <query>| datamodel DCloudLab HostMetrics search | timechart span=5m avg(cpu_pct) as "CPU %" by site</query>
+          <earliest>$tr.earliest$</earliest><latest>$tr.latest$</latest>
+        </search>
+        <option name="charting.chart">line</option>
+        <option name="charting.legend.placement">bottom</option>
+      </chart>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
+      <html>
+        <h3>The datasets in <b>dCloudLab</b></h3>
+        <ul>
+          <li><b>Lab Events</b> (root) — everything, with Host, Sourcetype, Index, Site, and the
+          asset fields (Asset name / type / Manufacturer).</li>
+          <li><b>Host Metrics</b> — CPU %, Memory %, Disk %, Load (numbers you can average).</li>
+          <li><b>Web Requests</b> — Method, Path, Status, Source IP (from the web-app container).</li>
+          <li><b>Network (Cisco show)</b> — Command (from the router SSH polling).</li>
+        </ul>
+        <p style="color:#8b98a5;">Under the hood these panels use
+        <code>| datamodel DCloudLab &lt;dataset&gt; search …</code> — but in Pivot you never
+        type that; you click. Try: open <b>Host Metrics</b> in Pivot, split by <b>Site</b>,
+        and add <b>Average of CPU %</b> as a column chart.</p>
+      </html>
+    </panel>
+  </row>
+</form>

@@ -10,6 +10,7 @@
         <div style="display:flex;flex-wrap:wrap;gap:10px;">
           <a href="/app/get_data_in/get_data_in_overview" style="text-decoration:none;background:#e67e22;color:#fff;padding:12px 16px;border-radius:8px;font-weight:600;">Get Data In</a>
           <a href="/app/get_data_in/indexes_sourcetypes" style="text-decoration:none;background:#e67e22;color:#fff;padding:12px 16px;border-radius:8px;font-weight:600;">Indexes &amp; Sourcetypes</a>
+          <a href="/app/get_data_in/data_model_pivot" style="text-decoration:none;background:#e67e22;color:#fff;padding:12px 16px;border-radius:8px;font-weight:600;">Data Model &amp; Pivot</a>
           <a href="/app/metrics/host_metrics" style="text-decoration:none;background:#3fb950;color:#fff;padding:12px 16px;border-radius:8px;font-weight:600;">Host &amp; Infra Metrics</a>
           <a href="/app/alerts/alerts_overview" style="text-decoration:none;background:#d93f3c;color:#fff;padding:12px 16px;border-radius:8px;font-weight:600;">Alerts</a>
           <a href="/app/infra_monitoring/onboarding_overview" style="text-decoration:none;background:#4a90d9;color:#fff;padding:12px 16px;border-radius:8px;font-weight:600;">Infrastructure Monitoring</a>
