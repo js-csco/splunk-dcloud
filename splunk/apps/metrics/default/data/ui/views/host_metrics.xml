@@ -1,0 +1,160 @@
+<form version="1.1" theme="dark">
+  <label>Host Metrics — Ubuntu &amp; Splunk servers</label>
+  <description>CPU, memory, disk and load from the Universal Forwarders (metric indexes).</description>
+
+  <fieldset submitButton="false" autoRun="true">
+    <input type="time" token="tr">
+      <label>Time range</label>
+      <default>
+        <earliest>-4h</earliest>
+        <latest>now</latest>
+      </default>
+    </input>
+  </fieldset>
+
+  <row>
+    <panel>
+      <html>
+        <h2>Host metrics via the Universal Forwarder</h2>
+        <p><b>New to Splunk?</b> These charts are <b>metrics</b>, not log events. A small
+        agent (the <b>Universal Forwarder</b>) on each machine samples the OS every
+        <b>60&#160;seconds</b> — CPU, memory, disk, load — and ships the numbers to Splunk.
+        They land in dedicated <b>metric indexes</b> (much smaller/faster than logs), one per
+        location, so RBAC still holds: <b>Leo</b> sees London, <b>Ben</b> sees Berlin,
+        <b>Gary</b> sees everything.</p>
+        <ul>
+          <li><b>loc1</b> = the Splunk server itself (collects its own metrics locally — always on).</li>
+          <li><b>london</b> = ubuntu-london (UF), <b>berlin</b> = ubuntu-berlin (UF).</li>
+        </ul>
+        <p style="color:#8b98a5;">We query metrics with <code>| mstats</code> (the metrics
+        equivalent of <code>stats</code>) — e.g.
+        <code>| mstats avg(cpu_pct) WHERE index=london_metrics BY host span=1m</code>.</p>
+      </html>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
+      <title>Hosts reporting</title>
+      <single>
+        <search>
+          <query>| mstats latest(cpu_pct) as v WHERE index=london_metrics OR index=berlin_metrics OR index=loc1_metrics BY host | stats dc(host) as hosts</query>
+          <earliest>$tr.earliest$</earliest>
+          <latest>$tr.latest$</latest>
+        </search>
+        <option name="drilldown">none</option>
+      </single>
+    </panel>
+    <panel>
+      <title>Current status by host (latest sample)</title>
+      <table>
+        <search>
+          <query>| mstats latest(cpu_pct) as "CPU %" latest(mem_used_pct) as "Mem %" latest(disk_used_pct) as "Disk %" latest(load1) as "Load (1m)" latest(mem_used_mb) as "Mem MB" latest(disk_free_gb) as "Free GB" WHERE index=london_metrics OR index=berlin_metrics OR index=loc1_metrics BY host, site
+| rename host as Host, site as Site
+| table Host Site "CPU %" "Mem %" "Disk %" "Load (1m)" "Mem MB" "Free GB"
+| sort Site Host</query>
+          <earliest>$tr.earliest$</earliest>
+          <latest>$tr.latest$</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <format type="color" field="CPU %">
+          <colorPalette type="minMidMax" maxColor="#d93f3c" midColor="#f2b827" minColor="#53a051"></colorPalette>
+          <scale type="minMidMax" minValue="0" midValue="60" maxValue="100"></scale>
+        </format>
+        <format type="color" field="Mem %">
+          <colorPalette type="minMidMax" maxColor="#d93f3c" midColor="#f2b827" minColor="#53a051"></colorPalette>
+          <scale type="minMidMax" minValue="0" midValue="70" maxValue="100"></scale>
+        </format>
+        <format type="color" field="Disk %">
+          <colorPalette type="minMidMax" maxColor="#d93f3c" midColor="#f2b827" minColor="#53a051"></colorPalette>
+          <scale type="minMidMax" minValue="0" midValue="75" maxValue="100"></scale>
+        </format>
+      </table>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
+      <title>CPU % over time (by host)</title>
+      <chart>
+        <search>
+          <query>| mstats avg(cpu_pct) as cpu WHERE index=london_metrics OR index=berlin_metrics OR index=loc1_metrics span=1m BY host | timechart span=1m avg(cpu) as "CPU %" by host</query>
+          <earliest>$tr.earliest$</earliest>
+          <latest>$tr.latest$</latest>
+        </search>
+        <option name="charting.chart">line</option>
+        <option name="charting.chart.nullValueMode">connect</option>
+        <option name="charting.axisY.maximumNumber">100</option>
+        <option name="charting.axisTitleY.text">CPU %</option>
+        <option name="charting.legend.placement">bottom</option>
+      </chart>
+    </panel>
+    <panel>
+      <title>Memory used % over time (by host)</title>
+      <chart>
+        <search>
+          <query>| mstats avg(mem_used_pct) as mem WHERE index=london_metrics OR index=berlin_metrics OR index=loc1_metrics span=1m BY host | timechart span=1m avg(mem) as "Mem %" by host</query>
+          <earliest>$tr.earliest$</earliest>
+          <latest>$tr.latest$</latest>
+        </search>
+        <option name="charting.chart">line</option>
+        <option name="charting.chart.nullValueMode">connect</option>
+        <option name="charting.axisY.maximumNumber">100</option>
+        <option name="charting.axisTitleY.text">Mem %</option>
+        <option name="charting.legend.placement">bottom</option>
+      </chart>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
+      <title>Disk used % (root filesystem, by host)</title>
+      <chart>
+        <search>
+          <query>| mstats avg(disk_used_pct) as disk WHERE index=london_metrics OR index=berlin_metrics OR index=loc1_metrics span=1m BY host | timechart span=1m avg(disk) as "Disk %" by host</query>
+          <earliest>$tr.earliest$</earliest>
+          <latest>$tr.latest$</latest>
+        </search>
+        <option name="charting.chart">line</option>
+        <option name="charting.chart.nullValueMode">connect</option>
+        <option name="charting.axisY.maximumNumber">100</option>
+        <option name="charting.axisTitleY.text">Disk %</option>
+        <option name="charting.legend.placement">bottom</option>
+      </chart>
+    </panel>
+    <panel>
+      <title>Load average (1m, by host)</title>
+      <chart>
+        <search>
+          <query>| mstats avg(load1) as load WHERE index=london_metrics OR index=berlin_metrics OR index=loc1_metrics span=1m BY host | timechart span=1m avg(load) as "Load (1m)" by host</query>
+          <earliest>$tr.earliest$</earliest>
+          <latest>$tr.latest$</latest>
+        </search>
+        <option name="charting.chart">line</option>
+        <option name="charting.chart.nullValueMode">connect</option>
+        <option name="charting.axisTitleY.text">Load</option>
+        <option name="charting.legend.placement">bottom</option>
+      </chart>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
+      <title>No data yet? — how this works &amp; how to check</title>
+      <html>
+        <p><b>loc1</b> (the Splunk host) should appear within ~1&#8211;2&#160;minutes with no
+        setup — it collects locally. <b>london</b>/<b>berlin</b> appear after you install the
+        Universal Forwarder on that Ubuntu box:</p>
+        <pre style="white-space:pre-wrap;background:#11151a;padding:12px;border-radius:6px;color:#cdd9e5;"># on ubuntu-london
+curl -fsSL https://raw.githubusercontent.com/js-csco/splunk-dcloud/main/ubuntu/install-uf.sh | sudo bash -s -- london
+
+# on ubuntu-berlin (also polls the local Proxmox API)
+curl -fsSL https://raw.githubusercontent.com/js-csco/splunk-dcloud/main/ubuntu/install-uf.sh | sudo bash -s -- berlin</pre>
+        <p style="color:#8b98a5;">Check the raw metric points arriving:
+        <code>| mstats avg(cpu_pct) WHERE index=loc1_metrics OR index=london_metrics OR index=berlin_metrics BY host span=1m</code>.
+        If <b>loc1</b> is missing too, the metric index/schema isn't applied — re-run
+        <code>apply.sh</code> on the Splunk box.</p>
+      </html>
+    </panel>
+  </row>
+</form>

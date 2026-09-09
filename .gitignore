@@ -8,3 +8,5 @@ config/lab.local.env
 # Editor / OS noise
 .DS_Store
 *.swp
+__pycache__/
+*.pyc

@@ -42,19 +42,25 @@ dashboards, SSH router polling):
 sudo rm -rf /opt/dcloud-splunk && sudo git clone -b main https://github.com/js-csco/splunk-dcloud.git /opt/dcloud-splunk && sudo bash /opt/dcloud-splunk/apply.sh
 ```
 
-**2. ubuntu-london** — forward logs (syslog → `london_linux`):
+**2. ubuntu-london** — forward logs (syslog → `london_linux`), then install the
+Universal Forwarder (host metrics → `london_metrics`, `/var/log` → `london_linux`):
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/js-csco/splunk-dcloud/main/ubuntu/forward-to-splunk.sh | sudo bash -s -- london
+curl -fsSL https://raw.githubusercontent.com/js-csco/splunk-dcloud/main/ubuntu/install-uf.sh        | sudo bash -s -- london
 ```
 
-**3. ubuntu-berlin** — forward logs, then install the Universal Forwarder
-(pulls the local Proxmox API → `berlin_proxmox`):
+**3. ubuntu-berlin** — forward logs, then install the Universal Forwarder (host
+metrics → `berlin_metrics`, `/var/log` → `berlin_linux`, **and** the local
+Proxmox API → `berlin_proxmox` + `berlin_metrics`):
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/js-csco/splunk-dcloud/main/ubuntu/forward-to-splunk.sh | sudo bash -s -- berlin
-curl -fsSL https://raw.githubusercontent.com/js-csco/splunk-dcloud/main/ubuntu/install-uf.sh   | sudo bash
+curl -fsSL https://raw.githubusercontent.com/js-csco/splunk-dcloud/main/ubuntu/install-uf.sh        | sudo bash -s -- berlin
 ```
+
+> The Splunk box collects **its own** host metrics automatically (`loc1_metrics`),
+> so the **Host & Infra Metrics** app has data even before the UFs are installed.
 
 **4. (optional) demo data** — correlated events on the Ubuntu boxes:
 
@@ -89,9 +95,13 @@ whole location with a single wildcard.
 
 | Location | Network | Devices | Indexes | Roles with access |
 |---|---|---|---|---|
-| loc1 | 198.18.1.0/24 | splunk (infrastructure) | `loc1_linux` | `role_global` only |
-| London (loc2) | 198.18.2.0/24 | ubuntu-london, windows-server-2022-london | `london_linux`, `london_windows`, `london_network` | `role_london`, `role_global` |
-| Berlin (loc3) | 198.18.3.0/24 | proxmox-9.2-berlin, ubuntu-berlin | `berlin_linux`, `berlin_proxmox` | `role_berlin`, `role_global` |
+| loc1 | 198.18.1.0/24 | splunk (infrastructure) | `loc1_linux`, `loc1_metrics` | `role_global` only |
+| London (loc2) | 198.18.2.0/24 | ubuntu-london, windows-server-2022-london | `london_linux`, `london_windows`, `london_network`, `london_metrics` | `role_london`, `role_global` |
+| Berlin (loc3) | 198.18.3.0/24 | proxmox-9.2-berlin, ubuntu-berlin | `berlin_linux`, `berlin_proxmox`, `berlin_network`, `berlin_metrics` | `role_berlin`, `role_global` |
+
+> The metric indexes (`*_metrics`) need no RBAC changes — roles grant a whole
+> location by wildcard (`london_*`, `berlin_*`, `loc1_*`), so they're covered
+> automatically and the location wall still holds for metrics.
 
 > Location 1 is the Splunk server itself (infrastructure), so it has **no
 > dedicated analyst** — `loc1_linux` is visible to `role_global` only.
@@ -128,8 +138,9 @@ whereas REST creation is immediate and reliable.
 | **Ingestion & Health** | Event volume per location index and Splunk health. |
 | **Save to GitHub** (admin-only) | A button that commits the current lab state (including dashboards made this session) to the `lab-snapshot` branch. See below. |
 
-Plus two other apps:
+Plus these apps:
 
+- **Host & Infra Metrics** → *Host Metrics* (CPU/mem/disk/load per machine, from the metric indexes — see "Host & infrastructure metrics" below).
 - **Infrastructure Monitoring** → *Data Onboarding Overview* (what data is arriving, by host/index/sourcetype).
 - **Correlation** → *Correlation 2 Sources* and *Correlation 3 Sources*: pick the
   sources and a correlation key (service / user / host) and find the same entity
@@ -223,6 +234,47 @@ marker event. Verify in Splunk: `index=london_linux host=ubuntu-london`, or open
 > If `raw.githubusercontent.com` doesn't resolve on the Ubuntu box, clone the
 > repo (like the Splunk box) and run `ubuntu/forward-to-splunk.sh` from it.
 
+## Host &amp; infrastructure metrics
+
+The **Host & Infra Metrics** app charts CPU / memory / disk / load for every
+machine, using Splunk **metric indexes** (`*_metrics`, `datatype=metric`) — much
+smaller and faster than logs, and the right tool for time-series numbers.
+
+**How the numbers get in (log-to-metrics):** a small agent samples the OS every
+60s and emits one **JSON** line per sample; Splunk turns the numeric fields into
+metric data points at index time.
+
+| Source | Collector | → Index | Notes |
+|---|---|---|---|
+| Splunk host (loc1) | local scripted input (`metrics` app) | `loc1_metrics` | always on — no forwarder/network needed |
+| ubuntu-london | UF `TA-dcloud-host` (`collect_host_metrics.sh`) | `london_metrics` | after `install-uf.sh london` |
+| ubuntu-berlin | UF `TA-dcloud-host` | `berlin_metrics` | after `install-uf.sh berlin` |
+| Proxmox (Berlin) | UF `TA-dcloud-proxmox` (`poll_proxmox.py metrics`) | `berlin_metrics` | per-node & per-guest CPU/mem/disk |
+
+The conversion is standard Splunk
+[log-to-metrics](https://help.splunk.com/en/splunk-enterprise/get-data-in/metrics/9.4/convert-log-data-to-metrics/convert-event-logs-to-metric-data-points):
+the forwarder tags the JSON keys as indexed fields (`INDEXED_EXTRACTIONS = json`
+in each TA's `props.conf`) and the indexer's `metrics` app applies
+`METRIC-SCHEMA-TRANSFORMS` (numeric fields → measures like `cpu_pct`; strings
+like `site` → dimensions; `host` is always a dimension). Query with `mstats`:
+
+```spl
+| mstats avg(cpu_pct) WHERE index=london_metrics OR index=berlin_metrics OR index=loc1_metrics BY host span=1m
+```
+
+**How we get metrics from Proxmox.** The Proxmox REST API already returns
+per-node and per-guest CPU / memory / disk (from `/cluster/resources`) — we
+already poll it. The same UF poller (`poll_proxmox.py metrics`, run by
+`poll_proxmox_metrics.sh` every 60s) emits those numbers as metric JSON into
+`berlin_metrics` (sourcetype `proxmox:metrics`), so they appear on both the
+**Host & Infra Metrics** app and the *REST API — Proxmox* dashboard. No Proxmox
+metric-server (InfluxDB/Graphite) or extra agent is needed — it's the same
+ticket-auth API call, just emitted as metrics. (Requires the Berlin network to
+reach `198.18.3.170:8006`.)
+
+> **RBAC preserved:** metrics land in per-location indexes, so Leo sees London,
+> Ben sees Berlin, Gary sees all — same wall as the logs.
+
 ## Splunk MCP Server (Claude Desktop) — manual, for now
 
 Splunk ships a first-party **MCP Server** app ([Splunkbase app 7931](https://splunkbase.splunk.com/app/7931))
@@ -271,7 +323,9 @@ splunkd's context, so outbound calls work, unlike the search sandbox).
 | Method | How | Status |
 |---|---|---|
 | Syslog | rsyslog → per-location ports | ✅ live |
-| REST / API (Proxmox) | UF on ubuntu-berlin polls the local Proxmox API every 60s → `berlin_proxmox` (in-location collection) | ✅ live after `install-uf.sh` |
+| Metrics (host) | UF `collect_host_metrics.sh` → `*_metrics` (metric index) every 60s | ✅ live (loc1 always; london/berlin after `install-uf.sh`) |
+| File monitor | UF tails `/var/log` → `*_linux` | ✅ live after `install-uf.sh` |
+| REST / API (Proxmox) | UF on ubuntu-berlin polls the local Proxmox API every 60s → `berlin_proxmox` (events) + `berlin_metrics` (metrics) | ✅ live after `install-uf.sh berlin` |
 | SSH (Cisco Catalyst) | scripted input SSHes in, runs show commands → `london_network`/`berlin_network` | ✅ live (London 198.18.2.32, Berlin 198.18.3.32) |
 | SNMP | Splunk Connect for SNMP (SC4SNMP) | ⏳ planned |
 | SOAP | XML web service | ⏸ parked |
@@ -297,16 +351,17 @@ ubuntu-berlin** that pulls the *local* Proxmox API and forwards to the indexer �
 "one agent collects everything (files + the local API)". The central poll is
 disabled by default (`get_data_in` proxmox input `disabled=1`); the UF does it.
 
-On **ubuntu-berlin**:
+On **ubuntu-berlin** (pass the site so the UF targets Berlin's indexes):
 ```bash
-curl -fsSL https://raw.githubusercontent.com/js-csco/splunk-dcloud/main/ubuntu/install-uf.sh | sudo bash
+curl -fsSL https://raw.githubusercontent.com/js-csco/splunk-dcloud/main/ubuntu/install-uf.sh | sudo bash -s -- berlin
 # if the pinned UF version 404s, pass the current URL from splunk.com:
-#   ... | sudo SPLUNK_UF_URL='https://download.splunk.com/.../splunkforwarder-XX-Linux-x86_64.tgz' bash
+#   ... | sudo SPLUNK_UF_URL='https://download.splunk.com/.../splunkforwarder-XX-Linux-x86_64.tgz' bash -s -- berlin
 ```
 It installs the UF, points `outputs.conf` at the indexer's `9997` receiver, and
-deploys `TA-dcloud-proxmox` (localized Berlin config, runs via the host's
-`python3` since the UF has no bundled Python). To go back to central polling,
-set the `poll_proxmox.py` input `disabled=0` in `get_data_in` and skip the UF.
+deploys `TA-dcloud-host` (host metrics + `/var/log`) plus — on Berlin only —
+`TA-dcloud-proxmox` (localized Proxmox poller, runs via the host's `python3`
+since the UF has no bundled Python). To go back to central Proxmox polling, set
+the `poll_proxmox.py` input `disabled=0` in `get_data_in` and skip the UF.
 
 **Change guest state live (API write demo).** `ubuntu/proxmox-guest.py` starts/stops
 VMs & containers via the API (ticket auth — no token; nothing to pre-create even
@@ -374,4 +429,9 @@ splunk/apps/dcloud_lab/
 - [x] RBAC: role_london (Leo), role_berlin (Ben), role_global (Gary); loc1 = infra, global-only
 - [x] Dashboards: Lab Info, Setup Status, Ingestion & Health
 - [x] Data onboarding: rsyslog from Ubuntu boxes + Splunk host self-forward (loc1)
-- [ ] Remaining senders: Proxmox (Berlin) and Windows server (London → london_windows)
+- [x] Get Data In app: Proxmox REST, Cisco SSH (self-diagnosing), + methods overview
+- [x] Host & infra metrics: UF `collect_host_metrics.sh` + Proxmox metrics → `*_metrics` (metric indexes) + Host Metrics dashboard
+- [x] UF distributed collection on ubuntu-london & ubuntu-berlin (`install-uf.sh <site>`), incl. `/var/log` file monitor
+- [ ] **IT Service Intelligence (ITSI)** — premium, separately-licensed. Plan: (1) interim "Service Health" dashboard built from existing syslog + metrics (KPIs green/amber/red) to show the concept; (2) evaluate a scripted install of the ITSI package + a small service/KPI set (needs the package staged + a license).
+- [ ] Remaining senders: Windows server (London → `london_windows`)
+- [ ] SNMP via SC4SNMP; SOAP (parked)

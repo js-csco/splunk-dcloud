@@ -1,17 +1,37 @@
 #!/usr/bin/env bash
 # ===========================================================================
-# install-uf.sh - install a Splunk Universal Forwarder on an Ubuntu box and
-# have it locally collect data (files + the local Proxmox REST API) and forward
-# to the indexer. Demonstrates the "one agent collects everything" architecture.
+# install-uf.sh - install a Splunk Universal Forwarder on an Ubuntu box and have
+# it locally collect data and forward to the indexer. Demonstrates the "one
+# agent collects everything" architecture.
 #
-# Run on ubuntu-berlin:
-#   curl -fsSL https://raw.githubusercontent.com/js-csco/splunk-dcloud/main/ubuntu/install-uf.sh | sudo bash
+# Collects (per site):
+#   - host metrics (CPU/mem/disk/load) every 60s   -> <site>_metrics   (metric)
+#   - /var/log file monitor                         -> <site>_linux     (events)
+#   - Berlin ONLY: local Proxmox REST API every 60s -> berlin_proxmox + berlin_metrics
 #
-# The UF package URL is pinned below but overridable — if it 404s, grab the
-# current UF Linux x86_64 .tgz URL from splunk.com and pass it:
-#   ... | sudo SPLUNK_UF_URL='https://download.splunk.com/.../splunkforwarder-XX-Linux-x86_64.tgz' bash
+# Run ON the Ubuntu box, passing its site (london | berlin):
+#   curl -fsSL https://raw.githubusercontent.com/js-csco/splunk-dcloud/main/ubuntu/install-uf.sh | sudo bash -s -- london
+#   curl -fsSL https://raw.githubusercontent.com/js-csco/splunk-dcloud/main/ubuntu/install-uf.sh | sudo bash -s -- berlin
+#
+# If the UF package URL 404s, grab the current UF Linux x86_64 .tgz URL from
+# splunk.com and pass it:
+#   ... | sudo SPLUNK_UF_URL='https://download.splunk.com/.../splunkforwarder-XX-Linux-x86_64.tgz' bash -s -- berlin
 # ===========================================================================
 set -euo pipefail
+
+# --- site (london|berlin): from arg 1, else $SITE, else infer from hostname ---
+SITE="${1:-${SITE:-}}"
+if [ -z "${SITE}" ]; then
+  case "$(hostname)" in
+    *london*) SITE="london" ;;
+    *berlin*) SITE="berlin" ;;
+    *) echo "ERROR: could not determine site. Pass it: ... | sudo bash -s -- london" >&2; exit 1 ;;
+  esac
+fi
+case "${SITE}" in
+  london|berlin) ;;
+  *) echo "ERROR: site must be 'london' or 'berlin' (got '${SITE}')." >&2; exit 1 ;;
+esac
 
 INDEXER="${SPLUNK_INDEXER:-198.18.1.124}"
 RECV_PORT="${RECV_PORT:-9997}"
@@ -19,13 +39,14 @@ UF_HOME="${SPLUNK_UF_HOME:-/opt/splunkforwarder}"
 ADMIN_PW="${SPLUNK_ADMIN_PASSWORD:-C1sco12345}"
 REPO="${DCLOUD_REPO:-js-csco/splunk-dcloud}"
 BRANCH="${DCLOUD_BRANCH:-main}"
-TA="TA-dcloud-proxmox"
+METRICS_INDEX="${SITE}_metrics"
+LINUX_INDEX="${SITE}_linux"
 # Pinned UF (override with SPLUNK_UF_URL if this version/hash is unavailable).
 UF_URL="${SPLUNK_UF_URL:-https://download.splunk.com/products/universalforwarder/releases/9.2.1/linux/splunkforwarder-9.2.1-78803f08aabb-Linux-x86_64.tgz}"
 
 run_root() { if [ "$(id -u)" = "0" ]; then "$@"; else sudo "$@"; fi; }
 
-echo "== Splunk UF on $(hostname) -> ${INDEXER}:${RECV_PORT} =="
+echo "== Splunk UF on $(hostname) [site=${SITE}] -> ${INDEXER}:${RECV_PORT} =="
 
 # 1) install the UF if not present
 if [ ! -x "${UF_HOME}/bin/splunk" ]; then
@@ -52,13 +73,41 @@ defaultGroup = dcloud_indexers
 server = ${INDEXER}:${RECV_PORT}
 EOF
 
-# 3) deploy the localized Proxmox poller TA from the repo
+# 3) deploy the forwarder TAs from the repo
 command -v git >/dev/null 2>&1 || { export DEBIAN_FRONTEND=noninteractive; run_root apt-get update -y && run_root apt-get install -y git; }
 work="$(mktemp -d)"
 git clone --depth 1 -b "${BRANCH}" "https://github.com/${REPO}.git" "${work}"
-run_root rm -rf "${UF_HOME}/etc/apps/${TA}"
-run_root cp -a "${work}/splunk/uf-apps/${TA}" "${UF_HOME}/etc/apps/${TA}"
-run_root chmod +x "${UF_HOME}/etc/apps/${TA}/bin/"*.sh 2>/dev/null || true
+
+# 3a) host metrics + /var/log monitor (both sites). local/inputs.conf sets the
+#     per-site index and passes <site> as the metrics-script argument.
+run_root rm -rf "${UF_HOME}/etc/apps/TA-dcloud-host"
+run_root cp -a "${work}/splunk/uf-apps/TA-dcloud-host" "${UF_HOME}/etc/apps/TA-dcloud-host"
+run_root mkdir -p "${UF_HOME}/etc/apps/TA-dcloud-host/local"
+run_root tee "${UF_HOME}/etc/apps/TA-dcloud-host/local/inputs.conf" >/dev/null <<EOF
+[script://./bin/collect_host_metrics.sh ${SITE}]
+index = ${METRICS_INDEX}
+sourcetype = linux:metrics
+interval = 60
+disabled = 0
+
+[monitor:///var/log]
+index = ${LINUX_INDEX}
+sourcetype = linux:syslog
+disabled = 0
+whitelist = (syslog|auth\.log|kern\.log|dpkg\.log|ufw\.log|messages)$
+EOF
+run_root chmod +x "${UF_HOME}/etc/apps/TA-dcloud-host/bin/"*.sh 2>/dev/null || true
+
+# 3b) Berlin only: localized Proxmox poller (REST + metrics)
+if [ "${SITE}" = "berlin" ]; then
+  run_root rm -rf "${UF_HOME}/etc/apps/TA-dcloud-proxmox"
+  run_root cp -a "${work}/splunk/uf-apps/TA-dcloud-proxmox" "${UF_HOME}/etc/apps/TA-dcloud-proxmox"
+  run_root chmod +x "${UF_HOME}/etc/apps/TA-dcloud-proxmox/bin/"*.sh 2>/dev/null || true
+  echo "Berlin: Proxmox poller deployed (berlin_proxmox + berlin_metrics)."
+else
+  # Never leave a stale Proxmox poller on the London box.
+  run_root rm -rf "${UF_HOME}/etc/apps/TA-dcloud-proxmox" 2>/dev/null || true
+fi
 rm -rf "${work}"
 
 # 4) first start (fully non-interactive) or restart; enable boot-start
@@ -76,7 +125,7 @@ else
   run_root "${UF_HOME}/bin/splunk" restart
 fi
 
-echo "Done. UF is forwarding to ${INDEXER}:${RECV_PORT} and TA ${TA} polls the local"
-echo "Proxmox API every 60s -> berlin_proxmox."
-echo "NOTE: disable the CENTRAL Proxmox poll on the Splunk box to avoid duplicates"
-echo "      (get_data_in/local/inputs.conf: [script://./bin/poll_proxmox.py] disabled=1)."
+echo "Done. UF on ${SITE} is forwarding to ${INDEXER}:${RECV_PORT}:"
+echo "  - host metrics  -> ${METRICS_INDEX}   (Host Metrics dashboard)"
+echo "  - /var/log      -> ${LINUX_INDEX}"
+[ "${SITE}" = "berlin" ] && echo "  - Proxmox API   -> berlin_proxmox + berlin_metrics (every 60s)"

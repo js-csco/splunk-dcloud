@@ -142,6 +142,52 @@ curl -fsSL https://raw.githubusercontent.com/js-csco/splunk-dcloud/main/ubuntu/p
 
   <row>
     <panel>
+      <title>Proxmox CPU % over time (metric — per guest)</title>
+      <chart>
+        <search>
+          <query>| mstats avg(cpu_pct) as cpu WHERE index=berlin_metrics AND otype=guest span=1m BY oname | timechart span=1m avg(cpu) as "CPU %" by oname</query>
+          <earliest>-4h</earliest><latest>now</latest>
+        </search>
+        <option name="charting.chart">line</option>
+        <option name="charting.chart.nullValueMode">connect</option>
+        <option name="charting.axisTitleY.text">CPU %</option>
+        <option name="charting.legend.placement">bottom</option>
+      </chart>
+    </panel>
+    <panel>
+      <title>Proxmox memory used % (metric — latest, per object)</title>
+      <table>
+        <search>
+          <query>| mstats latest(cpu_pct) as "CPU %" latest(mem_used_pct) as "Mem %" latest(mem_used_mb) as "Mem MB" latest(running) as Running WHERE index=berlin_metrics BY otype, oname, vmid
+| rename otype as Type, oname as Name, vmid as VMID
+| eval Running=if(Running==1,"running","stopped")
+| table Type Name VMID "CPU %" "Mem %" "Mem MB" Running
+| sort Type Name</query>
+          <earliest>-60m</earliest><latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="count">25</option>
+        <format type="color" field="Running">
+          <colorPalette type="map">{"running":#53a051,"stopped":#d93f3c}</colorPalette>
+        </format>
+      </table>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
+      <html>
+        <p style="color:#8b98a5;">The panels above are <b>metrics</b> (index
+        <code>berlin_metrics</code>, sourcetype <code>proxmox:metrics</code>), queried with
+        <code>| mstats</code>. They come from the same Proxmox API poll as the JSON events
+        above — the poller just also emits per-node/per-guest CPU/mem/disk as metric data
+        points. Host metrics for all machines are on the <b>Host Metrics</b> app.</p>
+      </html>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
       <title>Setup &amp; how it works</title>
       <html>
         <p>Collection runs on the <b>Universal Forwarder on ubuntu-berlin</b> (in-location):
