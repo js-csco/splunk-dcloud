@@ -276,7 +276,7 @@ already poll it. The same UF poller (`poll_proxmox.py metrics`, run by
 **Host & Infra Metrics** app and the *REST API — Proxmox* dashboard. No Proxmox
 metric-server (InfluxDB/Graphite) or extra agent is needed — it's the same
 ticket-auth API call, just emitted as metrics. (Requires the Berlin network to
-reach `198.18.3.170:8006`.)
+reach `198.18.3.17:8006`.)
 
 > **RBAC preserved:** metrics land in per-location indexes, so Leo sees London,
 > Ben sees Berlin, Gary sees all — same wall as the logs.
@@ -371,14 +371,14 @@ splunkd's context, so outbound calls work, unlike the search sandbox).
 | SOAP | XML web service | ⏸ parked |
 
 **Proxmox REST poller** — works out of the box using the committed lab creds in
-`splunk/apps/get_data_in/bin/proxmox_config.env` (Berlin Proxmox `198.18.3.170`,
+`splunk/apps/get_data_in/bin/proxmox_config.env` (Berlin Proxmox `198.18.3.17`,
 `root` / `cisco`, **ticket auth** — no API token needed). To override without
 editing the repo (e.g. real creds/token), set env at startup or drop
 `$SPLUNK_HOME/var/lib/dcloud/proxmox.env`:
 
 ```bash
 # either username/password (ticket auth) …
-export PROXMOX_HOST=198.18.3.170 PROXMOX_USER='root@pam' PROXMOX_PASSWORD='cisco'
+export PROXMOX_HOST=198.18.3.17 PROXMOX_USER='root@pam' PROXMOX_PASSWORD='cisco'
 # … or an API token
 export PROXMOX_TOKEN='user@pam!lab=xxxxxxxx-....'
 ```
@@ -417,7 +417,7 @@ dashboard reflects it. Each action also logs a `proxmox-ctl` syslog event.
 
 | System | Location | Address | Access | User / Pass |
 |---|---|---|---|---|
-| Proxmox | Berlin | 198.18.3.170 (web 8006 / SSH) | Web + SSH | `root` / `cisco` |
+| Proxmox | Berlin | 198.18.3.17 (web 8006 / SSH) | Web + SSH | `root` / `cisco` |
 | Cisco Cat8kv | London | 198.18.2.32 | SSH | `cisco` / `cisco` |
 | Cisco Cat8kv | Berlin | 198.18.3.32 | SSH | `cisco` / `cisco` |
 

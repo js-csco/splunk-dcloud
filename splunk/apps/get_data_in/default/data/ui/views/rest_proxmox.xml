@@ -202,7 +202,7 @@ curl -fsSL https://raw.githubusercontent.com/js-csco/splunk-dcloud/main/ubuntu/p
         with env (<code>PROXMOX_HOST/USER/PASSWORD</code>) or
         <code>$SPLUNK_HOME/var/lib/dcloud/proxmox.env</code> if needed.</p>
         <p style="color:#8b98a5;">No data yet? Make sure the UF is installed on
-        ubuntu-berlin and can reach 198.18.3.170:8006. (A central poll on the indexer
+        ubuntu-berlin and can reach 198.18.3.17:8006. (A central poll on the indexer
         exists but is disabled by default — see get_data_in/inputs.conf.)</p>
       </html>
     </panel>
