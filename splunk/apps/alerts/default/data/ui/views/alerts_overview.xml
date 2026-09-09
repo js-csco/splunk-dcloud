@@ -103,10 +103,12 @@
         <h3>1) Spike CPU &gt; 70%</h3>
         <p>On any Ubuntu box (<code>ubuntu-london</code> / <code>ubuntu-berlin</code>) — pins every
         core for 4 minutes, then stops on its own:</p>
-        <pre style="white-space:pre-wrap;background:#11151a;padding:12px;border-radius:6px;color:#cdd9e5;">timeout 240 bash -c 'for i in $(seq $(nproc)); do yes &gt;/dev/null &amp; done; wait'</pre>
+        <pre style="white-space:pre-wrap;background:#11151a;padding:12px;border-radius:6px;color:#cdd9e5;"># each worker self-stops after 240s (orphan-safe). Stop early with: pkill -x yes
+for i in $(seq $(nproc)); do timeout 240 yes &gt;/dev/null &amp; done; wait</pre>
         <p>To spike the <b>Splunk host</b> (site <code>loc1</code>) instead, run the same command
         on the Splunk box. (A heavy <code>index=*</code> search also raises Splunk CPU, but the
-        <code>yes</code> loop is the reliable way to cross 70%.)</p>
+        <code>yes</code> loop is the reliable way to cross 70%.)
+        <b>Stop the spike any time with</b> <code>pkill -x yes</code>.</p>
 
         <h3>Spike Memory &gt; 70% (optional)</h3>
         <pre style="white-space:pre-wrap;background:#11151a;padding:12px;border-radius:6px;color:#cdd9e5;"># if stress-ng is available:

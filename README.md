@@ -306,8 +306,9 @@ you can watch a row go red before the scheduled run; or open the saved search an
 click **Run** to fire immediately):
 
 ```bash
-# CPU > 70% on an Ubuntu box (or the Splunk box, for site loc1) — 4 min, self-stops
-timeout 240 bash -c 'for i in $(seq $(nproc)); do yes >/dev/null & done; wait'
+# CPU > 70% on an Ubuntu box (or the Splunk box, for site loc1) — each worker
+# self-stops after 240s (orphan-safe). Stop early any time with: pkill -x yes
+for i in $(seq $(nproc)); do timeout 240 yes >/dev/null & done; wait
 
 # Universal Forwarder stopped sending — stop the UF, then restart to clear
 sudo /opt/splunkforwarder/bin/splunk stop
