@@ -83,16 +83,21 @@ git clone --depth 1 -b "${BRANCH}" "https://github.com/${REPO}.git" "${work}"
 run_root rm -rf "${UF_HOME}/etc/apps/TA-dcloud-host"
 run_root cp -a "${work}/splunk/uf-apps/TA-dcloud-host" "${UF_HOME}/etc/apps/TA-dcloud-host"
 run_root mkdir -p "${UF_HOME}/etc/apps/TA-dcloud-host/local"
+# NOTE: host is pinned to "ubuntu-<site>" because both dCloud Ubuntu boxes share
+# the OS hostname "ubuntu". Without this, london/berlin events collide under
+# host=ubuntu and can't be told apart on dashboards.
 run_root tee "${UF_HOME}/etc/apps/TA-dcloud-host/local/inputs.conf" >/dev/null <<EOF
 [script://./bin/collect_host_metrics.sh ${SITE}]
 index = ${METRICS_INDEX}
 sourcetype = linux:metrics
+host = ubuntu-${SITE}
 interval = 60
 disabled = 0
 
 [monitor:///var/log]
 index = ${LINUX_INDEX}
 sourcetype = linux:syslog
+host = ubuntu-${SITE}
 disabled = 0
 whitelist = (syslog|auth\.log|kern\.log|dpkg\.log|ufw\.log|messages)$
 EOF
