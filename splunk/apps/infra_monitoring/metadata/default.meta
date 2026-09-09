@@ -9,3 +9,46 @@ export = system
 
 [nav]
 export = system
+
+# Parsing/enrichment config global so it applies wherever data is indexed.
+[props]
+export = system
+
+# ---------------------------------------------------------------------------
+# Asset Configuration RBAC (enforced per location).
+# The lookup DEFINITIONS gate `inputlookup`/`lookup`; the KV COLLECTIONS gate
+# the underlying store (outputlookup / REST). Both are scoped to the same roles
+# so a user can only ever see/edit their location's inventory:
+#   loc1   -> role_global (+ admin/power)     [infrastructure, global-only]
+#   london -> role_london, role_global
+#   berlin -> role_berlin, role_global
+# assets_seed (the committed CSV) is admin-only; it's just the seed source.
+# ---------------------------------------------------------------------------
+
+[transforms/assets_seed]
+export = system
+access = read : [ admin, power ], write : [ admin ]
+
+[transforms/dcloud_assets_loc1_lk]
+export = system
+access = read : [ role_global, admin, power ], write : [ role_global, admin ]
+
+[transforms/dcloud_assets_london_lk]
+export = system
+access = read : [ role_london, role_global, admin, power ], write : [ role_london, role_global, admin ]
+
+[transforms/dcloud_assets_berlin_lk]
+export = system
+access = read : [ role_berlin, role_global, admin, power ], write : [ role_berlin, role_global, admin ]
+
+[collections/dcloud_assets_loc1]
+export = system
+access = read : [ role_global, admin, power ], write : [ role_global, admin ]
+
+[collections/dcloud_assets_london]
+export = system
+access = read : [ role_london, role_global, admin, power ], write : [ role_london, role_global, admin ]
+
+[collections/dcloud_assets_berlin]
+export = system
+access = read : [ role_berlin, role_global, admin, power ], write : [ role_berlin, role_global, admin ]

@@ -1,0 +1,157 @@
+<form version="1.1" theme="dark">
+  <label>Asset Configuration</label>
+  <description>Describe your assets (name, type, manufacturer, timezone, …). Stored in the KV Store per location (RBAC), and used to enrich every event.</description>
+
+  <fieldset submitButton="true" autoRun="true">
+    <input type="dropdown" token="site">
+      <label>Site</label>
+      <choice value="loc1">loc1</choice>
+      <choice value="london">london</choice>
+      <choice value="berlin">berlin</choice>
+      <default>berlin</default>
+    </input>
+    <input type="text" token="host"><label>Host (unique key)</label></input>
+    <input type="text" token="ip"><label>IP</label></input>
+    <input type="text" token="asset_name"><label>Asset name</label></input>
+    <input type="text" token="hostname"><label>Hostname</label></input>
+    <input type="dropdown" token="asset_type">
+      <label>Type</label>
+      <choice value="server">server</choice>
+      <choice value="router">router</choice>
+      <choice value="switch">switch</choice>
+      <choice value="firewall">firewall</choice>
+      <choice value="hypervisor">hypervisor</choice>
+      <choice value="other">other</choice>
+      <default>server</default>
+    </input>
+    <input type="text" token="manufacturer"><label>Manufacturer</label></input>
+    <input type="text" token="timezone"><label>Timezone</label><default>UTC</default></input>
+    <input type="text" token="owner"><label>Owner</label></input>
+    <input type="text" token="description"><label>Description</label></input>
+  </fieldset>
+
+  <row>
+    <panel>
+      <html>
+        <h2>Asset Configuration</h2>
+        <p>Add metadata to a host once — <b>name, type, manufacturer, timezone, owner,
+        description</b> — and Splunk attaches it to <b>every event</b> from that host
+        (this is the same idea as Enterprise Security's Asset &amp; Identity framework, done
+        with OOTB lookups). Inventory is stored in the <b>KV Store, one collection per
+        location</b>, so access follows the same RBAC wall as the indexes.</p>
+        <ul>
+          <li><b>To add or edit:</b> fill the fields above (use the existing <b>Host</b> to edit
+          a row — it upserts by host), pick the <b>Site</b>, and click <b>Submit</b>.</li>
+          <li>You can only write to a site your role owns; the seed comes from the committed
+          <code>assets_seed.csv</code> and is reloaded each session.</li>
+        </ul>
+      </html>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
+      <title>Viewing as (your role decides which sites you see/edit)</title>
+      <table>
+        <search>
+          <query>| rest /services/authentication/current-context splunk_server=local
+| eval r=mvjoin(roles," ")
+| eval g=if(match(r,"role_global") OR match(r,"admin"),1,0)
+| eval see_loc1=g, see_london=if(g==1 OR match(r,"role_london"),1,0), see_berlin=if(g==1 OR match(r,"role_berlin"),1,0)
+| eval "Visible sites"=mvjoin(mvappend(if(see_loc1==1,"loc1",null()),if(see_london==1,"london",null()),if(see_berlin==1,"berlin",null()))," , ")
+| rename username as User, r as Roles
+| table User Roles "Visible sites" see_loc1 see_london see_berlin</query>
+          <earliest>-1m</earliest>
+          <latest>now</latest>
+          <done>
+            <eval token="see_loc1">if($result.see_loc1$==1,1,null())</eval>
+            <eval token="see_london">if($result.see_london$==1,1,null())</eval>
+            <eval token="see_berlin">if($result.see_berlin$==1,1,null())</eval>
+          </done>
+        </search>
+        <option name="drilldown">none</option>
+      </table>
+    </panel>
+  </row>
+
+  <row>
+    <panel depends="$host$">
+      <title>Save result</title>
+      <table>
+        <search>
+          <query>| makeresults
+| eval _key="$host$", site="$site$", host="$host$", ip="$ip$", asset_name="$asset_name$", hostname="$hostname$", asset_type="$asset_type$", manufacturer="$manufacturer$", timezone="$timezone$", description="$description$", owner="$owner$"
+| fields - _time
+| outputlookup dcloud_assets_$site$_lk append=true
+| eval Result="Saved ".host." to ".site." inventory"
+| table Result host site ip asset_name asset_type manufacturer timezone owner description</query>
+          <earliest>-1m</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+      </table>
+    </panel>
+  </row>
+
+  <row>
+    <panel depends="$see_loc1$">
+      <title>loc1 inventory</title>
+      <table>
+        <search>
+          <query>| inputlookup dcloud_assets_loc1_lk | table asset_name host hostname ip asset_type manufacturer timezone owner description | sort asset_name</query>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="count">20</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel depends="$see_london$">
+      <title>London inventory</title>
+      <table>
+        <search>
+          <query>| inputlookup dcloud_assets_london_lk | table asset_name host hostname ip asset_type manufacturer timezone owner description | sort asset_name</query>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="count">20</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel depends="$see_berlin$">
+      <title>Berlin inventory</title>
+      <table>
+        <search>
+          <query>| inputlookup dcloud_assets_berlin_lk | table asset_name host hostname ip asset_type manufacturer timezone owner description | sort asset_name</query>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="count">20</option>
+      </table>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
+      <title>Enrichment in action — events by asset type (last 60 min)</title>
+      <table>
+        <search>
+          <query>index=* asset_type=* | stats count as Events, dc(host) as Hosts, values(asset_name) as Assets by asset_type manufacturer | rename asset_type as Type, manufacturer as Manufacturer | sort - Events</query>
+          <earliest>-60m</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+      </table>
+    </panel>
+    <panel>
+      <html>
+        <h3>How this maps to Splunk</h3>
+        <ul>
+          <li><b>Storage:</b> KV Store collections <code>dcloud_assets_loc1/london/berlin</code>, seeded from <code>assets_seed.csv</code>.</li>
+          <li><b>RBAC:</b> each collection + lookup is read/write-gated per role, so Ben sees only Berlin, Leo only London, Gary all — enforced, not just hidden.</li>
+          <li><b>Enrichment:</b> automatic lookups on <code>host</code> add the asset fields to events across metrics, syslog, Cisco and Proxmox sourcetypes.</li>
+          <li><b>Try it:</b> <code>index=* asset_type=router | stats count by manufacturer</code>, or add <code>asset_name</code> as a column on any search.</li>
+        </ul>
+      </html>
+    </panel>
+  </row>
+</form>

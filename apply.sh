@@ -176,7 +176,29 @@ else
 fi
 
 # ===========================================================================
-# 6. Data integrations   (placeholder - added in a later step)
+# 6. Seed the Asset Configuration inventory (KV Store) from the committed CSV
+# ===========================================================================
+# One KV collection per location (RBAC). Idempotent: outputlookup append=true
+# with _key=host UPSERTS, so re-runs update rather than duplicate. Retries in
+# case the KV store isn't fully initialised right after a start/restart.
+ADMIN_PW="${SPLUNK_ADMIN_PASSWORD:-C1sco12345}"
+run_splunk() { if [ "$(id -u)" = "0" ]; then sudo -u "${SPLUNK_USER}" "$@"; else "$@"; fi; }
+log "Seeding Asset Configuration inventory (KV Store) ..."
+for site in loc1 london berlin; do
+  seeded=0
+  for attempt in 1 2 3 4 5; do
+    if run_splunk "$(splunk_bin)" search \
+        "| inputlookup assets_seed | search site=${site} | eval _key=host | outputlookup dcloud_assets_${site}_lk append=true" \
+        -app infra_monitoring -auth "admin:${ADMIN_PW}" -maxout 0 >/dev/null 2>&1; then
+      seeded=1; break
+    fi
+    sleep 3
+  done
+  [ "${seeded}" -eq 1 ] && log "  asset inventory seeded: ${site}" || warn "  asset seed failed: ${site} (KV store not ready?)"
+done
+
+# ===========================================================================
+# 7. Data integrations   (placeholder - added in a later step)
 # ===========================================================================
 # HEC tokens / forwarder inputs for the Ubuntu + Proxmox senders.
 

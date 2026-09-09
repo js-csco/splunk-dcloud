@@ -315,6 +315,41 @@ sudo /opt/splunkforwarder/bin/splunk stop
 sudo /opt/splunkforwarder/bin/splunk start
 ```
 
+## Asset Configuration (asset inventory + enrichment)
+
+The **Infrastructure Monitoring** app has an **Asset Configuration** view — describe
+a host once (name, type, manufacturer, timezone, owner, description) and Splunk
+attaches that context to **every event** from it. It's the OOTB version of what
+Enterprise Security calls the Asset & Identity framework (lookups), and it maps to
+the "Asset Configuration" feature customers know from other tools.
+
+- **Storage:** KV Store, **one collection per location** — `dcloud_assets_loc1`,
+  `dcloud_assets_london`, `dcloud_assets_berlin` — seeded each session from the
+  committed `splunk/apps/infra_monitoring/lookups/assets_seed.csv` (config-as-code
+  source of truth; `apply.sh` upserts it into the KV Store by `host`).
+- **Enrichment:** automatic lookups on `host` add `asset_name`, `asset_type`,
+  `manufacturer`, `timezone`, `description`, `owner` to metrics, syslog, Cisco and
+  Proxmox events. Try: `index=* asset_type=router | stats count by manufacturer`.
+- **Edit in the UI:** the Add/Edit form upserts a record with a plain
+  `| … | outputlookup dcloud_assets_<site>_lk append=true` (core SPL, no add-on).
+  Enter an existing **Host** to edit that row.
+
+**RBAC — enforced per location (important):** KV Store lookups are *not*
+automatically covered by index RBAC, so the inventory is scoped **deliberately**.
+Each collection + lookup definition is read/write-gated per role in
+`metadata/default.meta`, matching the index wall:
+
+| Inventory | Readable/editable by |
+|---|---|
+| `dcloud_assets_loc1` | `role_global` (admin) |
+| `dcloud_assets_london` | `role_london`, `role_global` |
+| `dcloud_assets_berlin` | `role_berlin`, `role_global` |
+
+So **Ben sees/edits only Berlin**, Leo only London, Gary all — and it's genuinely
+enforced (even a raw `| inputlookup dcloud_assets_london_lk` is denied for Ben),
+not just hidden in the dashboard. Event *enrichment* follows the same wall for
+free, since users only ever see events from indexes they're allowed to read.
+
 ## Splunk MCP Server (Claude Desktop) — manual, for now
 
 Splunk ships a first-party **MCP Server** app ([Splunkbase app 7931](https://splunkbase.splunk.com/app/7931))
@@ -473,6 +508,7 @@ splunk/apps/dcloud_lab/
 - [x] Host & infra metrics: UF `collect_host_metrics.sh` + Proxmox metrics → `*_metrics` (event indexes, timechart) + Host Metrics dashboard
 - [x] UF distributed collection on ubuntu-london & ubuntu-berlin (`install-uf.sh <site>`), incl. `/var/log` file monitor
 - [x] Alerts: CPU/mem >70% threshold + "forwarder stopped sending" (email js-csco@proton.me + Triggered Alerts + Alerts dashboard)
+- [x] Asset Configuration: per-location KV Store inventory (RBAC-enforced) + automatic event enrichment + Add/Edit dashboard (Infrastructure Monitoring app)
 - [ ] **IT Service Intelligence (ITSI)** — premium, separately-licensed. Plan: (1) interim "Service Health" dashboard built from existing syslog + metrics (KPIs green/amber/red) to show the concept; (2) evaluate a scripted install of the ITSI package + a small service/KPI set (needs the package staged + a license).
 - [ ] Remaining senders: Windows server (London → `london_windows`)
 - [ ] SNMP via SC4SNMP; SOAP (parked)
