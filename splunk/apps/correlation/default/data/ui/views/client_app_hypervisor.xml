@@ -24,9 +24,9 @@
           whole picture — Leo sees just the Windows side, Ben just the Berlin side. Cross-domain
           correlation is a global-analyst capability.</li>
         </ul>
-        <p style="color:#8b98a5;">Note: if traffic is NAT'd between locations, the web-app may
-        record the gateway IP rather than the client's — in that case correlate by the
-        <b>timeline</b> rather than by exact <code>src_ip</code>.</p>
+        <p style="color:#8b98a5;">The four "locations" are subnets in one physical site (no
+        NAT), so the Windows client IP appears verbatim in the web-app access log — the
+        <code>src_ip</code> correlation below is exact.</p>
       </html>
     </panel>
   </row>

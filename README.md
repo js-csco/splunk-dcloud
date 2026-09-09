@@ -391,19 +391,14 @@ Then open **Correlation → Client → App → Hypervisor** (as **gary** — see
 sees the whole chain; Leo sees only the Windows side, Ben only the Berlin side —
 cross-domain correlation is a global-analyst capability.
 
-**Honest caveats:**
-- **Inter-location routing:** "open the app from Windows" needs London→Berlin
-  reachability (`198.18.2.x → 198.18.3.50:8080`) — the same path that's been flaky.
-  Verify it before the demo, or drive the app from ubuntu-berlin to prove the
-  Berlin half.
-- **Container internet:** the in-container UF downloads from splunk.com; if the LXC
-  has no outbound internet, set `SPLUNK_UF_URL` to a reachable mirror (or forward
-  the access log via rsyslog to the Berlin syslog port instead).
-- **NAT:** if traffic is NAT'd between locations the web-app may log the gateway IP,
-  not the client's — in that case correlate by the **timeline** panel, not exact IP.
-- **LXC creation** depends on Proxmox being reachable and a container template; the
-  script auto-detects storage/template/gateway but override with
-  `CT_STORAGE`/`CT_TEMPLATE`/`CT_GW`/`CT_BRIDGE` if needed.
+**Notes:**
+- The four "locations" are just four subnets in one physical site — no NAT, full
+  routing between them — so the Windows client IP appears verbatim in the web-app
+  access log and `src_ip` correlation is exact.
+- **Depends on Proxmox being deployed/reachable** (host `198.18.3.17`, SSH root):
+  the container is created there via `pct`. The create script auto-detects
+  storage/template/gateway; override with `CT_STORAGE`/`CT_TEMPLATE`/`CT_GW`/
+  `CT_BRIDGE` if the lab uses non-default names.
 
 ## Splunk MCP Server (Claude Desktop) — manual, for now
 
