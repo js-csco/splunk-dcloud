@@ -21,7 +21,7 @@ import subprocess
 import sys
 from urllib import request, parse
 
-HOST = os.environ.get("PROXMOX_HOST", "198.18.3.17")
+HOST = os.environ.get("PROXMOX_HOST", "198.18.3.11")
 PORT = os.environ.get("PROXMOX_PORT", "8006")
 USER = os.environ.get("PROXMOX_USER", "root@pam")
 PASSWORD = os.environ.get("PROXMOX_PASSWORD", "cisco")

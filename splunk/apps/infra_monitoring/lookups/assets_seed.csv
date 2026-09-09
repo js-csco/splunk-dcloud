@@ -4,5 +4,5 @@ london,ubuntu-london,198.18.2.22,Ubuntu London,ubuntu-london,server,Canonical,Eu
 london,london-cat8kv,198.18.2.32,Cisco Catalyst 8000v (London),london-cat8kv,router,Cisco,Europe/London,IOS-XE virtual router (London),Network Team
 london,windows-server-2022-london,198.18.2.10,Windows Server 2022 (London),windows-server-2022-london,server,Microsoft,Europe/London,Windows Server 2022 (London),London Team
 berlin,ubuntu-berlin,198.18.3.23,Ubuntu Berlin,ubuntu-berlin,server,Canonical,Europe/Berlin,Ubuntu 24.04 application server (Berlin),Berlin Team
-berlin,proxmox-berlin,198.18.3.17,Proxmox VE (Berlin),proxmox-berlin,hypervisor,Proxmox,Europe/Berlin,Proxmox virtualization host (Berlin),Berlin Team
+berlin,proxmox-berlin,198.18.3.11,Proxmox VE (Berlin),proxmox-berlin,hypervisor,Proxmox,Europe/Berlin,Proxmox virtualization host (Berlin),Berlin Team
 berlin,berlin-cat8kv,198.18.3.32,Cisco Catalyst 8000v (Berlin),berlin-cat8kv,router,Cisco,Europe/Berlin,IOS-XE virtual router (Berlin),Network Team

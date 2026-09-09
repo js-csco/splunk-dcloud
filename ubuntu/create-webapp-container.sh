@@ -15,7 +15,7 @@
 # ===========================================================================
 set -euo pipefail
 
-PROX="${PROXMOX_HOST:-198.18.3.17}"
+PROX="${PROXMOX_HOST:-198.18.3.11}"
 PPW="${PROXMOX_PW:-cisco}"
 VMID="${CT_VMID:-200}"
 CTNAME="${CT_HOSTNAME:-webapp-berlin}"
