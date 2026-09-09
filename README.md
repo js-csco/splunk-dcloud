@@ -99,8 +99,8 @@ whole location with a single wildcard.
 | London (loc2) | 198.18.2.0/24 | ubuntu-london, windows-server-2022-london | `london_linux`, `london_windows`, `london_network`, `london_metrics` | `role_london`, `role_global` |
 | Berlin (loc3) | 198.18.3.0/24 | proxmox-9.2-berlin, ubuntu-berlin | `berlin_linux`, `berlin_proxmox`, `berlin_network`, `berlin_metrics` | `role_berlin`, `role_global` |
 
-> The metric indexes (`*_metrics`) need no RBAC changes — roles grant a whole
-> location by wildcard (`london_*`, `berlin_*`, `loc1_*`), so they're covered
+> The `*_metrics` indexes need no RBAC changes — roles grant a whole location
+> by wildcard (`london_*`, `berlin_*`, `loc1_*`), so they're covered
 > automatically and the location wall still holds for metrics.
 
 > Location 1 is the Splunk server itself (infrastructure), so it has **no
@@ -237,12 +237,13 @@ marker event. Verify in Splunk: `index=london_linux host=ubuntu-london`, or open
 ## Host &amp; infrastructure metrics
 
 The **Host & Infra Metrics** app charts CPU / memory / disk / load for every
-machine, using Splunk **metric indexes** (`*_metrics`, `datatype=metric`) — much
-smaller and faster than logs, and the right tool for time-series numbers.
+machine.
 
-**How the numbers get in (log-to-metrics):** a small agent samples the OS every
-60s and emits one **JSON** line per sample; Splunk turns the numeric fields into
-metric data points at index time.
+**How the numbers get in:** a small agent samples the OS every 60s and emits one
+`key=value` line per sample. These land in per-location **event** indexes
+(`*_metrics`) and are charted with `timechart`; Splunk's automatic `key=value`
+extraction turns `cpu_pct=…`, `mem_used_pct=…`, etc. into fields with no extra
+config.
 
 | Source | Collector | → Index | Notes |
 |---|---|---|---|
@@ -251,16 +252,20 @@ metric data points at index time.
 | ubuntu-berlin | UF `TA-dcloud-host` | `berlin_metrics` | after `install-uf.sh berlin` |
 | Proxmox (Berlin) | UF `TA-dcloud-proxmox` (`poll_proxmox.py metrics`) | `berlin_metrics` | per-node & per-guest CPU/mem/disk |
 
-The conversion is standard Splunk
-[log-to-metrics](https://help.splunk.com/en/splunk-enterprise/get-data-in/metrics/9.4/convert-log-data-to-metrics/convert-event-logs-to-metric-data-points):
-the forwarder tags the JSON keys as indexed fields (`INDEXED_EXTRACTIONS = json`
-in each TA's `props.conf`) and the indexer's `metrics` app applies
-`METRIC-SCHEMA-TRANSFORMS` (numeric fields → measures like `cpu_pct`; strings
-like `site` → dimensions; `host` is always a dimension). Query with `mstats`:
+Query/verify (these are normal event indexes, so the raw samples are directly
+searchable):
 
 ```spl
-| mstats avg(cpu_pct) WHERE index=london_metrics OR index=berlin_metrics OR index=loc1_metrics BY host span=1m
+index=loc1_metrics OR index=london_metrics OR index=berlin_metrics sourcetype=linux:metrics | timechart span=1m avg(cpu_pct) by host
 ```
+
+> **Why event indexes, not metric indexes?** Metric indexes + ingest-time
+> log-to-metrics are elegant but fragile from a Universal Forwarder (a UF that
+> does structured extraction forwards pre-cooked events that bypass the
+> indexer's metric-schema transform, so the metric index silently drops them).
+> Event indexes + `timechart` are reliable across the self-rebuilding lab and,
+> crucially, **directly searchable** — `index=london_metrics` shows the raw
+> samples, so data arrival is trivial to confirm.
 
 **How we get metrics from Proxmox.** The Proxmox REST API already returns
 per-node and per-guest CPU / memory / disk (from `/cluster/resources`) — we
@@ -323,7 +328,7 @@ splunkd's context, so outbound calls work, unlike the search sandbox).
 | Method | How | Status |
 |---|---|---|
 | Syslog | rsyslog → per-location ports | ✅ live |
-| Metrics (host) | UF `collect_host_metrics.sh` → `*_metrics` (metric index) every 60s | ✅ live (loc1 always; london/berlin after `install-uf.sh`) |
+| Metrics (host) | UF `collect_host_metrics.sh` → `*_metrics` (key=value events, charted with timechart) every 60s | ✅ live (loc1 always; london/berlin after `install-uf.sh`) |
 | File monitor | UF tails `/var/log` → `*_linux` | ✅ live after `install-uf.sh` |
 | REST / API (Proxmox) | UF on ubuntu-berlin polls the local Proxmox API every 60s → `berlin_proxmox` (events) + `berlin_metrics` (metrics) | ✅ live after `install-uf.sh berlin` |
 | SSH (Cisco Catalyst) | scripted input SSHes in, runs show commands → `london_network`/`berlin_network` | ✅ live (London 198.18.2.32, Berlin 198.18.3.32) |
@@ -430,7 +435,7 @@ splunk/apps/dcloud_lab/
 - [x] Dashboards: Lab Info, Setup Status, Ingestion & Health
 - [x] Data onboarding: rsyslog from Ubuntu boxes + Splunk host self-forward (loc1)
 - [x] Get Data In app: Proxmox REST, Cisco SSH (self-diagnosing), + methods overview
-- [x] Host & infra metrics: UF `collect_host_metrics.sh` + Proxmox metrics → `*_metrics` (metric indexes) + Host Metrics dashboard
+- [x] Host & infra metrics: UF `collect_host_metrics.sh` + Proxmox metrics → `*_metrics` (event indexes, timechart) + Host Metrics dashboard
 - [x] UF distributed collection on ubuntu-london & ubuntu-berlin (`install-uf.sh <site>`), incl. `/var/log` file monitor
 - [ ] **IT Service Intelligence (ITSI)** — premium, separately-licensed. Plan: (1) interim "Service Health" dashboard built from existing syslog + metrics (KPIs green/amber/red) to show the concept; (2) evaluate a scripted install of the ITSI package + a small service/KPI set (needs the package staged + a license).
 - [ ] Remaining senders: Windows server (London → `london_windows`)

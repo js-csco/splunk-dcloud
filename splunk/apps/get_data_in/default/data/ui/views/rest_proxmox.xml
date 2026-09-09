@@ -142,10 +142,10 @@ curl -fsSL https://raw.githubusercontent.com/js-csco/splunk-dcloud/main/ubuntu/p
 
   <row>
     <panel>
-      <title>Proxmox CPU % over time (metric — per guest)</title>
+      <title>Proxmox CPU % over time (per guest)</title>
       <chart>
         <search>
-          <query>| mstats avg(cpu_pct) as cpu WHERE index=berlin_metrics AND otype=guest span=1m BY oname | timechart span=1m avg(cpu) as "CPU %" by oname</query>
+          <query>index=berlin_metrics sourcetype=proxmox:metrics otype=guest | timechart span=1m avg(cpu_pct) as "CPU %" by oname</query>
           <earliest>-4h</earliest><latest>now</latest>
         </search>
         <option name="charting.chart">line</option>
@@ -155,10 +155,11 @@ curl -fsSL https://raw.githubusercontent.com/js-csco/splunk-dcloud/main/ubuntu/p
       </chart>
     </panel>
     <panel>
-      <title>Proxmox memory used % (metric — latest, per object)</title>
+      <title>Proxmox resource usage (latest, per object)</title>
       <table>
         <search>
-          <query>| mstats latest(cpu_pct) as "CPU %" latest(mem_used_pct) as "Mem %" latest(mem_used_mb) as "Mem MB" latest(running) as Running WHERE index=berlin_metrics BY otype, oname, vmid
+          <query>index=berlin_metrics sourcetype=proxmox:metrics
+| stats latest(cpu_pct) as "CPU %" latest(mem_used_pct) as "Mem %" latest(mem_used_mb) as "Mem MB" latest(running) as Running by otype, oname, vmid
 | rename otype as Type, oname as Name, vmid as VMID
 | eval Running=if(Running==1,"running","stopped")
 | table Type Name VMID "CPU %" "Mem %" "Mem MB" Running
@@ -177,11 +178,11 @@ curl -fsSL https://raw.githubusercontent.com/js-csco/splunk-dcloud/main/ubuntu/p
   <row>
     <panel>
       <html>
-        <p style="color:#8b98a5;">The panels above are <b>metrics</b> (index
-        <code>berlin_metrics</code>, sourcetype <code>proxmox:metrics</code>), queried with
-        <code>| mstats</code>. They come from the same Proxmox API poll as the JSON events
-        above — the poller just also emits per-node/per-guest CPU/mem/disk as metric data
-        points. Host metrics for all machines are on the <b>Host Metrics</b> app.</p>
+        <p style="color:#8b98a5;">The panels above use index <code>berlin_metrics</code>,
+        sourcetype <code>proxmox:metrics</code>. They come from the same Proxmox API poll as
+        the JSON events above — the poller just also emits per-node/per-guest CPU/mem/disk as
+        <code>key=value</code> samples. Host metrics for all machines are on the
+        <b>Host &amp; Infra Metrics</b> app.</p>
       </html>
     </panel>
   </row>

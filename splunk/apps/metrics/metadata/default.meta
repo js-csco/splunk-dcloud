@@ -10,10 +10,7 @@ export = system
 [nav]
 export = system
 
-# Make the metric sourcetype parsing/schema global so it applies to data no
-# matter which app/context indexes it.
+# Make the metric sourcetype parsing global so it applies to data no matter
+# which app/context indexes it.
 [props]
-export = system
-
-[transforms]
 export = system

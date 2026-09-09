@@ -1,6 +1,6 @@
 <form version="1.1" theme="dark">
   <label>Host Metrics — Ubuntu &amp; Splunk servers</label>
-  <description>CPU, memory, disk and load from the Universal Forwarders (metric indexes).</description>
+  <description>CPU, memory, disk and load from the Universal Forwarders.</description>
 
   <fieldset submitButton="false" autoRun="true">
     <input type="time" token="tr">
@@ -16,19 +16,17 @@
     <panel>
       <html>
         <h2>Host metrics via the Universal Forwarder</h2>
-        <p><b>New to Splunk?</b> These charts are <b>metrics</b>, not log events. A small
-        agent (the <b>Universal Forwarder</b>) on each machine samples the OS every
-        <b>60&#160;seconds</b> — CPU, memory, disk, load — and ships the numbers to Splunk.
-        They land in dedicated <b>metric indexes</b> (much smaller/faster than logs), one per
-        location, so RBAC still holds: <b>Leo</b> sees London, <b>Ben</b> sees Berlin,
-        <b>Gary</b> sees everything.</p>
+        <p><b>New to Splunk?</b> A small agent (the <b>Universal Forwarder</b>) on each
+        machine samples the OS every <b>60&#160;seconds</b> — CPU, memory, disk, load — and
+        ships one line to Splunk. Each location has its own index, so RBAC still holds:
+        <b>Leo</b> sees London, <b>Ben</b> sees Berlin, <b>Gary</b> sees everything.</p>
         <ul>
           <li><b>loc1</b> = the Splunk server itself (collects its own metrics locally — always on).</li>
           <li><b>london</b> = ubuntu-london (UF), <b>berlin</b> = ubuntu-berlin (UF).</li>
         </ul>
-        <p style="color:#8b98a5;">We query metrics with <code>| mstats</code> (the metrics
-        equivalent of <code>stats</code>) — e.g.
-        <code>| mstats avg(cpu_pct) WHERE index=london_metrics BY host span=1m</code>.</p>
+        <p style="color:#8b98a5;">Each sample is a <code>key=value</code> event; the numbers
+        (<code>cpu_pct</code>, <code>mem_used_pct</code>, …) are extracted automatically and
+        charted with <code>timechart</code>.</p>
       </html>
     </panel>
   </row>
@@ -38,7 +36,7 @@
       <title>Hosts reporting</title>
       <single>
         <search>
-          <query>| mstats latest(cpu_pct) as v WHERE index=london_metrics OR index=berlin_metrics OR index=loc1_metrics BY host | stats dc(host) as hosts</query>
+          <query>index=loc1_metrics OR index=london_metrics OR index=berlin_metrics sourcetype=linux:metrics | stats dc(host) as hosts</query>
           <earliest>$tr.earliest$</earliest>
           <latest>$tr.latest$</latest>
         </search>
@@ -49,8 +47,9 @@
       <title>Current status by host (latest sample)</title>
       <table>
         <search>
-          <query>| mstats latest(cpu_pct) as "CPU %" latest(mem_used_pct) as "Mem %" latest(disk_used_pct) as "Disk %" latest(load1) as "Load (1m)" latest(mem_used_mb) as "Mem MB" latest(disk_free_gb) as "Free GB" WHERE index=london_metrics OR index=berlin_metrics OR index=loc1_metrics BY host, site
-| rename host as Host, site as Site
+          <query>index=loc1_metrics OR index=london_metrics OR index=berlin_metrics sourcetype=linux:metrics
+| stats latest(cpu_pct) as "CPU %" latest(mem_used_pct) as "Mem %" latest(disk_used_pct) as "Disk %" latest(load1) as "Load (1m)" latest(mem_used_mb) as "Mem MB" latest(disk_free_gb) as "Free GB" latest(site) as Site by host
+| rename host as Host
 | table Host Site "CPU %" "Mem %" "Disk %" "Load (1m)" "Mem MB" "Free GB"
 | sort Site Host</query>
           <earliest>$tr.earliest$</earliest>
@@ -78,7 +77,7 @@
       <title>CPU % over time (by host)</title>
       <chart>
         <search>
-          <query>| mstats avg(cpu_pct) as cpu WHERE index=london_metrics OR index=berlin_metrics OR index=loc1_metrics span=1m BY host | timechart span=1m avg(cpu) as "CPU %" by host</query>
+          <query>index=loc1_metrics OR index=london_metrics OR index=berlin_metrics sourcetype=linux:metrics | timechart span=1m avg(cpu_pct) as "CPU %" by host</query>
           <earliest>$tr.earliest$</earliest>
           <latest>$tr.latest$</latest>
         </search>
@@ -93,7 +92,7 @@
       <title>Memory used % over time (by host)</title>
       <chart>
         <search>
-          <query>| mstats avg(mem_used_pct) as mem WHERE index=london_metrics OR index=berlin_metrics OR index=loc1_metrics span=1m BY host | timechart span=1m avg(mem) as "Mem %" by host</query>
+          <query>index=loc1_metrics OR index=london_metrics OR index=berlin_metrics sourcetype=linux:metrics | timechart span=1m avg(mem_used_pct) as "Mem %" by host</query>
           <earliest>$tr.earliest$</earliest>
           <latest>$tr.latest$</latest>
         </search>
@@ -111,7 +110,7 @@
       <title>Disk used % (root filesystem, by host)</title>
       <chart>
         <search>
-          <query>| mstats avg(disk_used_pct) as disk WHERE index=london_metrics OR index=berlin_metrics OR index=loc1_metrics span=1m BY host | timechart span=1m avg(disk) as "Disk %" by host</query>
+          <query>index=loc1_metrics OR index=london_metrics OR index=berlin_metrics sourcetype=linux:metrics | timechart span=1m avg(disk_used_pct) as "Disk %" by host</query>
           <earliest>$tr.earliest$</earliest>
           <latest>$tr.latest$</latest>
         </search>
@@ -126,7 +125,7 @@
       <title>Load average (1m, by host)</title>
       <chart>
         <search>
-          <query>| mstats avg(load1) as load WHERE index=london_metrics OR index=berlin_metrics OR index=loc1_metrics span=1m BY host | timechart span=1m avg(load) as "Load (1m)" by host</query>
+          <query>index=loc1_metrics OR index=london_metrics OR index=berlin_metrics sourcetype=linux:metrics | timechart span=1m avg(load1) as "Load (1m)" by host</query>
           <earliest>$tr.earliest$</earliest>
           <latest>$tr.latest$</latest>
         </search>
@@ -150,10 +149,10 @@ curl -fsSL https://raw.githubusercontent.com/js-csco/splunk-dcloud/main/ubuntu/i
 
 # on ubuntu-berlin (also polls the local Proxmox API)
 curl -fsSL https://raw.githubusercontent.com/js-csco/splunk-dcloud/main/ubuntu/install-uf.sh | sudo bash -s -- berlin</pre>
-        <p style="color:#8b98a5;">Check the raw metric points arriving:
-        <code>| mstats avg(cpu_pct) WHERE index=loc1_metrics OR index=london_metrics OR index=berlin_metrics BY host span=1m</code>.
-        If <b>loc1</b> is missing too, the metric index/schema isn't applied — re-run
-        <code>apply.sh</code> on the Splunk box.</p>
+        <p style="color:#8b98a5;">These are <b>event</b> indexes, so you can look at the raw
+        samples directly to confirm arrival:
+        <code>index=loc1_metrics OR index=london_metrics OR index=berlin_metrics sourcetype=linux:metrics | stats count by host</code>.
+        If <b>loc1</b> is missing too, re-run <code>apply.sh</code> on the Splunk box.</p>
       </html>
     </panel>
   </row>
