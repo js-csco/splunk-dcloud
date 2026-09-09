@@ -79,6 +79,33 @@ if ! cmp -s "${UP_TMP}" "${UP_DIR}/user-prefs.conf" 2>/dev/null; then
 fi
 rm -f "${UP_TMP}"
 
+# --- Splunkbase apps (MCP Server, etc.) -----------------------------------
+# Download + install at boot using splunk.com creds (nothing committed to the
+# repo). Runs BEFORE the start/restart below so the app loads. Default app id:
+# 7931 = Splunk MCP Server. Override with SPLUNKBASE_APP_IDS="7931 <id> ...".
+SB_APP_IDS="${SPLUNKBASE_APP_IDS:-7931}"
+if [ -z "${SPLUNKBASE_USERNAME:-}" ] && [ -r /dev/tty ]; then
+  printf 'Splunk.com username for Splunkbase downloads (MCP Server; blank to skip): ' > /dev/tty
+  IFS= read -r SPLUNKBASE_USERNAME < /dev/tty || true
+  if [ -n "${SPLUNKBASE_USERNAME}" ]; then
+    printf 'Splunk.com password: ' > /dev/tty
+    IFS= read -rs SPLUNKBASE_PASSWORD < /dev/tty || true
+    printf '\n' > /dev/tty
+  fi
+fi
+if [ -n "${SPLUNKBASE_USERNAME:-}" ] && [ -n "${SPLUNKBASE_PASSWORD:-}" ]; then
+  log "Installing Splunkbase app(s) [${SB_APP_IDS}] from splunk.com ..."
+  if python3 "${SCRIPT_DIR}/lib/splunkbase_install.py" \
+       "${SPLUNKBASE_USERNAME}" "${SPLUNKBASE_PASSWORD}" "${SPLUNK_HOME}/etc/apps" ${SB_APP_IDS}; then
+    chown -R "${SPLUNK_USER}:${SPLUNK_USER}" "${SPLUNK_HOME}/etc/apps" 2>/dev/null || true
+    CHANGED=1
+  else
+    warn "Splunkbase install failed - MCP Server not installed (creds/entitlement/network?)."
+  fi
+else
+  log "Splunkbase: no creds provided - skipping MCP Server install."
+fi
+
 # ===========================================================================
 # 2. Apply declarative config (start Splunk, or restart if config changed)
 # ===========================================================================

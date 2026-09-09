@@ -416,44 +416,49 @@ cross-domain correlation is a global-analyst capability.
   storage/template/gateway; override with `CT_STORAGE`/`CT_TEMPLATE`/`CT_GW`/
   `CT_BRIDGE` if the lab uses non-default names.
 
-## Splunk MCP Server (Claude Desktop) — manual, for now
+## Splunk MCP Server (Claude Desktop)
 
 Splunk ships a first-party **MCP Server** app ([Splunkbase app 7931](https://splunkbase.splunk.com/app/7931))
-that exposes an MCP endpoint on the management port: `https://<host>:8089/services/mcp`.
-It is **not** yet wired into `apply.sh` — the app is Splunkbase-only (authenticated
-download + license acceptance), so it can't be fetched unattended. Until we pick a
-sourcing method (vendor the `.tgz` in this repo, or download at boot with Splunkbase
-creds), install it by hand each session:
+that exposes an MCP endpoint on the management port (`https://<host>:8089/services/mcp`),
+so an MCP client like **Claude Desktop** can search Splunk in plain language.
 
-1. **Install the app** on the Splunk box: Splunk Web → *Apps → Manage Apps →
-   Install app from file*, upload the app 7931 `.tgz`, then restart Splunk.
-2. **Grant the MCP capabilities** to a role (e.g. add to `role_global`):
-   `mcp_tool_execute` (and `mcp_tool_admin` for full control).
-3. **Create a bearer token**: Splunk Web → *Settings → Tokens* (enable token auth
-   if prompted) → new token for the MCP user; copy it.
-4. **Point Claude Desktop at it** via the `mcp-remote` proxy
-   (`claude_desktop_config.json`):
+**Install is automated.** `apply.sh` downloads it from Splunkbase at boot via the
+authenticated download API — it **prompts for your splunk.com username/password**
+(nothing is committed to the repo). For unattended runs, pass them as env instead:
 
-   ```json
-   {
-     "mcpServers": {
-       "splunk": {
-         "command": "npx",
-         "args": ["-y", "mcp-remote",
-           "https://198.18.1.124:8089/services/mcp",
-           "--header", "Authorization: Bearer <YOUR_TOKEN>"]
-       }
-     }
-   }
-   ```
+```bash
+sudo SPLUNKBASE_USERNAME='you@example.com' SPLUNKBASE_PASSWORD='...' bash /opt/dcloud-splunk/apply.sh
+# install more Splunkbase apps too:  SPLUNKBASE_APP_IDS="7931 <id> ..."
+```
+Mechanics: `lib/splunkbase_install.py` logs in → finds the latest release → downloads
+→ extracts into `etc/apps/`; the restart in `apply.sh` loads it. (This same path can
+fetch **ITSI** if your account is entitled — add its app id to `SPLUNKBASE_APP_IDS` —
+but ITSI also needs a run-time license and is heavy; the interim "Service Health"
+dashboard is the lighter demo option.)
 
-> Caveat: app 7931 is certified for Splunk **8.0–10.2**; this box is **10.4.0**, so
-> confirm it loads before relying on it. For a self-signed cert you may need to allow
-> insecure TLS in the app's `mcp.conf` (`[mcp] ssl_verify = false`).
->
-> Because the VM resets each session, this is manual until automated. When ready,
-> the plan is: drop the `.tgz` in `splunk/vendor/`, and `apply.sh` extracts + enables
-> it, grants the capability, and prints this snippet.
+**Then, per session** (runtime state, so recreate each time): grant the app's MCP
+capability to your user/role (or just use `admin`), create a **bearer token**
+(*Settings → Tokens*), and point Claude Desktop at Splunk. The **Lab Overview → MCP
+Server & Claude Desktop** dashboard walks through it and shows whether the app loaded;
+the `claude_desktop_config.json` snippet:
+
+```json
+{
+  "mcpServers": {
+    "splunk": {
+      "command": "npx",
+      "args": ["-y", "mcp-remote",
+        "https://198.18.1.124:8089/services/mcp",
+        "--header", "Authorization: Bearer <YOUR_TOKEN>"]
+    }
+  }
+}
+```
+
+> Caveats: app 7931 is certified for Splunk **8.0–10.2** (this box is **10.4.0** — the
+> dashboard's status panel confirms it loaded); for the self-signed cert you may need
+> `[mcp] ssl_verify = false` in the app's `mcp.conf`, and Claude Desktop must reach
+> `198.18.1.124:8089`.
 
 ## Get Data In (ingestion methods)
 
@@ -592,6 +597,8 @@ splunk/apps/dcloud_lab/
 - [x] Save to GitHub: branch-per-save via KV queue + splunkd-context watcher (works around the search sandbox); apply.sh prompts for the token
 - [x] Get Data In: "Indexes and Sourcetypes" explorer (tstats, RBAC-aware, click-to-search)
 - [x] Data model (DCloudLab) + Pivot: point-and-click analytics over the lab data (Host Metrics / Web Requests / Network + asset fields), RBAC-aware, with a Pivot explainer dashboard
+- [x] Splunk MCP Server: auto-installed from Splunkbase at boot (`apply.sh` prompts for splunk.com creds) + "MCP Server & Claude Desktop" how-to dashboard
+- [ ] Real ITSI (premium): installable via the same Splunkbase path (`SPLUNKBASE_APP_IDS`) if entitled + licensed; heavy on a reset-each-session VM — interim "Service Health" dashboard preferred for demos
 - [ ] **IT Service Intelligence (ITSI)** — premium, separately-licensed. Plan: (1) interim "Service Health" dashboard built from existing syslog + metrics (KPIs green/amber/red) to show the concept; (2) evaluate a scripted install of the ITSI package + a small service/KPI set (needs the package staged + a license).
 - [ ] Remaining senders: Windows server (London → `london_windows`)
 - [ ] SNMP via SC4SNMP; SOAP (parked)

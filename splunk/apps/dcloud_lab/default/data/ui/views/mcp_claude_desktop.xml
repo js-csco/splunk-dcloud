@@ -1,0 +1,104 @@
+<dashboard version="1.1" theme="dark">
+  <label>MCP Server &amp; Claude Desktop</label>
+  <description>Connect Claude Desktop to this Splunk via the Splunk MCP Server — what to install and how to use it.</description>
+
+  <row>
+    <panel>
+      <html>
+        <h2>Talk to Splunk from Claude Desktop (MCP)</h2>
+        <p>The <b>Splunk MCP Server</b> app exposes Splunk to any MCP client (like
+        <b>Claude Desktop</b>) over the management port. Once connected, you can ask Claude
+        in plain language — "search errors in <code>berlin_linux</code> in the last hour",
+        "list my indexes" — and it runs the search in Splunk and returns the results.</p>
+        <p style="color:#8b98a5;"><b>MCP</b> (Model Context Protocol) is a standard way to give
+        an AI assistant tools. The Splunk app is the "server"; Claude Desktop is the "client".</p>
+      </html>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
+      <title>Status — is the MCP Server app installed?</title>
+      <table>
+        <search>
+          <query>| rest /services/apps/local | search title=* (title="*mcp*" OR label="*MCP*") | eval Status="installed" | table title label version Status</query>
+          <earliest>-1m</earliest><latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+      </table>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
+      <html>
+        <h3>Setup (one time per session)</h3>
+        <ol>
+          <li><b>Install the app</b> — done automatically by <code>apply.sh</code> when you
+          supply your splunk.com credentials at the startup prompt
+          (<i>"Splunk.com username for Splunkbase downloads"</i>). The table above should list
+          the MCP app. If not, re-run <code>apply.sh</code> and enter your creds.</li>
+
+          <li><b>Grant the MCP capability</b> to the user/role that will connect. The simplest
+          for a demo is to use <b>admin</b> (already has every capability). To use a lab user,
+          add the app's capability (e.g. <code>mcp_tool_execute</code>) to their role under
+          <b>Settings → Roles</b>.</li>
+
+          <li><b>Create an auth token</b> for that user: <b>Settings → Tokens</b> (enable token
+          authentication if prompted) → <b>New Token</b> → copy it. This is the bearer token
+          Claude Desktop will use.</li>
+
+          <li><b>Point Claude Desktop at Splunk.</b> Edit
+          <code>claude_desktop_config.json</code> (Claude Desktop → Settings → Developer → Edit
+          Config) and add the server via the <code>mcp-remote</code> proxy:</li>
+        </ol>
+        <pre style="white-space:pre-wrap;background:#11151a;padding:12px;border-radius:6px;color:#cdd9e5;">{
+  "mcpServers": {
+    "splunk": {
+      "command": "npx",
+      "args": [
+        "-y", "mcp-remote",
+        "https://198.18.1.124:8089/services/mcp",
+        "--header", "Authorization: Bearer &lt;YOUR_TOKEN&gt;"
+      ]
+    }
+  }
+}</pre>
+        <p>Save, fully quit and reopen Claude Desktop. The <b>splunk</b> tools then appear in
+        Claude Desktop (look for the tools/plug icon).</p>
+      </html>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
+      <title>Try it (ask Claude Desktop)</title>
+      <html>
+        <ul>
+          <li>"Using Splunk, list the indexes I can access."</li>
+          <li>"Search <code>index=berlin_linux</code> for errors in the last hour and summarize."</li>
+          <li>"What sourcetypes are in <code>london_metrics</code> and how many events?"</li>
+          <li>"Run <code>| tstats count by index, sourcetype</code> and show me a table."</li>
+        </ul>
+        <p style="color:#8b98a5;">Claude runs these as searches through the MCP server and
+        returns the results — RBAC still applies to whatever user's token you configured.</p>
+      </html>
+    </panel>
+    <panel>
+      <title>Caveats</title>
+      <html>
+        <ul>
+          <li><b>Version:</b> the MCP app is certified for Splunk 8.0–10.2; this lab is 10.4, so
+          confirm it loads (the status table above). If it won't load, that's the reason.</li>
+          <li><b>TLS:</b> the box uses a self-signed cert. If <code>mcp-remote</code> refuses it,
+          allow insecure TLS in the app's <code>mcp.conf</code> (<code>[mcp] ssl_verify = false</code>)
+          or trust the cert on the client.</li>
+          <li><b>Reachability:</b> Claude Desktop must be able to reach
+          <code>198.18.1.124:8089</code> (the management port).</li>
+          <li><b>Resets each session:</b> the token and any role/capability change are runtime
+          state — recreate them each session (the app install itself is automated).</li>
+        </ul>
+      </html>
+    </panel>
+  </row>
+</dashboard>
