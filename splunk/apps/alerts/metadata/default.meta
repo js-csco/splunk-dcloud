@@ -1,0 +1,15 @@
+# alerts - globally visible; scheduled alerts run app-wide.
+
+[]
+access = read : [ * ], write : [ admin, power ]
+export = system
+
+[views]
+export = system
+
+[nav]
+export = system
+
+# Share the scheduled alerts globally so they're visible/manageable everywhere.
+[savedsearches]
+export = system

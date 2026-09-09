@@ -140,7 +140,8 @@ whereas REST creation is immediate and reliable.
 
 Plus these apps:
 
-- **Host & Infra Metrics** → *Host Metrics* (CPU/mem/disk/load per machine, from the metric indexes — see "Host & infrastructure metrics" below).
+- **Host & Infra Metrics** → *Host Metrics* (CPU/mem/disk/load per machine — see "Host & infrastructure metrics" below).
+- **Alerts** → *Alerts — status & demo* (CPU/mem threshold + forwarder-health alerts — see "Alerts" below).
 - **Infrastructure Monitoring** → *Data Onboarding Overview* (what data is arriving, by host/index/sourcetype).
 - **Correlation** → *Correlation 2 Sources* and *Correlation 3 Sources*: pick the
   sources and a correlation key (service / user / host) and find the same entity
@@ -279,6 +280,39 @@ reach `198.18.3.170:8006`.)
 
 > **RBAC preserved:** metrics land in per-location indexes, so Leo sees London,
 > Ben sees Berlin, Gary sees all — same wall as the logs.
+
+## Alerts
+
+The **Alerts** app ships two scheduled alerts (config-as-code in
+`splunk/apps/alerts/default/savedsearches.conf`, rebuilt every session). Both run
+every 5 minutes, trigger on `>0` results, email **js-csco@proton.me**, and are
+tracked so they show under **Activity → Triggered Alerts** and on the *Alerts*
+dashboard.
+
+| Alert | Fires when | Search basis |
+|---|---|---|
+| **High CPU or Memory (>70%)** | any host's latest CPU% or mem% > 70% | `*_metrics` (`linux:metrics`) |
+| **Universal Forwarder stopped sending** | a host sent metrics before but nothing for >10 min | `tstats latest(_time) by host` over `*_metrics` |
+
+**Email delivery (important):** the alert *logic* fires with no setup, but
+sending mail needs an SMTP relay Splunk can reach. The dCloud lab has none by
+default and Proton Mail doesn't accept arbitrary SMTP, so **email won't leave the
+lab until you configure a relay** — either in `alerts/default/alert_actions.conf`
+(`[email] mailserver = host:port`) or via **Settings → Server settings → Email
+settings**. The alert still fires and is visible in Splunk regardless.
+
+**Trigger them for a demo** (the *Alerts* dashboard panels refresh every 30s, so
+you can watch a row go red before the scheduled run; or open the saved search and
+click **Run** to fire immediately):
+
+```bash
+# CPU > 70% on an Ubuntu box (or the Splunk box, for site loc1) — 4 min, self-stops
+timeout 240 bash -c 'for i in $(seq $(nproc)); do yes >/dev/null & done; wait'
+
+# Universal Forwarder stopped sending — stop the UF, then restart to clear
+sudo /opt/splunkforwarder/bin/splunk stop
+sudo /opt/splunkforwarder/bin/splunk start
+```
 
 ## Splunk MCP Server (Claude Desktop) — manual, for now
 
@@ -437,6 +471,7 @@ splunk/apps/dcloud_lab/
 - [x] Get Data In app: Proxmox REST, Cisco SSH (self-diagnosing), + methods overview
 - [x] Host & infra metrics: UF `collect_host_metrics.sh` + Proxmox metrics → `*_metrics` (event indexes, timechart) + Host Metrics dashboard
 - [x] UF distributed collection on ubuntu-london & ubuntu-berlin (`install-uf.sh <site>`), incl. `/var/log` file monitor
+- [x] Alerts: CPU/mem >70% threshold + "forwarder stopped sending" (email js-csco@proton.me + Triggered Alerts + Alerts dashboard)
 - [ ] **IT Service Intelligence (ITSI)** — premium, separately-licensed. Plan: (1) interim "Service Health" dashboard built from existing syslog + metrics (KPIs green/amber/red) to show the concept; (2) evaluate a scripted install of the ITSI package + a small service/KPI set (needs the package staged + a license).
 - [ ] Remaining senders: Windows server (London → `london_windows`)
 - [ ] SNMP via SC4SNMP; SOAP (parked)

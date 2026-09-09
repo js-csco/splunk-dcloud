@@ -1,0 +1,126 @@
+<dashboard version="1.1" theme="dark">
+  <label>Alerts — status &amp; demo</label>
+  <description>Live alert conditions, recently fired alerts, and how to trigger them.</description>
+
+  <row>
+    <panel>
+      <html>
+        <h2>Alerts in this lab</h2>
+        <p>Two scheduled alerts run every <b>5 minutes</b> and email
+        <b>js-csco@proton.me</b>. They also appear under
+        <b>Activity &#8594; Triggered Alerts</b> and below — so the demo works even if
+        outbound email isn't configured in the lab.</p>
+        <ul>
+          <li><b>High CPU or Memory (&gt;70%)</b> — any host whose latest CPU% or memory% is above 70%.</li>
+          <li><b>Universal Forwarder stopped sending</b> — a host that was sending metrics goes quiet for &gt;10 min.</li>
+        </ul>
+        <p style="color:#f2b827;"><b>Email note:</b> the alert fires regardless, but delivery
+        needs an SMTP relay Splunk can reach (Settings &#8594; Server settings &#8594; Email
+        settings). See the repo README "Alerts" section.</p>
+      </html>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
+      <title>Live — CPU/Memory by site (red = would trigger the &gt;70% alert)</title>
+      <table>
+        <search>
+          <query>index=loc1_metrics OR index=london_metrics OR index=berlin_metrics sourcetype=linux:metrics
+| stats latest(cpu_pct) as "CPU %" latest(mem_used_pct) as "Mem %" latest(host) as Host by site
+| rename site as Site
+| eval Status=if('CPU %'>70 OR 'Mem %'>70,"● OVER 70%","ok")
+| table Site Host "CPU %" "Mem %" Status
+| sort Site</query>
+          <earliest>-10m</earliest>
+          <latest>now</latest>
+          <refresh>30s</refresh>
+          <refreshType>delay</refreshType>
+        </search>
+        <option name="drilldown">none</option>
+        <format type="color" field="CPU %">
+          <colorPalette type="minMidMax" maxColor="#d93f3c" midColor="#f2b827" minColor="#53a051"></colorPalette>
+          <scale type="minMidMax" minValue="0" midValue="70" maxValue="100"></scale>
+        </format>
+        <format type="color" field="Mem %">
+          <colorPalette type="minMidMax" maxColor="#d93f3c" midColor="#f2b827" minColor="#53a051"></colorPalette>
+          <scale type="minMidMax" minValue="0" midValue="70" maxValue="100"></scale>
+        </format>
+        <format type="color" field="Status">
+          <colorPalette type="map">{"● OVER 70%":#d93f3c,"ok":#53a051}</colorPalette>
+        </format>
+      </table>
+    </panel>
+    <panel>
+      <title>Live — forwarder freshness (red = would trigger the "stopped sending" alert)</title>
+      <table>
+        <search>
+          <query>| tstats latest(_time) as last WHERE index=loc1_metrics OR index=london_metrics OR index=berlin_metrics by host
+| eval "Mins since last"=round((now()-last)/60,1), Status=if('Mins since last'>10,"● STALE (>10m)","ok"), "Last seen"=strftime(last,"%F %T")
+| rename host as Host
+| table Host "Last seen" "Mins since last" Status
+| sort - "Mins since last"</query>
+          <earliest>-24h</earliest>
+          <latest>now</latest>
+          <refresh>30s</refresh>
+          <refreshType>delay</refreshType>
+        </search>
+        <option name="drilldown">none</option>
+        <format type="color" field="Status">
+          <colorPalette type="map">{"● STALE (>10m)":#d93f3c,"ok":#53a051}</colorPalette>
+        </format>
+      </table>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
+      <title>Recently triggered alerts (last 24h)</title>
+      <table>
+        <search>
+          <query>index=_audit action=alert_fired earliest=-24h
+| rename ss_name as Alert, severity as Severity
+| table _time Alert Severity
+| sort - _time</query>
+          <earliest>-24h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="count">20</option>
+      </table>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
+      <title>How to trigger these (for the demo)</title>
+      <html>
+        <p><b>The dashboard panels above update every 30s</b>, so you can watch a row turn red
+        before the 5-minute scheduled alert even runs. To fire the actual alert (and email)
+        immediately, open the saved search in <b>Search &amp; Reporting &#8594; Alerts</b> and click
+        <b>Run</b>.</p>
+
+        <h3>1) Spike CPU &gt; 70%</h3>
+        <p>On any Ubuntu box (<code>ubuntu-london</code> / <code>ubuntu-berlin</code>) — pins every
+        core for 4 minutes, then stops on its own:</p>
+        <pre style="white-space:pre-wrap;background:#11151a;padding:12px;border-radius:6px;color:#cdd9e5;">timeout 240 bash -c 'for i in $(seq $(nproc)); do yes &gt;/dev/null &amp; done; wait'</pre>
+        <p>To spike the <b>Splunk host</b> (site <code>loc1</code>) instead, run the same command
+        on the Splunk box. (A heavy <code>index=*</code> search also raises Splunk CPU, but the
+        <code>yes</code> loop is the reliable way to cross 70%.)</p>
+
+        <h3>Spike Memory &gt; 70% (optional)</h3>
+        <pre style="white-space:pre-wrap;background:#11151a;padding:12px;border-radius:6px;color:#cdd9e5;"># if stress-ng is available:
+timeout 240 stress-ng --vm 1 --vm-bytes 80% --vm-keep
+# otherwise (allocates ~1.5 GB for 4 min):
+timeout 240 bash -c 'a=$(head -c 1500000000 /dev/zero | tr "\0" "x"); echo held; sleep 240'</pre>
+
+        <h3>2) Universal Forwarder stopped sending</h3>
+        <p>On an Ubuntu box, stop the UF; the "stopped sending" alert fires after ~10 min, and the
+        freshness panel above turns red sooner:</p>
+        <pre style="white-space:pre-wrap;background:#11151a;padding:12px;border-radius:6px;color:#cdd9e5;">sudo /opt/splunkforwarder/bin/splunk stop
+# ... demo the alert, then bring it back:
+sudo /opt/splunkforwarder/bin/splunk start</pre>
+      </html>
+    </panel>
+  </row>
+</dashboard>
