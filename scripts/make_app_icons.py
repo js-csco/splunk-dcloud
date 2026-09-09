@@ -41,8 +41,9 @@ def hex_rgb(h):
 
 
 def png_bytes(w, h, pixels):
+    # pixels: RGBA bytes (4 per pixel), colortype 6.
     raw = bytearray()
-    stride = w * 3
+    stride = w * 4
     for y in range(h):
         raw.append(0)  # filter type 0
         raw.extend(pixels[y * stride:(y + 1) * stride])
@@ -53,13 +54,13 @@ def png_bytes(w, h, pixels):
                 struct.pack(">I", zlib.crc32(typ + data) & 0xffffffff))
 
     return (b"\x89PNG\r\n\x1a\n" +
-            chunk(b"IHDR", struct.pack(">IIBBBBB", w, h, 8, 2, 0, 0, 0)) +
+            chunk(b"IHDR", struct.pack(">IIBBBBB", w, h, 8, 6, 0, 0, 0)) +
             chunk(b"IDAT", comp) + chunk(b"IEND", b""))
 
 
 def render(size, hexcolor, letter):
-    bg = hex_rgb(hexcolor)
-    fg = (255, 255, 255)
+    bg = hex_rgb(hexcolor) + (255,)
+    fg = (255, 255, 255, 255)
     px = bytearray()
     for _ in range(size * size):
         px.extend(bg)
@@ -73,8 +74,8 @@ def render(size, hexcolor, letter):
                 for dy in range(scale):
                     for dx in range(scale):
                         x, y = ox + gx * scale + dx, oy + gy * scale + dy
-                        i = (y * size + x) * 3
-                        px[i:i + 3] = bytes(fg)
+                        i = (y * size + x) * 4
+                        px[i:i + 4] = bytes(fg)
     return png_bytes(size, size, px)
 
 

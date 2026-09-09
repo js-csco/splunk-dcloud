@@ -209,7 +209,23 @@ for site in loc1 london berlin; do
 done
 
 # ===========================================================================
-# 7. Data integrations   (placeholder - added in a later step)
+# 7. Default landing: all users open the Lab Overview app (-> Lab Info) on login
+# ===========================================================================
+# Written directly (not via app sync, which uses --delete and would clobber the
+# system user-prefs app). [general_default] is the org-wide default for users who
+# haven't chosen their own; the app's default view is lab_info.
+UP_DIR="${SPLUNK_HOME}/etc/apps/user-prefs/local"
+mkdir -p "${UP_DIR}"
+cat > "${UP_DIR}/user-prefs.conf" <<'UPEOF'
+# Managed by splunk-dcloud/apply.sh - default app for all users on login.
+[general_default]
+default_namespace = dcloud_lab
+UPEOF
+chown -R "${SPLUNK_USER}:${SPLUNK_USER}" "${SPLUNK_HOME}/etc/apps/user-prefs" 2>/dev/null || true
+log "Default landing set to dcloud_lab (Lab Overview -> Lab Info) for all users."
+
+# ===========================================================================
+# 8. Data integrations   (placeholder - added in a later step)
 # ===========================================================================
 # HEC tokens / forwarder inputs for the Ubuntu + Proxmox senders.
 
