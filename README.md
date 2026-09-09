@@ -136,7 +136,7 @@ whereas REST creation is immediate and reliable.
 | **Lab Info** (landing page) | What the lab is, the topology diagram, repo link, Splunk version, and the deploy command. |
 | **Setup Status** | Post-deploy verification — green/red checklist confirming indexes, roles, users, and the app all loaded before the demo starts. |
 | **Ingestion & Health** | Event volume per location index and Splunk health. |
-| **Save to GitHub** (admin-only) | A button that commits the current lab state (including dashboards made this session) to the `lab-snapshot` branch. See below. |
+| **Save to GitHub** (admin-only) | Type a branch name and Submit to commit the current lab state (including dashboards made this session) to a new branch for review/merge. See below. |
 
 Plus these apps:
 
@@ -161,9 +161,20 @@ and users (alice, bob, …); correlate by **service** or **user** afterwards.
 
 The lab wipes each session, so anything a customer builds live (e.g. a new
 dashboard) is lost unless it's pushed back to the repo. The **Save to GitHub**
-dashboard does exactly that: it commits the running `dcloud_lab` app (including
-the customer's `local/` changes) to the **`lab-snapshot`** branch. You then
-review and merge it into `main`, and the next session includes it.
+dashboard does exactly that: you type a **branch name** (e.g. `added-dashboard`)
+and click Submit; it commits the running lab apps (including `local/` changes) to
+a **new branch off `main`**. You then review and merge that branch into `main`,
+and the next session pulls `main` and includes it.
+
+**How it works (why it now works).** A dashboard button runs in Splunk's search
+sandbox, which has **no outbound network**, so it can't `git push` directly (that
+was the old error). Instead the dashboard **enqueues** the request to a KV Store
+(`git_save_requests`) — a local write — and a **scripted-input watcher**
+(`bin/git_push_watcher.py`, runs every 30s in splunkd context, where network
+works) drains the queue and runs `bin/labsync.sh <branch> <message>` to create
+and push the branch. Status shows on the dashboard within ~30s. Branch names are
+slugified; if the name already exists a timestamp is appended (nothing is
+overwritten).
 
 **Setup — provide a GitHub token at session start.** Pushing needs write
 access, so create a **fine-grained PAT** with **Contents: Read and write** on
@@ -185,17 +196,18 @@ sudo chmod 600 /opt/splunk/var/lib/dcloud/gh.token
 sudo chown splunk:splunk /opt/splunk/var/lib/dcloud/gh.token
 ```
 
-**Test the snapshot logic standalone** (no dashboard needed):
+**Test the push logic standalone** (no dashboard needed — takes a branch name):
 
 ```bash
-sudo -u splunk env SPLUNK_HOME=/opt/splunk bash /opt/splunk/etc/apps/dcloud_lab/bin/labsync.sh
-# -> {"status":"ok","message":"Saved N file(s) to lab-snapshot ...","commit":"...","branch":"lab-snapshot"}
+sudo -u splunk env SPLUNK_HOME=/opt/splunk bash \
+  /opt/splunk/etc/apps/dcloud_lab/bin/labsync.sh added-dashboard "added a dashboard"
+# -> {"status":"ok","message":"Saved N file(s) to branch added-dashboard ...","commit":"...","branch":"added-dashboard"}
 ```
 
 > Security: the token grants write access to the repo and lives on the box for
-> the session; anyone who can click the button triggers a push. The dashboard
-> is restricted to `admin`. It pushes only to `lab-snapshot`, never directly to
-> `main`.
+> the session; anyone who can use the dashboard triggers a push. The dashboard
+> and the request queue are restricted to `admin`. It only ever pushes to a **new
+> branch**, never directly to `main`.
 
 ## Sending data in (Ubuntu → Splunk)
 
@@ -527,13 +539,15 @@ splunk/apps/dcloud_lab/
     app.conf                  # app manifest (display name: "Lab Overview")
     indexes.conf              # per-location indexes
     data/ui/nav/default.xml   # app navigation
-    commands.conf             # registers the labsync search command
+    collections.conf          # KV Store: Save-to-GitHub request queue
+    transforms.conf           # KV Store lookup for the queue
+    inputs.conf               # git-push watcher scripted input
     data/ui/views/lab_info.xml       # landing page
     data/ui/views/setup.xml          # setup verification
     data/ui/views/lab_overview.xml   # ingestion & health
-    data/ui/views/save_to_github.xml # admin button -> push to lab-snapshot
-  bin/labsync.sh              # git snapshot + push (runnable standalone)
-  bin/labsync.py             # search-command wrapper for labsync.sh
+    data/ui/views/save_to_github.xml # admin: enqueue a save -> push a named branch
+  bin/labsync.sh              # git branch + snapshot + push (runnable standalone)
+  bin/git_push_watcher.py     # scripted input: drains the queue -> labsync.sh
   appserver/static/topology.svg      # topology diagram (used by Lab Info + this README)
   metadata/default.meta       # sharing/permissions
 ```

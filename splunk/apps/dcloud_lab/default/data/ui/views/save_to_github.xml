@@ -1,27 +1,57 @@
-<form theme="dark">
+<form version="1.1" theme="dark">
   <label>Save to GitHub</label>
-  <description>Commit the current lab configuration (including dashboards created in this session) to the lab-snapshot branch on GitHub.</description>
+  <description>Commit the current lab configuration (including dashboards created this session) to a NEW branch on GitHub, for you to review and merge into main.</description>
 
   <fieldset submitButton="true" autoRun="false">
-    <input type="dropdown" token="confirm">
-      <label>Save current lab changes to GitHub?</label>
-      <choice value="go">Yes — commit &amp; push to the lab-snapshot branch</choice>
-      <default></default>
+    <input type="text" token="branch">
+      <label>Branch name (e.g. added-dashboard)</label>
+      <default>added-dashboard</default>
+    </input>
+    <input type="text" token="message">
+      <label>Description (commit message)</label>
+      <default>Saved from the Splunk UI</default>
     </input>
   </fieldset>
 
   <row>
     <panel>
-      <title>Result</title>
-      <table depends="$confirm$">
+      <title>Save queued</title>
+      <table depends="$branch$">
         <search>
-          <query>| makeresults count=1 | eval trigger="$confirm$" | labsync | rename status as Status, message as Message, commit as Commit, branch as Branch | table Status Message Commit Branch</query>
+          <query>| makeresults
+| eval branch=if("$branch$"=="","lab-snapshot","$branch$")
+| eval _key=strftime(now(),"%Y%m%d-%H%M%S")."-".substr(md5(branch.tostring(now())),1,4)
+| eval message="$message$", status="pending", requested_by="admin", requested_at=strftime(now(),"%F %T"), updated_at=requested_at
+| outputlookup git_save_requests_lk append=true
+| eval Queued="Queued a save to branch '".branch."'. The pusher runs every ~30s - watch the status below."
+| table Queued branch _key</query>
           <earliest>-1m</earliest>
           <latest>now</latest>
         </search>
         <option name="drilldown">none</option>
+      </table>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
+      <title>Save requests &amp; status (refreshes every 15s)</title>
+      <table>
+        <search>
+          <query>| inputlookup git_save_requests_lk
+| sort - requested_at
+| eval commit=if(isnull(commit),"",commit), result=if(isnull(result),"",result)
+| rename requested_at as "Requested", branch as "Branch", status as "Status", result as "Result", commit as "Commit", requested_by as "By"
+| table "Requested" "Branch" "Status" "Result" "Commit" "By"
+| head 15</query>
+          <earliest>-24h</earliest>
+          <latest>now</latest>
+          <refresh>15s</refresh>
+          <refreshType>delay</refreshType>
+        </search>
+        <option name="drilldown">none</option>
         <format type="color" field="Status">
-          <colorPalette type="map">{"ok":#53a051,"nochange":#c8a21a,"error":#d93f3c}</colorPalette>
+          <colorPalette type="map">{"done":#53a051,"nochange":#c8a21a,"pending":#c8a21a,"running":#4a90d9,"error":#d93f3c}</colorPalette>
         </format>
       </table>
     </panel>
@@ -32,14 +62,20 @@
       <html>
         <h3>How this works</h3>
         <ul>
-          <li>Create or edit dashboards, etc. in the <b>Lab Overview</b> app as usual - Splunk saves them into the app.</li>
-          <li>Come here, choose <b>Yes</b>, and click <b>Submit</b>.</li>
-          <li>The current app state is committed and pushed to the <b>lab-snapshot</b> branch on
-              <a href="https://github.com/js-csco/splunk-dcloud/tree/lab-snapshot" target="_blank">GitHub</a>.</li>
-          <li>Review it there and merge into <b>main</b> when you are happy - the next session will include it.</li>
+          <li>Create or edit dashboards in the lab apps as usual — Splunk saves them into the app.</li>
+          <li>Come here, type a <b>branch name</b> (e.g. <code>added-dashboard</code>) and a short
+          description, then click <b>Submit</b>.</li>
+          <li>The request is queued; a background job (runs in splunkd, so it can reach GitHub —
+          the browser/search sandbox cannot) creates that branch off <b>main</b>, commits the current
+          lab apps, and pushes it. Status appears above within ~30s.</li>
+          <li>Open the branch on
+          <a href="https://github.com/js-csco/splunk-dcloud/branches" target="_blank">GitHub</a>,
+          review it, and merge into <b>main</b> — the next session pulls main and includes it.</li>
         </ul>
-        <p style="color:#8b98a5;">Admin-only. Requires a GitHub token to be configured on the box
-        (see the repo README, "Save to GitHub" section). If you see a "no token" error, the token was not provided at session start.</p>
+        <p style="color:#8b98a5;">Admin-only. Requires a GitHub token on the box (see the repo
+        README, "Save to GitHub"). If you see a <b>no token</b> error in the status, the token
+        wasn't provided at session start. Branch names are slugified; if the name already exists a
+        timestamp is appended so nothing is overwritten.</p>
       </html>
     </panel>
   </row>
