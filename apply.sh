@@ -55,6 +55,30 @@ for app_src in "${SCRIPT_DIR}"/splunk/apps/*/; do
   chown -R "${SPLUNK_USER}:${SPLUNK_USER}" "${SPLUNK_HOME}/etc/apps/${app_name}" 2>/dev/null || true
 done
 
+# --- default landing + home dashboard for ALL users -----------------------
+# Written BEFORE the start/restart below so Splunk reads it at (re)start.
+# [general_default] = org-wide defaults for users who haven't set their own.
+#   default_namespace           -> which app opens after login
+#   display.page.home.dashboardId -> the Home page's "Dashboard" tab
+# Written directly (not via app sync, which uses --delete and would clobber the
+# system user-prefs app). If the content changes, force a restart so it applies.
+UP_DIR="${SPLUNK_HOME}/etc/apps/user-prefs/local"
+mkdir -p "${UP_DIR}"
+UP_TMP="$(mktemp)"
+cat > "${UP_TMP}" <<'UPEOF'
+# Managed by splunk-dcloud/apply.sh - default app + home dashboard for all users.
+[general_default]
+default_namespace = dcloud_lab
+display.page.home.dashboardId = /servicesNS/nobody/dcloud_lab/data/ui/views/lab_info
+UPEOF
+if ! cmp -s "${UP_TMP}" "${UP_DIR}/user-prefs.conf" 2>/dev/null; then
+  cp "${UP_TMP}" "${UP_DIR}/user-prefs.conf"
+  chown -R "${SPLUNK_USER}:${SPLUNK_USER}" "${SPLUNK_HOME}/etc/apps/user-prefs" 2>/dev/null || true
+  CHANGED=1
+  log "Default landing + home dashboard set to Lab Info for all users."
+fi
+rm -f "${UP_TMP}"
+
 # ===========================================================================
 # 2. Apply declarative config (start Splunk, or restart if config changed)
 # ===========================================================================
@@ -209,23 +233,7 @@ for site in loc1 london berlin; do
 done
 
 # ===========================================================================
-# 7. Default landing: all users open the Lab Overview app (-> Lab Info) on login
-# ===========================================================================
-# Written directly (not via app sync, which uses --delete and would clobber the
-# system user-prefs app). [general_default] is the org-wide default for users who
-# haven't chosen their own; the app's default view is lab_info.
-UP_DIR="${SPLUNK_HOME}/etc/apps/user-prefs/local"
-mkdir -p "${UP_DIR}"
-cat > "${UP_DIR}/user-prefs.conf" <<'UPEOF'
-# Managed by splunk-dcloud/apply.sh - default app for all users on login.
-[general_default]
-default_namespace = dcloud_lab
-UPEOF
-chown -R "${SPLUNK_USER}:${SPLUNK_USER}" "${SPLUNK_HOME}/etc/apps/user-prefs" 2>/dev/null || true
-log "Default landing set to dcloud_lab (Lab Overview -> Lab Info) for all users."
-
-# ===========================================================================
-# 8. Data integrations   (placeholder - added in a later step)
+# 7. Data integrations   (placeholder - added in a later step)
 # ===========================================================================
 # HEC tokens / forwarder inputs for the Ubuntu + Proxmox senders.
 
