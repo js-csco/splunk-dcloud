@@ -111,18 +111,31 @@ fi
 rm -rf "${work}"
 
 # 4) first start (fully non-interactive) or restart; enable boot-start
-if ! run_root "${UF_HOME}/bin/splunk" status >/dev/null 2>&1; then
-  # Seed the admin account BEFORE the first start so Splunk never prompts for a
-  # username/password (user-seed.conf is consumed on first run).
+#
+# IMPORTANT: on a never-initialized instance, the FIRST `splunk` command of ANY
+# kind (even `splunk status`) triggers the first-time-run prompts:
+#   Do you agree with this license? [y/n]
+#   Please enter an administrator username / password
+# Splunk writes those to /dev/tty, so redirection and `curl | bash` do NOT
+# suppress them. So we must NOT run any splunk command before the license is
+# accepted and the admin is seeded. We detect "already initialized" via a
+# filesystem marker (etc/passwd, written only after FTR completes) instead of
+# `splunk status`.
+if [ ! -f "${UF_HOME}/etc/passwd" ]; then
+  # Fresh install. Seed the admin BEFORE the first start (user-seed.conf is
+  # consumed on first run), then start with --accept-license --no-prompt so no
+  # prompt is ever reached.
   run_root tee "${UF_HOME}/etc/system/local/user-seed.conf" >/dev/null <<EOF
 [user_info]
 USERNAME = admin
 PASSWORD = ${ADMIN_PW}
 EOF
   run_root "${UF_HOME}/bin/splunk" start --accept-license --answer-yes --no-prompt
-  run_root "${UF_HOME}/bin/splunk" enable boot-start 2>/dev/null || true
+  run_root "${UF_HOME}/bin/splunk" enable boot-start --accept-license --answer-yes --no-prompt 2>/dev/null || true
 else
-  run_root "${UF_HOME}/bin/splunk" restart
+  # Already initialized (license accepted, admin exists): a restart is safe and
+  # non-interactive, and picks up the freshly deployed inputs.conf.
+  run_root "${UF_HOME}/bin/splunk" restart --accept-license --answer-yes --no-prompt
 fi
 
 echo "Done. UF on ${SITE} is forwarding to ${INDEXER}:${RECV_PORT}:"
