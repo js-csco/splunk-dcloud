@@ -81,13 +81,17 @@ def render(size, hexcolor, letter):
 
 def main():
     for app, (color, letter) in ICONS.items():
-        static = os.path.join(APPS, app, "appserver", "static")
-        os.makedirs(static, exist_ok=True)
         small, big = render(36, color, letter), render(72, color, letter)
-        for name, data in (("appIcon.png", small), ("appIcon_2x.png", big),
-                           ("appIconAlt.png", small), ("appIconAlt_2x.png", big)):
-            with open(os.path.join(static, name), "wb") as fh:
-                fh.write(data)
+        files = (("appIcon.png", small), ("appIcon_2x.png", big),
+                 ("appIconAlt.png", small), ("appIconAlt_2x.png", big))
+        # Write to BOTH appserver/static (classic) and static (some Splunk
+        # versions' app bar/sidebar read the icon from here).
+        for sub in (("appserver", "static"), ("static",)):
+            d = os.path.join(APPS, app, *sub)
+            os.makedirs(d, exist_ok=True)
+            for name, data in files:
+                with open(os.path.join(d, name), "wb") as fh:
+                    fh.write(data)
         print("icons: %s (%s %s)" % (app, color, letter))
 
 
