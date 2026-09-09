@@ -1,0 +1,190 @@
+<form version="1.1" theme="dark">
+  <label>Client → App → Hypervisor</label>
+  <description>One user action, correlated across four layers: Windows client, web-app container, and the Proxmox hypervisor.</description>
+
+  <fieldset submitButton="false" autoRun="true">
+    <input type="time" token="tr">
+      <label>Time range</label>
+      <default><earliest>-60m</earliest><latest>now</latest></default>
+    </input>
+    <input type="text" token="ip"><label>Filter by source IP (optional)</label><default>*</default></input>
+  </fieldset>
+
+  <row>
+    <panel>
+      <html>
+        <h2>Tracing one action across four layers</h2>
+        <p><b>The story:</b> a user logs into <b>Windows (London)</b>, opens the
+        <b>web-app</b> running in an <b>LXC container</b> on the <b>Proxmox hypervisor
+        (Berlin)</b>, and clicks a button. This dashboard lines up all four layers.</p>
+        <ul>
+          <li><b>Correlation keys:</b> <code>src_ip</code> (the Windows client IP shows up in
+          the web-app access log) and <b>time</b> (the timeline below overlays every layer).</li>
+          <li><b>RBAC:</b> this spans London + Berlin, so only <b>Gary (global)</b> sees the
+          whole picture — Leo sees just the Windows side, Ben just the Berlin side. Cross-domain
+          correlation is a global-analyst capability.</li>
+        </ul>
+        <p style="color:#8b98a5;">Note: if traffic is NAT'd between locations, the web-app may
+        record the gateway IP rather than the client's — in that case correlate by the
+        <b>timeline</b> rather than by exact <code>src_ip</code>.</p>
+      </html>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
+      <title>Timeline — everything, overlaid (per minute)</title>
+      <chart>
+        <search>
+          <query>index=london_windows EventCode=4624 | eval series="1 · Windows logon"
+| append [ search index=berlin_web sourcetype=webapp:access src_ip="$ip$" | eval series="2 · Web-app request" ]
+| append [ search index=berlin_web sourcetype=webapp:probe reachable=1 | eval series="3 · Container reachable" ]
+| append [ search index=berlin_proxmox sourcetype=proxmox:api endpoint="cluster/resources" type=lxc status=running | eval series="4 · Containers running" ]
+| timechart span=1m count by series</query>
+          <earliest>$tr.earliest$</earliest><latest>$tr.latest$</latest>
+        </search>
+        <option name="charting.chart">column</option>
+        <option name="charting.chart.stackMode">stacked</option>
+        <option name="charting.legend.placement">bottom</option>
+      </chart>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
+      <title>Correlate by source IP — Windows logon ↔ web-app traffic</title>
+      <table>
+        <search>
+          <query>index=london_windows EventCode=4624
+| rex "Account Name:\s+(?&lt;user&gt;[^\s]+)"
+| rex "Source Network Address:\s+(?&lt;ip&gt;[0-9.]+)"
+| stats latest(_time) as logon_time by ip user
+| append [ search index=berlin_web sourcetype=webapp:access src_ip="$ip$"
+    | stats count as requests, dc(path) as paths, latest(_time) as last_request by src_ip
+    | rename src_ip as ip ]
+| stats values(user) as "Windows user", max(logon_time) as logon_time, sum(requests) as "App requests", max(last_request) as last_request by ip
+| eval logon_time=strftime(logon_time,"%F %T"), last_request=strftime(last_request,"%F %T")
+| rename ip as "Source IP"
+| table "Source IP" "Windows user" logon_time "App requests" last_request</query>
+          <earliest>$tr.earliest$</earliest><latest>$tr.latest$</latest>
+        </search>
+        <option name="drilldown">none</option>
+      </table>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
+      <title>① Windows client — logons (4624/4625)</title>
+      <table>
+        <search>
+          <query>index=london_windows (EventCode=4624 OR EventCode=4625)
+| rex "Account Name:\s+(?&lt;user&gt;[^\s]+)"
+| rex "Source Network Address:\s+(?&lt;src_ip&gt;[0-9.]+)"
+| eval result=if(EventCode=4624,"success","failure")
+| table _time host user src_ip result EventCode
+| sort - _time</query>
+          <earliest>$tr.earliest$</earliest><latest>$tr.latest$</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="count">15</option>
+      </table>
+    </panel>
+    <panel>
+      <title>① Windows client — CPU % (perfmon)</title>
+      <chart>
+        <search>
+          <query>index=london_metrics sourcetype=perfmon:cpu | timechart span=1m avg(Value) as "CPU %" by host</query>
+          <earliest>$tr.earliest$</earliest><latest>$tr.latest$</latest>
+        </search>
+        <option name="charting.chart">line</option>
+        <option name="charting.axisTitleY.text">CPU %</option>
+      </chart>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
+      <title>② Web-app container — requests (what traffic)</title>
+      <table>
+        <search>
+          <query>index=berlin_web sourcetype=webapp:access src_ip="$ip$"
+| table _time src_ip method path status action name user_agent host
+| sort - _time</query>
+          <earliest>$tr.earliest$</earliest><latest>$tr.latest$</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="count">20</option>
+      </table>
+    </panel>
+    <panel>
+      <title>② Web-app container — requests over time (by path)</title>
+      <chart>
+        <search>
+          <query>index=berlin_web sourcetype=webapp:access src_ip="$ip$" | timechart span=1m count by path</query>
+          <earliest>$tr.earliest$</earliest><latest>$tr.latest$</latest>
+        </search>
+        <option name="charting.chart">column</option>
+        <option name="charting.chart.stackMode">stacked</option>
+        <option name="charting.legend.placement">bottom</option>
+      </chart>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
+      <title>③ Hypervisor — is the web-app container reachable?</title>
+      <single>
+        <search>
+          <query>index=berlin_web sourcetype=webapp:probe | stats latest(reachable) as r latest(latency_ms) as lat latest(http_status) as code | eval status=if(r=1,"UP (".lat." ms, HTTP ".code.")","DOWN") | fields status</query>
+          <earliest>-15m</earliest><latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="colorBy">value</option>
+        <option name="useColors">1</option>
+        <option name="rangeColors">["0xd93f3c","0x53a051"]</option>
+        <option name="rangeValues">[0]</option>
+        <option name="numberPrecision">0</option>
+      </single>
+    </panel>
+    <panel>
+      <title>③ Hypervisor — containers &amp; VMs (latest state)</title>
+      <table>
+        <search>
+          <query>index=berlin_proxmox sourcetype=proxmox:api endpoint="cluster/resources" (type=lxc OR type=qemu)
+| stats latest(status) as Status latest(type) as Type latest(vmid) as VMID by name
+| rename name as Name | table VMID Type Name Status | sort VMID</query>
+          <earliest>-60m</earliest><latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <format type="color" field="Status"><colorPalette type="map">{"running":#53a051,"stopped":#d93f3c}</colorPalette></format>
+      </table>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
+      <title>④ Container — CPU/Mem (webapp-berlin)</title>
+      <chart>
+        <search>
+          <query>index=berlin_metrics sourcetype=linux:metrics host=webapp-berlin | timechart span=1m avg(cpu_pct) as "CPU %" avg(mem_used_pct) as "Mem %"</query>
+          <earliest>$tr.earliest$</earliest><latest>$tr.latest$</latest>
+        </search>
+        <option name="charting.chart">line</option>
+        <option name="charting.axisY.maximumNumber">100</option>
+        <option name="charting.legend.placement">bottom</option>
+      </chart>
+    </panel>
+    <panel>
+      <title>④ Container — reachability &amp; latency over time</title>
+      <chart>
+        <search>
+          <query>index=berlin_web sourcetype=webapp:probe | timechart span=1m latest(reachable) as reachable avg(latency_ms) as "latency (ms)"</query>
+          <earliest>$tr.earliest$</earliest><latest>$tr.latest$</latest>
+        </search>
+        <option name="charting.chart">line</option>
+        <option name="charting.legend.placement">bottom</option>
+      </chart>
+    </panel>
+  </row>
+</form>

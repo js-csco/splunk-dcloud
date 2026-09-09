@@ -103,12 +103,24 @@ whitelist = (syslog|auth\.log|kern\.log|dpkg\.log|ufw\.log|messages)$
 EOF
 run_root chmod +x "${UF_HOME}/etc/apps/TA-dcloud-host/bin/"*.sh 2>/dev/null || true
 
-# 3b) Berlin only: localized Proxmox poller (REST + metrics)
+# 3b) Berlin only: localized Proxmox poller (REST + metrics) + web-app probe
 if [ "${SITE}" = "berlin" ]; then
   run_root rm -rf "${UF_HOME}/etc/apps/TA-dcloud-proxmox"
   run_root cp -a "${work}/splunk/uf-apps/TA-dcloud-proxmox" "${UF_HOME}/etc/apps/TA-dcloud-proxmox"
   run_root chmod +x "${UF_HOME}/etc/apps/TA-dcloud-proxmox/bin/"*.sh 2>/dev/null || true
   echo "Berlin: Proxmox poller deployed (berlin_proxmox + berlin_metrics)."
+  # Reachability probe for the web-app container (berlin_web / webapp:probe).
+  WEBAPP_TARGET="${WEBAPP_TARGET:-198.18.3.50:8080}"
+  run_root tee -a "${UF_HOME}/etc/apps/TA-dcloud-host/local/inputs.conf" >/dev/null <<EOF
+
+[script://./bin/check_webapp.sh ${WEBAPP_TARGET}]
+index = berlin_web
+sourcetype = webapp:probe
+host = ubuntu-berlin
+interval = 60
+disabled = 0
+EOF
+  echo "Berlin: web-app reachability probe -> ${WEBAPP_TARGET} (berlin_web)."
 else
   # Never leave a stale Proxmox poller on the London box.
   run_root rm -rf "${UF_HOME}/etc/apps/TA-dcloud-proxmox" 2>/dev/null || true

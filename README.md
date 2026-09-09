@@ -350,6 +350,61 @@ enforced (even a raw `| inputlookup dcloud_assets_london_lk` is denied for Ben),
 not just hidden in the dashboard. Event *enrichment* follows the same wall for
 free, since users only ever see events from indexes they're allowed to read.
 
+## Client → App → Hypervisor correlation
+
+A full end-to-end scenario in the **Correlation** app (*Client → App → Hypervisor*):
+a user logs into **Windows (London)**, opens a **web-app** running in an **LXC
+container** on the **Proxmox hypervisor (Berlin)**, and clicks a button — and
+Splunk lines up all four layers, correlated by `src_ip` and time.
+
+**Components / data:**
+
+| Layer | Data | Index / sourcetype |
+|---|---|---|
+| Windows client | logons (4624/4625), CPU/mem | `london_windows` (WinEventLog), `london_metrics` (perfmon) |
+| Web-app container | HTTP access log (method/path/src_ip/action) + host metrics | `berlin_web` (`webapp:access`), `berlin_metrics` |
+| Hypervisor | metrics, active containers, **is the app reachable?** | `berlin_proxmox`, `berlin_web` (`webapp:probe`) |
+
+**Set it up (each session):**
+
+```bash
+# 1) On ubuntu-berlin — create the LXC on Proxmox + provision app + in-container UF
+curl -fsSL https://raw.githubusercontent.com/js-csco/splunk-dcloud/main/ubuntu/create-webapp-container.sh | sudo bash
+#    (re-run ubuntu/install-uf.sh berlin too, to enable the reachability probe)
+
+# 2) On the Windows client (elevated PowerShell) — Windows UF (events + perfmon)
+Set-ExecutionPolicy Bypass -Scope Process -Force
+iwr https://raw.githubusercontent.com/js-csco/splunk-dcloud/main/windows/install-uf.ps1 -UseBasicParsing | iex
+
+# 3) Log into Windows, browse to http://198.18.3.50:8080/, click "Do something"
+```
+
+Then open **Correlation → Client → App → Hypervisor** (as **gary** — see note below).
+
+- **The web-app container:** LXC `webapp-berlin` (VMID 200) at `198.18.3.50:8080`,
+  created via `pct` over SSH to Proxmox; a tiny stdlib Python app (`webapp/app.py`)
+  logs every request; an in-container UF ships the access log + host metrics.
+- **Reachability probe:** the ubuntu-berlin UF hits `…:8080/healthz` every 60s →
+  `berlin_web` (`webapp:probe`, `reachable`/`latency_ms`).
+
+**RBAC:** the correlation spans London + Berlin, so only **`role_global` (gary)**
+sees the whole chain; Leo sees only the Windows side, Ben only the Berlin side —
+cross-domain correlation is a global-analyst capability.
+
+**Honest caveats:**
+- **Inter-location routing:** "open the app from Windows" needs London→Berlin
+  reachability (`198.18.2.x → 198.18.3.50:8080`) — the same path that's been flaky.
+  Verify it before the demo, or drive the app from ubuntu-berlin to prove the
+  Berlin half.
+- **Container internet:** the in-container UF downloads from splunk.com; if the LXC
+  has no outbound internet, set `SPLUNK_UF_URL` to a reachable mirror (or forward
+  the access log via rsyslog to the Berlin syslog port instead).
+- **NAT:** if traffic is NAT'd between locations the web-app may log the gateway IP,
+  not the client's — in that case correlate by the **timeline** panel, not exact IP.
+- **LXC creation** depends on Proxmox being reachable and a container template; the
+  script auto-detects storage/template/gateway but override with
+  `CT_STORAGE`/`CT_TEMPLATE`/`CT_GW`/`CT_BRIDGE` if needed.
+
 ## Splunk MCP Server (Claude Desktop) — manual, for now
 
 Splunk ships a first-party **MCP Server** app ([Splunkbase app 7931](https://splunkbase.splunk.com/app/7931))
@@ -509,6 +564,7 @@ splunk/apps/dcloud_lab/
 - [x] UF distributed collection on ubuntu-london & ubuntu-berlin (`install-uf.sh <site>`), incl. `/var/log` file monitor
 - [x] Alerts: CPU/mem >70% threshold + "forwarder stopped sending" (email js-csco@proton.me + Triggered Alerts + Alerts dashboard)
 - [x] Asset Configuration: per-location KV Store inventory (RBAC-enforced) + automatic event enrichment + Add/Edit dashboard (Infrastructure Monitoring app)
+- [x] Client → App → Hypervisor correlation: web-app LXC on Proxmox + in-container UF, ubuntu-berlin reachability probe, Windows UF (events + perfmon), and a 4-layer correlation dashboard
 - [ ] **IT Service Intelligence (ITSI)** — premium, separately-licensed. Plan: (1) interim "Service Health" dashboard built from existing syslog + metrics (KPIs green/amber/red) to show the concept; (2) evaluate a scripted install of the ITSI package + a small service/KPI set (needs the package staged + a license).
 - [ ] Remaining senders: Windows server (London → `london_windows`)
 - [ ] SNMP via SC4SNMP; SOAP (parked)
