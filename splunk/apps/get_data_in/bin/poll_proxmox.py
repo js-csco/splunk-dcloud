@@ -48,6 +48,17 @@ def emit(obj):
     sys.stdout.write(json.dumps(obj) + "\n")
 
 
+def emit_kv(obj):
+    """Emit one key=value line (for metric events parsed on the indexer). String
+    values are sanitized so every value is a single whitespace-free token."""
+    parts = []
+    for k, v in obj.items():
+        if isinstance(v, str):
+            v = v.replace(" ", "_").replace("=", "-") or "-"
+        parts.append("%s=%s" % (k, v))
+    sys.stdout.write(" ".join(parts) + "\n")
+
+
 def get_ticket(base, user, password, ctx):
     data = parse.urlencode({"username": user, "password": password}).encode("utf-8")
     req = request.Request(base + "/access/ticket", data=data, method="POST")
@@ -195,7 +206,7 @@ def main_metrics():
             m["running"] = 1 if r.get("status") == "running" else 0
         else:
             continue
-        emit(m)
+        emit_kv(m)
 
 
 if __name__ == "__main__":

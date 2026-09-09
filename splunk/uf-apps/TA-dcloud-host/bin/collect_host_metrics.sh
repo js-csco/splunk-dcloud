@@ -8,9 +8,15 @@
 # automatically by Splunk (the forwarder/host name).
 #
 # Pure bash + /proc + df — no Python, so it runs on a Universal Forwarder
-# (which bundles no Python) and on the Splunk indexer alike. index-time JSON
-# extraction (INDEXED_EXTRACTIONS=json) + log-to-metrics turns the numeric
-# fields into metric data points; strings (site/os) become dimensions.
+# (which bundles no Python) and on the Splunk indexer alike. Output is one
+# key=value line; the indexer extracts the fields at index time and log-to-
+# metrics turns the numeric fields into measures (strings site/os -> dimensions).
+#
+# NOTE: key=value (not JSON) on purpose. A UF that does INDEXED_EXTRACTIONS=json
+# forwards pre-cooked events that BYPASS the indexer parsing pipeline, so the
+# metric-schema transform never runs and the metric index drops them. Raw
+# key=value forwarded to the indexer goes through parsing (index-time kv
+# extraction + metric-schema), which works for both UF and local inputs.
 # ===========================================================================
 set -u
 SITE="${1:-unknown}"
@@ -45,5 +51,5 @@ procs=$(awk '/^procs_running/{print $2}' /proc/stat); procs=${procs:-0}
 uptime_s=$(awk '{printf "%.0f",$1}' /proc/uptime)
 read -r disk_used_pct disk_free_gb < <(df -P -B1 / | awk 'NR==2{u=$3;a=$4;t=u+a; if(t>0) printf "%.1f %.1f", (u/t)*100, a/1073741824; else printf "0 0"}')
 
-printf '{"metric_ts":"%s","site":"%s","os":"linux","cpu_pct":%s,"cpu_iowait_pct":%s,"mem_used_pct":%s,"mem_used_mb":%s,"mem_total_mb":%s,"swap_used_pct":%s,"disk_used_pct":%s,"disk_free_gb":%s,"load1":%s,"load5":%s,"load15":%s,"procs":%s,"uptime_s":%s}\n' \
+printf 'metric_ts=%s site=%s os=linux cpu_pct=%s cpu_iowait_pct=%s mem_used_pct=%s mem_used_mb=%s mem_total_mb=%s swap_used_pct=%s disk_used_pct=%s disk_free_gb=%s load1=%s load5=%s load15=%s procs=%s uptime_s=%s\n' \
   "$ts" "$SITE" "$cpu_pct" "$iowait_pct" "$mem_used_pct" "$mem_used_mb" "$mem_total_mb" "$swap_used_pct" "$disk_used_pct" "$disk_free_gb" "$l1" "$l5" "$l15" "$procs" "$uptime_s"
