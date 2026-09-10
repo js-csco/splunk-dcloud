@@ -16,7 +16,7 @@
           <a href="/app/infra_monitoring/onboarding_overview" style="text-decoration:none;background:#4a90d9;color:#fff;padding:12px 16px;border-radius:8px;font-weight:600;">Infrastructure Monitoring</a>
           <a href="/app/infra_monitoring/asset_config" style="text-decoration:none;background:#4a90d9;color:#fff;padding:12px 16px;border-radius:8px;font-weight:600;">Asset Configuration</a>
           <a href="/app/correlation/correlation_2_sources" style="text-decoration:none;background:#9b59b6;color:#fff;padding:12px 16px;border-radius:8px;font-weight:600;">Correlation</a>
-          <a href="/app/correlation/client_app_hypervisor" style="text-decoration:none;background:#9b59b6;color:#fff;padding:12px 16px;border-radius:8px;font-weight:600;">Client → App → Hypervisor</a>
+          <a href="/app/correlation/client_app_hypervisor" style="text-decoration:none;background:#9b59b6;color:#fff;padding:12px 16px;border-radius:8px;font-weight:600;">Client → Hypervisor → App</a>
           <a href="/app/dcloud_lab/setup" style="text-decoration:none;background:#65a637;color:#fff;padding:12px 16px;border-radius:8px;font-weight:600;">Setup Status</a>
           <a href="/app/dcloud_lab/lab_overview" style="text-decoration:none;background:#65a637;color:#fff;padding:12px 16px;border-radius:8px;font-weight:600;">Ingestion &amp; Health</a>
           <a href="/app/dcloud_lab/mcp_claude_desktop" style="text-decoration:none;background:#65a637;color:#fff;padding:12px 16px;border-radius:8px;font-weight:600;">MCP &amp; Claude Desktop</a>

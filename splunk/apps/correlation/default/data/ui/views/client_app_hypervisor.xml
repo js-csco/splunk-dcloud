@@ -1,8 +1,8 @@
 <form version="1.1" theme="dark">
-  <label>Client → App → Hypervisor</label>
-  <description>The path from a user's Linux desktop, across the Proxmox hypervisor, to the web-app — with live status for each node.</description>
+  <label>Client → Hypervisor → App</label>
+  <description>Three columns — the user's Linux desktop, the Proxmox hypervisor, and the web-app — each with its own status, metrics, and detail.</description>
 
-  <!-- Seed status tokens so the diagram never flashes raw $tokens$ before the
+  <!-- Seed status tokens so the cards never flash raw $tokens$ before the
        status searches below finish. -->
   <init>
     <set token="cli_status">checking…</set>
@@ -29,7 +29,7 @@
     <query>index=london_metrics sourcetype=linux:metrics host=desktop-* earliest=-15m latest=now
 | stats count as c latest(cpu_pct) as cpu latest(_time) as lt latest(host) as host
 | eval up=if(c&gt;0 AND (now()-lt)&lt;900,1,0)
-| eval cli_status=if(up=1,"ONLINE","OFFLINE"),
+| eval cli_status=if(up=1,"ONLINE · SENDING","OFFLINE"),
        cli_color=if(up=1,"#53a051","#d93f3c"),
        cli_cpu=if(c&gt;0,round(cpu,0)."% CPU","no live metrics"),
        cli_host=coalesce(host,"desktop-london")
@@ -49,7 +49,7 @@
 | eval up=if(c&gt;errs,1,0)
 | eval hv_status=if(up=1,"REACHABLE","NOT REACHABLE"),
        hv_color=if(up=1,"#53a051","#d93f3c"),
-       hv_detail=case(up=1,"Proxmox API responding", c=0,"198.18.3.11 — no poll data", true(),"198.18.3.11 — "+coalesce(msg,"API error"))
+       hv_detail=case(up=1,"Proxmox API responding", c=0,"no poll data", true(),coalesce(msg,"API error"))
 | table hv_status hv_color hv_detail</query>
     <earliest>-15m</earliest><latest>now</latest>
     <done>
@@ -75,71 +75,22 @@
     </done>
   </search>
 
-  <!-- ============ the connection diagram (hero) ============ -->
+  <!-- ============ three entity columns: status card -> metrics -> detail ============ -->
   <row>
+
+    <!-- ===================== CLIENT ===================== -->
     <panel>
       <html>
-        <div style="display:flex;align-items:center;justify-content:center;gap:0;flex-wrap:wrap;padding:18px 8px;font-family:Roboto,Arial,sans-serif;">
-
-          <!-- CLIENT -->
-          <div style="flex:1 1 260px;max-width:320px;background:#0f1720;border:1px solid #2b3a4a;border-top:5px solid $cli_color$;border-radius:10px;padding:16px;">
-            <div style="font-size:11px;letter-spacing:1px;color:#8b98a5;text-transform:uppercase;">Client</div>
-            <div style="font-size:18px;font-weight:700;color:#e6edf3;margin:2px 0 8px;">Linux Desktop</div>
-            <div style="font-size:12px;color:#8b98a5;">London · $cli_host$</div>
-            <div style="display:inline-block;margin-top:10px;padding:4px 10px;border-radius:14px;background:$cli_color$;color:#0b0f14;font-weight:700;font-size:12px;">$cli_status$</div>
-            <div style="margin-top:8px;font-size:13px;color:#cdd9e5;">$cli_cpu$</div>
+        <div style="background:#0f1720;border:1px solid #2b3a4a;border-top:5px solid $cli_color$;border-radius:10px;padding:14px;font-family:Roboto,Arial,sans-serif;">
+          <div style="font-size:11px;letter-spacing:1px;color:#8b98a5;text-transform:uppercase;">Client</div>
+          <div style="font-size:17px;font-weight:700;color:#e6edf3;margin:2px 0 6px;">Linux Desktop</div>
+          <div style="font-size:12px;color:#8b98a5;">London · $cli_host$</div>
+          <div style="margin-top:8px;">
+            <span style="display:inline-block;padding:4px 12px;border-radius:14px;background:$cli_color$;color:#0b0f14;font-weight:700;font-size:13px;">$cli_status$</span>
+            <span style="margin-left:8px;font-size:13px;color:#cdd9e5;">$cli_cpu$</span>
           </div>
-
-          <!-- link client -> hypervisor -->
-          <div style="flex:0 0 70px;text-align:center;color:$hv_color$;font-size:26px;line-height:1;">&#8594;</div>
-
-          <!-- HYPERVISOR -->
-          <div style="flex:1 1 260px;max-width:320px;background:#0f1720;border:1px solid #2b3a4a;border-top:5px solid $hv_color$;border-radius:10px;padding:16px;">
-            <div style="font-size:11px;letter-spacing:1px;color:#8b98a5;text-transform:uppercase;">Hypervisor</div>
-            <div style="font-size:18px;font-weight:700;color:#e6edf3;margin:2px 0 8px;">Proxmox VE</div>
-            <div style="font-size:12px;color:#8b98a5;">Berlin · 198.18.3.11</div>
-            <div style="display:inline-block;margin-top:10px;padding:4px 10px;border-radius:14px;background:$hv_color$;color:#0b0f14;font-weight:700;font-size:12px;">$hv_status$</div>
-            <div style="margin-top:8px;font-size:13px;color:#cdd9e5;">$hv_detail$</div>
-          </div>
-
-          <!-- link hypervisor -> app -->
-          <div style="flex:0 0 70px;text-align:center;color:$app_color$;font-size:26px;line-height:1;">&#8594;</div>
-
-          <!-- APP -->
-          <div style="flex:1 1 260px;max-width:320px;background:#0f1720;border:1px solid #2b3a4a;border-top:5px solid $app_color$;border-radius:10px;padding:16px;">
-            <div style="font-size:11px;letter-spacing:1px;color:#8b98a5;text-transform:uppercase;">App</div>
-            <div style="font-size:18px;font-weight:700;color:#e6edf3;margin:2px 0 8px;">Web-app container</div>
-            <div style="font-size:12px;color:#8b98a5;">LXC on Proxmox · :8080</div>
-            <div style="display:inline-block;margin-top:10px;padding:4px 10px;border-radius:14px;background:$app_color$;color:#0b0f14;font-weight:700;font-size:12px;">$app_status$</div>
-            <div style="margin-top:8px;font-size:13px;color:#cdd9e5;">$app_detail$</div>
-          </div>
-
         </div>
-        <p style="text-align:center;color:#8b98a5;font-size:12px;margin:0 0 6px;">
-          A user on the Linux desktop reaches the web-app running in an LXC container on the Proxmox hypervisor.
-          The hypervisor and app light up once Proxmox is reachable and <code>create-webapp-container.sh</code> has run.
-          Only <b>gary</b> (global) sees all three; Leo sees the client, Ben the Berlin side.
-        </p>
       </html>
-    </panel>
-  </row>
-
-  <!-- ============ per-node detail: three columns, left to right ============ -->
-  <row>
-    <!-- CLIENT column -->
-    <panel>
-      <title>Client — Linux Desktop (live)</title>
-      <table>
-        <title>Logged-on users (current)</title>
-        <search>
-          <query>index=london_linux sourcetype=linux:sessions host=desktop-* event=session status=logged_in
-| stats latest(_time) as last, latest(from) as from, latest(login_time) as login_time by user tty
-| eval last=strftime(last,"%F %T")
-| table user tty from login_time last | sort user</query>
-          <earliest>-15m</earliest><latest>now</latest>
-        </search>
-        <option name="drilldown">none</option>
-      </table>
       <chart>
         <title>CPU % / Memory used %</title>
         <search>
@@ -151,12 +102,21 @@
         <option name="charting.legend.placement">bottom</option>
       </chart>
       <table>
-        <title>Top processes by CPU (latest snapshot)</title>
+        <title>Logged-on users</title>
+        <search>
+          <query>index=london_linux sourcetype=linux:sessions host=desktop-* event=session status=logged_in
+| stats latest(_time) as last, latest(from) as from, latest(login_time) as login_time by user tty
+| eval last=strftime(last,"%F %T") | table user tty from login_time last | sort user</query>
+          <earliest>-15m</earliest><latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+      </table>
+      <table>
+        <title>Top processes by CPU</title>
         <search>
           <query>index=london_linux sourcetype=linux:ps host=desktop-* event=process
 | stats latest(pcpu) as "CPU %", latest(pmem) as "Mem %", latest(user) as user, latest(_time) as t by comm pid
-| where t &gt;= relative_time(now(),"-3m")
-| sort - "CPU %" | head 10
+| where t &gt;= relative_time(now(),"-3m") | sort - "CPU %" | head 10
 | table comm pid user "CPU %" "Mem %"</query>
           <earliest>-15m</earliest><latest>now</latest>
         </search>
@@ -164,31 +124,31 @@
       </table>
     </panel>
 
-    <!-- HYPERVISOR column -->
+    <!-- ===================== HYPERVISOR ===================== -->
     <panel>
-      <title>Hypervisor — Proxmox (Berlin)</title>
-      <single>
-        <title>API reachability (last 15 min)</title>
-        <search>
-          <query>index=berlin_proxmox sourcetype=proxmox:api earliest=-15m latest=now
-| stats count as c, count(eval(status=="error" OR status=="not_configured")) as errs
-| eval s=if(c&gt;errs,"REACHABLE","NOT REACHABLE") | fields s</query>
-          <earliest>-15m</earliest><latest>now</latest>
-        </search>
-        <option name="drilldown">none</option>
-        <option name="colorBy">value</option>
-        <option name="useColors">1</option>
-        <option name="colorMode">block</option>
-        <option name="rangeColors">["0xd93f3c","0x53a051"]</option>
-        <option name="rangeValues">[0]</option>
-      </single>
       <html>
-        <p style="color:#8b98a5;font-size:12px;">When Proxmox at <b>198.18.3.11</b> is reachable, the
-        ubuntu-berlin forwarder polls its API every 60s and this column shows the running
-        containers/VMs and node CPU/memory. It is currently unreachable, so the table below is empty.</p>
+        <div style="background:#0f1720;border:1px solid #2b3a4a;border-top:5px solid $hv_color$;border-radius:10px;padding:14px;font-family:Roboto,Arial,sans-serif;">
+          <div style="font-size:11px;letter-spacing:1px;color:#8b98a5;text-transform:uppercase;">Hypervisor</div>
+          <div style="font-size:17px;font-weight:700;color:#e6edf3;margin:2px 0 6px;">Proxmox VE</div>
+          <div style="font-size:12px;color:#8b98a5;">Berlin · 198.18.3.11</div>
+          <div style="margin-top:8px;">
+            <span style="display:inline-block;padding:4px 12px;border-radius:14px;background:$hv_color$;color:#0b0f14;font-weight:700;font-size:13px;">$hv_status$</span>
+            <span style="margin-left:8px;font-size:13px;color:#cdd9e5;">$hv_detail$</span>
+          </div>
+        </div>
       </html>
+      <chart>
+        <title>Node CPU % / Memory used %</title>
+        <search>
+          <query>index=berlin_metrics sourcetype=proxmox:metrics otype=node | timechart span=1m avg(cpu_pct) as "CPU %" avg(mem_used_pct) as "Mem %"</query>
+          <earliest>$tr.earliest$</earliest><latest>$tr.latest$</latest>
+        </search>
+        <option name="charting.chart">line</option>
+        <option name="charting.axisY.maximumNumber">100</option>
+        <option name="charting.legend.placement">bottom</option>
+      </chart>
       <table>
-        <title>Containers &amp; VMs (from Proxmox API)</title>
+        <title>Containers &amp; VMs</title>
         <search>
           <query>index=berlin_proxmox sourcetype=proxmox:api endpoint="cluster/resources" (type=lxc OR type=qemu)
 | stats latest(status) as Status latest(type) as Type latest(vmid) as VMID by name
@@ -200,44 +160,51 @@
       </table>
     </panel>
 
-    <!-- APP column -->
+    <!-- ===================== APP ===================== -->
     <panel>
-      <title>App — Web-app container</title>
-      <single>
-        <title>Availability (probe, last 15 min)</title>
+      <html>
+        <div style="background:#0f1720;border:1px solid #2b3a4a;border-top:5px solid $app_color$;border-radius:10px;padding:14px;font-family:Roboto,Arial,sans-serif;">
+          <div style="font-size:11px;letter-spacing:1px;color:#8b98a5;text-transform:uppercase;">App</div>
+          <div style="font-size:17px;font-weight:700;color:#e6edf3;margin:2px 0 6px;">Web-app container</div>
+          <div style="font-size:12px;color:#8b98a5;">LXC on Proxmox · :8080</div>
+          <div style="margin-top:8px;">
+            <span style="display:inline-block;padding:4px 12px;border-radius:14px;background:$app_color$;color:#0b0f14;font-weight:700;font-size:13px;">$app_status$</span>
+            <span style="margin-left:8px;font-size:13px;color:#cdd9e5;">$app_detail$</span>
+          </div>
+        </div>
+      </html>
+      <chart>
+        <title>Reachability (1=up) &amp; latency (ms)</title>
         <search>
-          <query>index=berlin_web sourcetype=webapp:probe earliest=-15m latest=now
-| stats latest(reachable) as r | eval s=case(isnull(r),"UNKNOWN", r=1,"AVAILABLE", true(),"NOT AVAILABLE") | fields s</query>
-          <earliest>-15m</earliest><latest>now</latest>
+          <query>index=berlin_web sourcetype=webapp:probe | timechart span=1m latest(reachable) as reachable avg(latency_ms) as "latency (ms)"</query>
+          <earliest>$tr.earliest$</earliest><latest>$tr.latest$</latest>
         </search>
-        <option name="drilldown">none</option>
-        <option name="colorBy">value</option>
-        <option name="useColors">1</option>
-        <option name="colorMode">block</option>
-        <option name="rangeColors">["0xd93f3c","0x53a051"]</option>
-        <option name="rangeValues">[0]</option>
-      </single>
+        <option name="charting.chart">line</option>
+        <option name="charting.legend.placement">bottom</option>
+      </chart>
       <table>
         <title>Latest reachability probe</title>
         <search>
           <query>index=berlin_web sourcetype=webapp:probe
-| head 1 | eval checked=strftime(_time,"%F %T"),
-       state=if(reachable=1,"AVAILABLE","NOT AVAILABLE")
+| head 1 | eval checked=strftime(_time,"%F %T"), state=if(reachable=1,"AVAILABLE","NOT AVAILABLE")
 | table checked state target http_status latency_ms</query>
           <earliest>-60m</earliest><latest>now</latest>
         </search>
         <option name="drilldown">none</option>
       </table>
-      <chart>
-        <title>Reachability over time (1 = up, 0 = down)</title>
-        <search>
-          <query>index=berlin_web sourcetype=webapp:probe | timechart span=1m latest(reachable) as reachable</query>
-          <earliest>$tr.earliest$</earliest><latest>$tr.latest$</latest>
-        </search>
-        <option name="charting.chart">area</option>
-        <option name="charting.axisY.maximumNumber">1</option>
-        <option name="charting.legend.placement">none</option>
-      </chart>
+    </panel>
+
+  </row>
+
+  <row>
+    <panel>
+      <html>
+        <p style="text-align:center;color:#8b98a5;font-size:12px;margin:6px 0;">
+          A user on the Linux desktop reaches the web-app running in an LXC container on the Proxmox hypervisor.
+          The Hypervisor and App columns light up once Proxmox is reachable and <code>create-webapp-container.sh</code> has run.
+          Only <b>gary</b> (global) sees all three; Leo sees the client, Ben the Berlin side.
+        </p>
+      </html>
     </panel>
   </row>
 </form>
