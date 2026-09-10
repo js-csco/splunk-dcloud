@@ -5,7 +5,7 @@
 #
 #   curl -fsSL https://raw.githubusercontent.com/js-csco/splunk-dcloud/main/ubuntu/create-webapp-container.sh | sudo bash
 #
-# It SSHes to Proxmox (root/cisco) and uses `pct` to create + start an
+# It SSHes to Proxmox (root/C1sco12345) and uses `pct` to create + start an
 # unprivileged Ubuntu LXC at a fixed IP, then runs webapp/deploy-webapp.sh
 # INSIDE the container (web-app + in-container UF).
 #
@@ -16,7 +16,7 @@
 set -euo pipefail
 
 PROX="${PROXMOX_HOST:-198.18.3.11}"
-PPW="${PROXMOX_PW:-cisco}"
+PPW="${PROXMOX_PW:-C1sco12345}"
 VMID="${CT_VMID:-200}"
 CTNAME="${CT_HOSTNAME:-webapp-berlin}"
 CT_IP="${CT_IP:-198.18.3.50}"

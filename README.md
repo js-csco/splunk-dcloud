@@ -59,10 +59,11 @@ curl -fsSL https://raw.githubusercontent.com/js-csco/splunk-dcloud/main/ubuntu/f
 curl -fsSL https://raw.githubusercontent.com/js-csco/splunk-dcloud/main/ubuntu/install-uf.sh        | sudo bash -s -- berlin
 ```
 
-> **Proxmox polling:** `install-uf.sh berlin` prompts for the **Proxmox password**
-> (*"Proxmox password for root@pam at 198.18.3.11"*) — enter `cisco`. It's stored
-> out-of-repo at `/opt/splunkforwarder/var/lib/dcloud/proxmox.env` (not committed).
-> Leave it blank to skip. Verify the poller authenticates:
+> **Proxmox polling** works out of the box — the demo creds (`root@pam` /
+> `C1sco12345`, host `198.18.3.11`) ship in `TA-dcloud-proxmox/bin/proxmox_config.env`.
+> `install-uf.sh berlin` also **prompts for the Proxmox password** if you need to
+> override it (stored out-of-repo at `/opt/splunkforwarder/var/lib/dcloud/proxmox.env`);
+> just press Enter to keep the committed default. Verify the poller authenticates:
 > ```bash
 > sudo -u splunk /opt/splunkforwarder/bin/splunk cmd python3 \
 >   /opt/splunkforwarder/etc/apps/TA-dcloud-proxmox/bin/poll_proxmox.py
@@ -89,7 +90,7 @@ curl -fsSL https://raw.githubusercontent.com/js-csco/splunk-dcloud/main/ubuntu/i
 
 **5. web-app container on Proxmox (Berlin)** — completes the **Client → Hypervisor →
 App** correlation. Requires Proxmox reachable at `198.18.3.11` and step 3 done. Run
-this **on ubuntu-berlin** — it SSHes to Proxmox (root/cisco), creates an Ubuntu LXC
+this **on ubuntu-berlin** — it SSHes to Proxmox (root/C1sco12345), creates an Ubuntu LXC
 (VMID 200) at `198.18.3.50`, and provisions the web-app + a UF inside it (access log
 → `berlin_web` `webapp:access`, host metrics → `berlin_metrics`, host `webapp-berlin`):
 
@@ -594,7 +595,7 @@ splunkd's context, so outbound calls work, unlike the search sandbox).
 
 **Proxmox REST poller** — works out of the box using the committed lab creds in
 `splunk/apps/get_data_in/bin/proxmox_config.env` (Berlin Proxmox `198.18.3.11`,
-`root` / `cisco`, **ticket auth** — no API token needed). To override without
+`root@pam` / `C1sco12345`, **ticket auth** — no API token needed). To override without
 editing the repo (e.g. real creds/token), set env at startup or drop
 `$SPLUNK_HOME/var/lib/dcloud/proxmox.env`:
 
@@ -639,7 +640,7 @@ dashboard reflects it. Each action also logs a `proxmox-ctl` syslog event.
 
 | System | Location | Address | Access | User / Pass |
 |---|---|---|---|---|
-| Proxmox | Berlin | 198.18.3.11 (web 8006 / SSH) | Web + SSH | `root` / `cisco` |
+| Proxmox | Berlin | 198.18.3.11 (web 8006 / SSH) | Web + SSH | `root` / `C1sco12345` |
 | Cisco Cat8kv | London | 198.18.2.32 | SSH | `cisco` / `cisco` |
 | Cisco Cat8kv | Berlin | 198.18.3.32 | SSH | `cisco` / `cisco` |
 
