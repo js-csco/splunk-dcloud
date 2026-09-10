@@ -3,19 +3,20 @@
 # splunkbase_install.py - download + install Splunkbase apps at boot using
 # splunk.com credentials (no redistribution: nothing is committed to the repo).
 #
-#   splunkbase_install.py <username> <password> <apps_dir> <app_id> [app_id ...]
+#   splunkbase_install.py <username> <password> <apps_dir> <app_id[:version]> ...
 #
-# Flow (per Splunkbase's documented API):
-#   1. POST /api/account:login/          -> auth token (<id> in the reply)
-#   2. GET  /api/v2/apps/<id>/releases/  -> newest release version
-#   3. GET  /api/v2/apps/<id>/releases/<ver>/download/?origin=sb -> 302 -> .tgz
-#   4. extract the .tgz into <apps_dir>
+# Uses the classic, proven Splunkbase endpoints (host splunkbase.splunk.com):
+#   1. POST /api/account:login/            -> auth token (<id> in the reply)
+#   2. GET  /api/v1/app/<id>/release/       -> newest release version (X-Auth-Token)
+#   3. GET  /app/<id>/release/<ver>/download/ -> 302 -> .tgz (X-Auth-Token)
+#   4. extract into <apps_dir>
 #
-# TLS verification stays ON for the login (it carries your real creds). Prints a
-# status line per app; exits non-zero only if NOTHING installed.
+# Pin a version explicitly with app_id:version (e.g. 7931:1.2.0) to skip step 2.
+# Prints the URL + HTTP code for whichever step fails, so 403s are diagnosable
+# (a 403 on download usually means the account hasn't accepted that app's terms
+# once in the browser).
 # ===========================================================================
 import io
-import json
 import re
 import ssl
 import sys
@@ -23,10 +24,17 @@ import tarfile
 from urllib import request, parse, error
 
 LOGIN = "https://splunkbase.splunk.com/api/account:login/"
-REL = "https://api.splunkbase.splunk.com/api/v2/apps/%s/releases/"
-DL = "https://api.splunkbase.splunk.com/api/v2/apps/%s/releases/%s/download/?origin=sb"
+RELEASES = "https://splunkbase.splunk.com/api/v1/app/%s/release/"
+DOWNLOAD = "https://splunkbase.splunk.com/app/%s/release/%s/download/"
 
 _ctx = ssl.create_default_context()  # verify ON - creds are posted here
+
+
+def _get(url, token=None, timeout=180):
+    headers = {"User-Agent": "dcloud-lab"}
+    if token:
+        headers["X-Auth-Token"] = token
+    return request.urlopen(request.Request(url, headers=headers), timeout=timeout, context=_ctx)
 
 
 def login(user, pw):
@@ -40,39 +48,43 @@ def login(user, pw):
 
 
 def latest_version(app_id, token):
-    req = request.Request(REL % app_id, headers={"X-Auth-Token": token, "Accept": "application/json"})
-    with request.urlopen(req, timeout=30, context=_ctx) as r:
-        d = json.loads(r.read().decode("utf-8"))
-    rels = d.get("results") or d.get("releases") or (d if isinstance(d, list) else [])
-    if not rels:
-        raise RuntimeError("no releases returned")
-    # newest first: sort by 'published'/'release_date' when present, else keep order
-    rels = sorted(rels, key=lambda x: str(x.get("published") or x.get("release_date") or ""), reverse=True)
-    ver = rels[0].get("name") or rels[0].get("title") or rels[0].get("version")
-    if not ver:
-        raise RuntimeError("could not determine latest version")
-    return ver
-
-
-def download(app_id, ver, token):
-    req = request.Request(DL % (app_id, ver), headers={"X-Auth-Token": token})
-    with request.urlopen(req, timeout=180, context=_ctx) as r:  # follows the 302
-        return r.read()
+    with _get(RELEASES % app_id, token, timeout=30) as r:
+        body = r.read().decode("utf-8", "replace")
+    # Atom XML: entries carry .../release/<version>/ in their <id>; newest first.
+    vers = re.findall(r"/release/([^/<>\"]+)/", body)
+    if not vers:
+        vers = re.findall(r"<title>([^<]+)</title>", body)[1:]  # skip feed title
+    if not vers:
+        raise RuntimeError("could not determine latest version from release list")
+    return vers[0]
 
 
 def install(blob, apps_dir):
     with tarfile.open(fileobj=io.BytesIO(blob), mode="r:gz") as tar:
-        top = tar.getnames()[0].split("/")[0] if tar.getnames() else "?"
+        names = tar.getnames()
+        top = names[0].split("/")[0] if names else "?"
         tar.extractall(apps_dir)
     return top
 
 
+def do_app(spec, token, apps_dir):
+    app_id, _, ver = spec.partition(":")
+    step, url = "releases", RELEASES % app_id
+    if not ver:
+        ver = latest_version(app_id, token)
+    step, url = "download", DOWNLOAD % (app_id, ver)
+    with _get(url, token) as r:
+        blob = r.read()
+    folder = install(blob, apps_dir)
+    print("  installed app %s v%s -> %s" % (app_id, ver, folder))
+
+
 def main():
     if len(sys.argv) < 5:
-        sys.stderr.write("usage: splunkbase_install.py <user> <pass> <apps_dir> <app_id>...\n")
+        sys.stderr.write("usage: splunkbase_install.py <user> <pass> <apps_dir> <app_id[:version]>...\n")
         sys.exit(2)
     user, pw, apps_dir = sys.argv[1], sys.argv[2], sys.argv[3]
-    app_ids = sys.argv[4:]
+    specs = sys.argv[4:]
     try:
         token = login(user, pw)
     except Exception as exc:  # noqa: BLE001
@@ -80,16 +92,18 @@ def main():
         sys.exit(1)
 
     ok = 0
-    for app_id in app_ids:
+    for spec in specs:
         try:
-            ver = latest_version(app_id, token)
-            folder = install(download(app_id, ver, token), apps_dir)
-            print("  installed app %s v%s -> %s" % (app_id, ver, folder))
+            do_app(spec, token, apps_dir)
             ok += 1
         except error.HTTPError as exc:
-            sys.stderr.write("  app %s: HTTP %s (entitlement or version?) \n" % (app_id, exc.code))
+            sys.stderr.write("  app %s: HTTP %s at %s\n" % (spec, exc.code, exc.url))
+            if exc.code == 403:
+                sys.stderr.write("    -> 403 usually means the account must accept this app's "
+                                 "terms once at splunkbase.splunk.com/app/%s in a browser.\n"
+                                 % spec.split(':')[0])
         except Exception as exc:  # noqa: BLE001
-            sys.stderr.write("  app %s: %s\n" % (app_id, exc))
+            sys.stderr.write("  app %s: %s\n" % (spec, exc))
     sys.exit(0 if ok else 1)
 
 

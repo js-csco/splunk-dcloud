@@ -42,9 +42,13 @@
           check <b>Upgrade app</b> if re-installing → <b>Upload</b>.</li>
           <li><b>Restart Splunk</b> when prompted.</li>
         </ol>
-        <p><b>B) CLI</b> (if the .spl is on the box, e.g. you scp'd it to <code>/tmp</code>):</p>
+        <p><b>B) CLI — recommended for ITSI</b> (the .spl exceeds the Web UI upload cap;
+        the CLI has <b>no size limit</b>). Put the .spl on the box, e.g. <code>/tmp</code>:</p>
         <pre style="white-space:pre-wrap;background:#11151a;padding:12px;border-radius:6px;color:#cdd9e5;">sudo -u splunk /opt/splunk/bin/splunk install app /tmp/itsi.spl -auth admin:C1sco12345
 sudo systemctl restart Splunkd</pre>
+        <p style="color:#8b98a5;">If you still prefer the Web UI: <code>apply.sh</code> now
+        raises the upload limit to <b>1&#160;GB</b> (<code>web.conf max_upload_size</code>);
+        the default is ~500&#160;MB, which is why an ITSI upload was rejected.</p>
       </html>
     </panel>
     <panel>

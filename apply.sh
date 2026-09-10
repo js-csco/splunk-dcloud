@@ -79,6 +79,20 @@ if ! cmp -s "${UP_TMP}" "${UP_DIR}/user-prefs.conf" 2>/dev/null; then
 fi
 rm -f "${UP_TMP}"
 
+# --- raise Splunk Web upload limit ----------------------------------------
+# The UI "Install app from file" caps uploads at ~500 MB; big apps (ITSI) exceed
+# that. Raise it to 1 GB. (CLI 'splunk install app' has no such limit anyway.)
+WEBCONF="${SPLUNK_HOME}/etc/system/local/web.conf"
+if grep -q 'max_upload_size' "${WEBCONF}" 2>/dev/null; then
+  :
+elif grep -q '^\[settings\]' "${WEBCONF}" 2>/dev/null; then
+  sed -i '/^\[settings\]/a max_upload_size = 1024' "${WEBCONF}"; CHANGED=1
+  log "Raised Splunk Web max_upload_size to 1024 MB."
+else
+  printf '\n[settings]\nmax_upload_size = 1024\n' >> "${WEBCONF}"; CHANGED=1
+  log "Raised Splunk Web max_upload_size to 1024 MB."
+fi
+
 # --- Splunkbase apps (MCP Server, etc.) -----------------------------------
 # Download + install at boot using splunk.com creds (nothing committed to the
 # repo). Runs BEFORE the start/restart below so the app loads. Default app id:
