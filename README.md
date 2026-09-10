@@ -92,20 +92,20 @@ First get the file onto the box — either **SCP it** from a machine on the dClo
 network (your laptop on the AnyConnect VPN, or the Ubuntu desktop `198.18.2.11`):
 
 ```bash
-scp splunk-it-service-intelligence_*.spl <sshuser>@198.18.1.124:/tmp/
+scp splunk-it-service-intelligence_501.spl <sshuser>@198.18.1.124:/tmp/
 ```
 
 …or **pull it directly** on the box if it has outbound internet:
 
 ```bash
-curl -fSL -o /tmp/itsi.spl "https://your-host/splunk-it-service-intelligence_x.y.z.spl"
+curl -fSL -o /tmp/splunk-it-service-intelligence_501.spl "https://your-host/splunk-it-service-intelligence_501.spl"
 ```
 
 Then extract and restart (the documented method):
 
 ```bash
 sudo -u splunk /opt/splunk/bin/splunk stop
-sudo -u splunk tar -xf /tmp/splunk-it-service-intelligence_*.spl -C /opt/splunk/etc/apps
+sudo -u splunk tar -xf /tmp/splunk-it-service-intelligence_501.spl -C /opt/splunk/etc/apps
 sudo -u splunk /opt/splunk/bin/splunk start
 ```
 

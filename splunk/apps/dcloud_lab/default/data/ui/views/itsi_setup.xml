@@ -54,7 +54,7 @@
         <code>SPLUNK_INSTALL_URLS</code>), fetches it, and extracts it into
         <code>etc/apps</code> before Splunk starts. Re-installs on every reset; nothing is
         committed to the repo.</p>
-        <pre style="white-space:pre-wrap;background:#11151a;padding:12px;border-radius:6px;color:#cdd9e5;">SPLUNK_INSTALL_URLS="https://your-host/splunk-it-service-intelligence_x.y.z.spl" sudo -E ./apply.sh</pre>
+        <pre style="white-space:pre-wrap;background:#11151a;padding:12px;border-radius:6px;color:#cdd9e5;">SPLUNK_INSTALL_URLS="https://your-host/splunk-it-service-intelligence_501.spl" sudo -E ./apply.sh</pre>
 
         <p><b>B) Splunkbase auto-download (if entitled):</b> add ITSI's app id to the boot
         install; the downloader extracts it into <code>etc/apps</code> the same way.</p>
@@ -64,7 +64,7 @@
 
         <p><b>C) Manual, if the .spl is already on the box</b> (the documented steps):</p>
         <pre style="white-space:pre-wrap;background:#11151a;padding:12px;border-radius:6px;color:#cdd9e5;">sudo -u splunk /opt/splunk/bin/splunk stop
-sudo -u splunk tar -xf /tmp/splunk-it-service-intelligence_x.y.z.spl -C /opt/splunk/etc/apps
+sudo -u splunk tar -xf /tmp/splunk-it-service-intelligence_501.spl -C /opt/splunk/etc/apps
 sudo -u splunk /opt/splunk/bin/splunk start</pre>
         <p style="color:#d93f3c;">Do <b>not</b> use <code>splunk install app</code> for ITSI
         — it is explicitly unsupported and can leave a broken install.</p>
