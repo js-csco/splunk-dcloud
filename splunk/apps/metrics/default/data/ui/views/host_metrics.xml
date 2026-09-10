@@ -1,6 +1,6 @@
 <form version="1.1" theme="dark">
-  <label>Host Metrics — Ubuntu &amp; Splunk servers</label>
-  <description>CPU, memory, disk and load from the Universal Forwarders.</description>
+  <label>Host &amp; Infrastructure Metrics</label>
+  <description>CPU, memory, disk and load across the lab — Splunk box, Ubuntu servers, the desktop client, the web-app container, and the Proxmox hypervisor — grouped by site.</description>
 
   <fieldset submitButton="false" autoRun="true">
     <input type="time" token="tr">

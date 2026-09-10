@@ -5,7 +5,7 @@
   <!-- At-a-glance traffic lights: green when the expected objects are present -->
   <row>
     <panel>
-      <title>Indexes (expect 6)</title>
+      <title>Indexes (expect 11)</title>
       <single>
         <search>
           <query>| rest /services/data/indexes | search (title=london_* OR title=berlin_* OR title=loc1_*) | stats count</query>
@@ -13,7 +13,7 @@
         <option name="drilldown">none</option>
         <option name="useColors">1</option>
         <option name="colorMode">block</option>
-        <option name="rangeValues">[5.5]</option>
+        <option name="rangeValues">[10.5]</option>
         <option name="rangeColors">["0xd93f3c","0x53a051"]</option>
         <option name="underLabel">london / berlin / loc1 indexes</option>
       </single>
@@ -68,7 +68,7 @@
       <title>Setup checklist</title>
       <table>
         <search>
-          <query>| rest /services/data/indexes | search (title=london_* OR title=berlin_* OR title=loc1_*) | stats count as Found | eval Check="Indexes (london/berlin/loc1)", Expected=6
+          <query>| rest /services/data/indexes | search (title=london_* OR title=berlin_* OR title=loc1_*) | stats count as Found | eval Check="Indexes (london/berlin/loc1)", Expected=11
 | append [| rest /services/authorization/roles | search title IN (role_london, role_berlin, role_global) | stats count as Found | eval Check="Roles (london/berlin/global)", Expected=3]
 | append [| rest /services/authentication/users | search title IN (leo, ben, gary) | stats count as Found | eval Check="Users (leo/ben/gary)", Expected=3]
 | append [| rest /services/apps/local | search title=dcloud_lab disabled=0 | stats count as Found | eval Check="App enabled (dcloud_lab)", Expected=1]
@@ -114,7 +114,7 @@
           <query>| rest /services/data/indexes | search (title=london_* OR title=berlin_* OR title=loc1_*) | rename title as Index, currentDBSizeMB as "Size (MB)", totalEventCount as Events | table Index "Size (MB)" Events | sort Index</query>
         </search>
         <option name="drilldown">none</option>
-        <option name="count">10</option>
+        <option name="count">20</option>
       </table>
     </panel>
   </row>
