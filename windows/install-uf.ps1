@@ -97,8 +97,22 @@ disabled = 0
 $prevEAP = $ErrorActionPreference
 $ErrorActionPreference = "Continue"
 
-# 3) ensure it forwards to the indexer (the MSI's RECEIVING_INDEXER usually already
-#    did this; "already present" is expected and fine).
+# 3a) run the UF service as LocalSystem so it can read ALL Windows event logs,
+#     including the Security channel. Recent MSIs default the service to the
+#     low-privilege virtual account NT SERVICE\SplunkForwarder, which cannot read
+#     the event logs - the forwarder runs and forwards its own _internal fine, but
+#     no WinEventLog data is ever collected. This is the usual "forwarding works
+#     but no Windows events" cause.
+$svc = Get-CimInstance Win32_Service -Filter "Name='SplunkForwarder'" -ErrorAction SilentlyContinue
+if ($svc -and $svc.StartName -ne "LocalSystem") {
+  Write-Host "UF service runs as '$($svc.StartName)'; switching to LocalSystem for event-log access..."
+  & sc.exe config SplunkForwarder obj= "LocalSystem" password= "" 2>&1 | Out-Null
+} elseif ($svc) {
+  Write-Host "UF service already runs as LocalSystem."
+}
+
+# 3b) ensure it forwards to the indexer (the MSI's RECEIVING_INDEXER usually already
+#     did this; "already present" is expected and fine).
 & "$UF\bin\splunk.exe" add forward-server "$Indexer`:$RecvPort" -auth "admin:$AdminPw" 2>&1 | Out-Null
 
 # 4) restart to pick up inputs (this is what makes the WinEventLog/perfmon inputs live)
