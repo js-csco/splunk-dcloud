@@ -5,9 +5,7 @@
   <fieldset submitButton="false" autoRun="true">
     <input type="time" token="tr">
       <label>Time range</label>
-      <!-- Windows event logs are backfilled with their ORIGINAL timestamps, so a
-           short window hides them. Default to 24h; widen to All time if needed. -->
-      <default><earliest>-24h</earliest><latest>now</latest></default>
+      <default><earliest>-60m</earliest><latest>now</latest></default>
     </input>
     <input type="text" token="ip"><label>Filter by source IP (optional)</label><default>*</default></input>
   </fieldset>
@@ -29,76 +27,12 @@
         <p style="color:#8b98a5;">The four "locations" are subnets in one physical site (no
         NAT), so the Windows client IP appears verbatim in the web-app access log — the
         <code>src_ip</code> correlation below is exact.</p>
-        <p style="color:#f2b827;"><b>Layers come online in order.</b> Layer ① (the Windows
-        client) is live once the Windows UF is installed. Layers ②–④ (web-app container,
-        hypervisor, container metrics) only populate after the web-app LXC container is
-        deployed on Proxmox (<code>create-webapp-container.sh</code>) — until Proxmox is
-        reachable those panels correctly show "No results". The status row below tells you
-        which layers are live right now.</p>
+        <p style="color:#8b98a5;">Layers ②–④ (web-app container, hypervisor, container
+        metrics) only populate after the web-app LXC container is deployed on Proxmox
+        (<code>create-webapp-container.sh</code>) — until Proxmox is reachable those panels
+        show "No results". Layer ① (Windows) is live now; generate fresh logons/activity
+        with <code>windows\generate-activity.ps1</code> so it shows in the last 60 minutes.</p>
       </html>
-    </panel>
-  </row>
-
-  <row>
-    <panel>
-      <title>① Windows client — events</title>
-      <single>
-        <search>
-          <query>index=london_windows | stats count</query>
-          <earliest>$tr.earliest$</earliest><latest>$tr.latest$</latest>
-        </search>
-        <option name="drilldown">none</option>
-        <option name="colorBy">value</option>
-        <option name="useColors">1</option>
-        <option name="rangeColors">["0xd93f3c","0x53a051"]</option>
-        <option name="rangeValues">[0]</option>
-        <option name="underLabel">london_windows (0 = offline)</option>
-      </single>
-    </panel>
-    <panel>
-      <title>① Windows client — metrics (perfmon)</title>
-      <single>
-        <search>
-          <query>index=london_metrics sourcetype=perfmon:* | stats count</query>
-          <earliest>$tr.earliest$</earliest><latest>$tr.latest$</latest>
-        </search>
-        <option name="drilldown">none</option>
-        <option name="colorBy">value</option>
-        <option name="useColors">1</option>
-        <option name="rangeColors">["0xd93f3c","0x53a051"]</option>
-        <option name="rangeValues">[0]</option>
-        <option name="underLabel">london_metrics perfmon</option>
-      </single>
-    </panel>
-    <panel>
-      <title>②③ Web-app + hypervisor (Berlin)</title>
-      <single>
-        <search>
-          <query>index=berlin_web OR index=berlin_proxmox | stats count</query>
-          <earliest>$tr.earliest$</earliest><latest>$tr.latest$</latest>
-        </search>
-        <option name="drilldown">none</option>
-        <option name="colorBy">value</option>
-        <option name="useColors">1</option>
-        <option name="rangeColors">["0xd93f3c","0x53a051"]</option>
-        <option name="rangeValues">[0]</option>
-        <option name="underLabel">pending Proxmox + container</option>
-      </single>
-    </panel>
-    <panel>
-      <title>④ Container metrics</title>
-      <single>
-        <search>
-          <query>index=berlin_metrics host=webapp-berlin | stats count</query>
-          <earliest>$tr.earliest$</earliest><latest>$tr.latest$</latest>
-        </search>
-        <option name="drilldown">none</option>
-        <option name="colorBy">value</option>
-        <option name="useColors">1</option>
-        <option name="rangeColors">["0xd93f3c","0x53a051"]</option>
-        <option name="rangeValues">[0]</option>
-        <option name="underLabel">pending container UF</option>
-      </single>
     </panel>
   </row>
 
