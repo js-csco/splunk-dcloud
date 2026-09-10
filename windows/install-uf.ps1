@@ -39,8 +39,26 @@ if (-not (Test-Path "$UF\bin\splunk.exe")) {
 }
 
 # 2) inputs: Windows event logs + perfmon (plain inputs.conf, no add-on)
-$ta = "$UF\etc\apps\TA-dcloud-win\local"
-New-Item -ItemType Directory -Force -Path $ta | Out-Null
+$appRoot = "$UF\etc\apps\TA-dcloud-win"
+$ta      = "$appRoot\local"
+$def     = "$appRoot\default"
+New-Item -ItemType Directory -Force -Path $ta  | Out-Null
+New-Item -ItemType Directory -Force -Path $def | Out-Null
+
+# app.conf is required for Splunk to treat this directory as an installed, enabled
+# app; without it the UF can silently skip the app and never load these inputs.
+@"
+[install]
+state = enabled
+
+[package]
+check_for_updates = false
+
+[ui]
+is_visible = false
+label = dCloud Windows inputs
+"@ | Set-Content -Encoding ASCII "$def\app.conf"
+
 @"
 [WinEventLog://Security]
 index = london_windows
@@ -86,7 +104,18 @@ $ErrorActionPreference = "Continue"
 # 4) restart to pick up inputs (this is what makes the WinEventLog/perfmon inputs live)
 & "$UF\bin\splunk.exe" restart 2>&1 | Write-Host
 
+# 5) verify: the WinEventLog/perfmon inputs should now be live, and the indexer reachable
+Write-Host "--- Active event-log / perfmon inputs (should list Security/System/Application + CPU/Memory) ---"
+& "$UF\bin\splunk.exe" list inputstatus -auth "admin:$AdminPw" 2>&1 | Select-String -Pattern "WinEventLog|perfmon|Security|System|Application|CPU|Memory" | Write-Host
+Write-Host "--- Forward-server connection (should show ...:9997 active) ---"
+& "$UF\bin\splunk.exe" list forward-server -auth "admin:$AdminPw" 2>&1 | Write-Host
+
 $ErrorActionPreference = $prevEAP
 
+Write-Host ""
 Write-Host "Done. Forwarding Windows events -> london_windows and perfmon -> london_metrics."
-Write-Host "Log in to Windows and open http://<container-ip>:8080/ to generate correlated activity."
+Write-Host "Verify on the Splunk box (as gary/admin):"
+Write-Host "    index=_internal host=$env:COMPUTERNAME | stats count      (proves forwarding works)"
+Write-Host "    index=london_windows | stats count by sourcetype"
+Write-Host "Note: WinEventLog Security only fills once there is logon/logoff activity;"
+Write-Host "System and Application should appear within a minute or two."
