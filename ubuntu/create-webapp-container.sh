@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
 # ===========================================================================
 # create-webapp-container.sh - create the web-app LXC on the Berlin Proxmox and
-# provision it. Run ON ubuntu-berlin (it can reach Proxmox in-location).
-#
-#   curl -fsSL https://raw.githubusercontent.com/js-csco/splunk-dcloud/main/ubuntu/create-webapp-container.sh | sudo bash
+# provision it. Run it EITHER:
+#   * on ubuntu-berlin (SSHes to Proxmox; needs sudo):
+#       curl -fsSL https://raw.githubusercontent.com/js-csco/splunk-dcloud/main/ubuntu/create-webapp-container.sh | sudo bash
+#   * OR directly on the Proxmox host as root (no sudo on Proxmox; runs pct locally):
+#       curl -fsSL https://raw.githubusercontent.com/js-csco/splunk-dcloud/main/ubuntu/create-webapp-container.sh | bash
 #
 # It SSHes to Proxmox (root/C1sco12345) and uses `pct` to create + start an
 # unprivileged Ubuntu LXC at a fixed IP, then runs webapp/deploy-webapp.sh
@@ -25,19 +27,26 @@ CT_GW="${CT_GW:-$(ip route 2>/dev/null | awk '/^default/{print $3; exit}')}"
 REPO="${DCLOUD_REPO:-js-csco/splunk-dcloud}"; BRANCH="${DCLOUD_BRANCH:-main}"
 DEPLOY_URL="https://raw.githubusercontent.com/${REPO}/${BRANCH}/webapp/deploy-webapp.sh"
 
-command -v sshpass >/dev/null 2>&1 || { export DEBIAN_FRONTEND=noninteractive; sudo apt-get update -y && sudo apt-get install -y sshpass; }
-SSH=(sshpass -p "${PPW}" ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=10 "root@${PROX}")
+run_root() { if [ "$(id -u)" = "0" ]; then "$@"; else sudo "$@"; fi; }
+
+# Works two ways:
+#   * ON ubuntu-berlin  -> SSH into Proxmox (needs sshpass; installs it)
+#   * ON the Proxmox host itself (root) -> run pct locally, no SSH/sudo needed
+if command -v pct >/dev/null 2>&1; then
+  echo "Detected Proxmox host locally (pct present) - running pct directly, no SSH."
+  remote() { bash -c "$*"; }
+else
+  command -v sshpass >/dev/null 2>&1 || { export DEBIAN_FRONTEND=noninteractive; run_root apt-get update -y && run_root apt-get install -y sshpass; }
+  SSH=(sshpass -p "${PPW}" ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=10 "root@${PROX}")
+  if ! "${SSH[@]}" true 2>/dev/null; then
+    echo "ERROR: cannot SSH to Proxmox at ${PROX}. Check reachability/creds (root/${PPW})." >&2
+    exit 1
+  fi
+  remote() { "${SSH[@]}" "$@"; }
+fi
 
 echo "== create webapp LXC ${VMID} (${CTNAME}) on Proxmox ${PROX}, ip ${CT_IP}, gw ${CT_GW:-?} =="
 [ -n "${CT_GW:-}" ] || { echo "ERROR: could not determine gateway; pass CT_GW=..." >&2; exit 1; }
-
-# reachability first (this is the recurring lab question)
-if ! "${SSH[@]}" true 2>/dev/null; then
-  echo "ERROR: cannot SSH to Proxmox at ${PROX}. Check reachability/creds (root/${PPW})." >&2
-  exit 1
-fi
-
-remote() { "${SSH[@]}" "$@"; }
 
 if remote "pct status ${VMID}" >/dev/null 2>&1; then
   echo "Container ${VMID} already exists - ensuring it is running."

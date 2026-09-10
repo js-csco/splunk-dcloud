@@ -89,13 +89,20 @@ curl -fsSL https://raw.githubusercontent.com/js-csco/splunk-dcloud/main/ubuntu/i
 > desktop is simpler and is what the correlation dashboard's Client node expects.
 
 **5. web-app container on Proxmox (Berlin)** — completes the **Client → Hypervisor →
-App** correlation. Requires Proxmox reachable at `198.18.3.11` and step 3 done. Run
-this **on ubuntu-berlin** — it SSHes to Proxmox (root/C1sco12345), creates an Ubuntu LXC
-(VMID 200) at `198.18.3.50`, and provisions the web-app + a UF inside it (access log
-→ `berlin_web` `webapp:access`, host metrics → `berlin_metrics`, host `webapp-berlin`):
+App** correlation. Requires Proxmox reachable at `198.18.3.11` and step 3 done. Creates
+an Ubuntu LXC (VMID 200) at `198.18.3.50` and provisions the web-app + a UF inside it
+(access log → `berlin_web` `webapp:access`, host metrics → `berlin_metrics`, host
+`webapp-berlin`). Run it **either** on ubuntu-berlin (SSHes to Proxmox, needs sudo):
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/js-csco/splunk-dcloud/main/ubuntu/create-webapp-container.sh | sudo bash
+```
+
+…**or** directly on the **Proxmox host as root** (Debian — no `sudo`; it runs `pct`
+locally, no SSH):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/js-csco/splunk-dcloud/main/ubuntu/create-webapp-container.sh | bash
 ```
 
 Then generate a little traffic so the App panels fill (from the desktop or anywhere on

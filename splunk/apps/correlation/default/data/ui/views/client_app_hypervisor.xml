@@ -2,21 +2,6 @@
   <label>Client → Hypervisor → App</label>
   <description>Three columns — the user's Linux desktop, the Proxmox hypervisor, and the web-app — each with its own status, metrics, and detail.</description>
 
-  <!-- Seed status tokens so the cards never flash raw $tokens$ before the
-       status searches below finish. -->
-  <init>
-    <set token="cli_status">checking…</set>
-    <set token="cli_color">#8b98a5</set>
-    <set token="cli_cpu"></set>
-    <set token="cli_host">desktop-london</set>
-    <set token="hv_status">checking…</set>
-    <set token="hv_color">#8b98a5</set>
-    <set token="hv_detail">198.18.3.11</set>
-    <set token="app_status">checking…</set>
-    <set token="app_color">#8b98a5</set>
-    <set token="app_detail">web-app container</set>
-  </init>
-
   <fieldset submitButton="false" autoRun="true">
     <input type="time" token="tr">
       <label>Time range (metrics/charts)</label>
@@ -24,73 +9,30 @@
     </input>
   </fieldset>
 
-  <!-- ============ status searches: each returns ONE row and sets tokens ============ -->
-  <search id="cliStatus">
-    <query>index=london_metrics sourcetype=linux:metrics host=desktop-* earliest=-15m latest=now
-| stats count as c latest(cpu_pct) as cpu latest(_time) as lt latest(host) as host
-| eval up=if(c&gt;0 AND (now()-lt)&lt;900,1,0)
-| eval cli_status=if(up=1,"ONLINE · SENDING","OFFLINE"),
-       cli_color=if(up=1,"#53a051","#d93f3c"),
-       cli_cpu=if(c&gt;0,round(cpu,0)."% CPU","no live metrics"),
-       cli_host=coalesce(host,"desktop-london")
-| table cli_status cli_color cli_cpu cli_host</query>
-    <earliest>-15m</earliest><latest>now</latest>
-    <done>
-      <set token="cli_status">$result.cli_status$</set>
-      <set token="cli_color">$result.cli_color$</set>
-      <set token="cli_cpu">$result.cli_cpu$</set>
-      <set token="cli_host">$result.cli_host$</set>
-    </done>
-  </search>
-
-  <search id="hvStatus">
-    <query>index=berlin_proxmox sourcetype=proxmox:api earliest=-15m latest=now
-| stats count as c, count(eval(status=="error" OR status=="not_configured")) as errs, latest(message) as msg
-| eval up=if(c&gt;errs,1,0)
-| eval hv_status=if(up=1,"REACHABLE","NOT REACHABLE"),
-       hv_color=if(up=1,"#53a051","#d93f3c"),
-       hv_detail=case(up=1,"Proxmox API responding", c=0,"no poll data", true(),coalesce(msg,"API error"))
-| table hv_status hv_color hv_detail</query>
-    <earliest>-15m</earliest><latest>now</latest>
-    <done>
-      <set token="hv_status">$result.hv_status$</set>
-      <set token="hv_color">$result.hv_color$</set>
-      <set token="hv_detail">$result.hv_detail$</set>
-    </done>
-  </search>
-
-  <search id="appStatus">
-    <query>index=berlin_web sourcetype=webapp:probe earliest=-15m latest=now
-| stats count as c latest(reachable) as r latest(http_status) as code latest(_time) as lt
-| eval up=if(c&gt;0 AND r=1,1,0)
-| eval app_status=case(c=0,"UNKNOWN", r=1,"AVAILABLE", true(),"NOT AVAILABLE"),
-       app_color=if(up=1,"#53a051","#d93f3c"),
-       app_detail=if(c&gt;0,"probe: HTTP ".coalesce(code,"—"),"no probe data")
-| table app_status app_color app_detail</query>
-    <earliest>-15m</earliest><latest>now</latest>
-    <done>
-      <set token="app_status">$result.app_status$</set>
-      <set token="app_color">$result.app_color$</set>
-      <set token="app_detail">$result.app_detail$</set>
-    </done>
-  </search>
-
-  <!-- ============ three entity columns: status card -> metrics -> detail ============ -->
+  <!-- three entity columns: status tile -> metrics -> detail. Each status is a
+       single-value panel that runs its own search and colours itself green/red
+       via the `range` field (green when online/reachable/available). -->
   <row>
 
     <!-- ===================== CLIENT ===================== -->
     <panel>
-      <html>
-        <div style="background:#0f1720;border:1px solid #2b3a4a;border-top:5px solid $cli_color$;border-radius:10px;padding:14px;font-family:Roboto,Arial,sans-serif;">
-          <div style="font-size:11px;letter-spacing:1px;color:#8b98a5;text-transform:uppercase;">Client</div>
-          <div style="font-size:17px;font-weight:700;color:#e6edf3;margin:2px 0 6px;">Linux Desktop</div>
-          <div style="font-size:12px;color:#8b98a5;">London · $cli_host$</div>
-          <div style="margin-top:8px;">
-            <span style="display:inline-block;padding:4px 12px;border-radius:14px;background:$cli_color$;color:#0b0f14;font-weight:700;font-size:13px;">$cli_status$</span>
-            <span style="margin-left:8px;font-size:13px;color:#cdd9e5;">$cli_cpu$</span>
-          </div>
-        </div>
-      </html>
+      <title>Client — Linux Desktop (desktop-london)</title>
+      <single>
+        <title>Status</title>
+        <search>
+          <query>index=london_metrics sourcetype=linux:metrics host=desktop-* earliest=-15m latest=now
+| stats count as c latest(_time) as lt
+| eval up=if(c&gt;0 AND (now()-lt)&lt;900,1,0)
+| eval status=if(up=1,"● ONLINE · SENDING","○ OFFLINE"), range=if(up=1,"low","severe")
+| table status range</query>
+          <earliest>-15m</earliest><latest>now</latest>
+        </search>
+        <option name="colorBy">value</option>
+        <option name="colorMode">block</option>
+        <option name="useColors">1</option>
+        <option name="rangeColors">["0x53a051","0xd93f3c"]</option>
+        <option name="drilldown">none</option>
+      </single>
       <chart>
         <title>CPU % / Memory used %</title>
         <search>
@@ -126,17 +68,23 @@
 
     <!-- ===================== HYPERVISOR ===================== -->
     <panel>
-      <html>
-        <div style="background:#0f1720;border:1px solid #2b3a4a;border-top:5px solid $hv_color$;border-radius:10px;padding:14px;font-family:Roboto,Arial,sans-serif;">
-          <div style="font-size:11px;letter-spacing:1px;color:#8b98a5;text-transform:uppercase;">Hypervisor</div>
-          <div style="font-size:17px;font-weight:700;color:#e6edf3;margin:2px 0 6px;">Proxmox VE</div>
-          <div style="font-size:12px;color:#8b98a5;">Berlin · 198.18.3.11</div>
-          <div style="margin-top:8px;">
-            <span style="display:inline-block;padding:4px 12px;border-radius:14px;background:$hv_color$;color:#0b0f14;font-weight:700;font-size:13px;">$hv_status$</span>
-            <span style="margin-left:8px;font-size:13px;color:#cdd9e5;">$hv_detail$</span>
-          </div>
-        </div>
-      </html>
+      <title>Hypervisor — Proxmox VE (198.18.3.11)</title>
+      <single>
+        <title>Status</title>
+        <search>
+          <query>index=berlin_proxmox sourcetype=proxmox:api earliest=-15m latest=now
+| stats count as c, count(eval(status=="error" OR status=="not_configured")) as errs
+| eval up=if(c&gt;errs,1,0)
+| eval status=if(up=1,"● REACHABLE","○ NOT REACHABLE"), range=if(up=1,"low","severe")
+| table status range</query>
+          <earliest>-15m</earliest><latest>now</latest>
+        </search>
+        <option name="colorBy">value</option>
+        <option name="colorMode">block</option>
+        <option name="useColors">1</option>
+        <option name="rangeColors">["0x53a051","0xd93f3c"]</option>
+        <option name="drilldown">none</option>
+      </single>
       <chart>
         <title>Node CPU % / Memory used %</title>
         <search>
@@ -162,17 +110,23 @@
 
     <!-- ===================== APP ===================== -->
     <panel>
-      <html>
-        <div style="background:#0f1720;border:1px solid #2b3a4a;border-top:5px solid $app_color$;border-radius:10px;padding:14px;font-family:Roboto,Arial,sans-serif;">
-          <div style="font-size:11px;letter-spacing:1px;color:#8b98a5;text-transform:uppercase;">App</div>
-          <div style="font-size:17px;font-weight:700;color:#e6edf3;margin:2px 0 6px;">Web-app container</div>
-          <div style="font-size:12px;color:#8b98a5;">LXC on Proxmox · :8080</div>
-          <div style="margin-top:8px;">
-            <span style="display:inline-block;padding:4px 12px;border-radius:14px;background:$app_color$;color:#0b0f14;font-weight:700;font-size:13px;">$app_status$</span>
-            <span style="margin-left:8px;font-size:13px;color:#cdd9e5;">$app_detail$</span>
-          </div>
-        </div>
-      </html>
+      <title>App — Web-app container (webapp-berlin)</title>
+      <single>
+        <title>Status</title>
+        <search>
+          <query>index=berlin_web sourcetype=webapp:probe earliest=-15m latest=now
+| stats count as c latest(reachable) as r
+| eval up=if(c&gt;0 AND r=1,1,0)
+| eval status=case(c=0,"○ UNKNOWN", r=1,"● AVAILABLE", true(),"○ NOT AVAILABLE"), range=if(up=1,"low","severe")
+| table status range</query>
+          <earliest>-15m</earliest><latest>now</latest>
+        </search>
+        <option name="colorBy">value</option>
+        <option name="colorMode">block</option>
+        <option name="useColors">1</option>
+        <option name="rangeColors">["0x53a051","0xd93f3c"]</option>
+        <option name="drilldown">none</option>
+      </single>
       <chart>
         <title>Reachability (1=up) &amp; latency (ms)</title>
         <search>
