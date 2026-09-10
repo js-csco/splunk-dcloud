@@ -1,194 +1,238 @@
 <form version="1.1" theme="dark">
   <label>Client → App → Hypervisor</label>
-  <description>One user action, correlated across four layers: Windows client, web-app container, and the Proxmox hypervisor.</description>
+  <description>The path from a user's Windows client, across the Proxmox hypervisor, to the web-app — with live status for each node.</description>
+
+  <!-- Seed status tokens so the diagram never flashes raw $tokens$ before the
+       status searches below finish. -->
+  <init>
+    <set token="cli_status">checking…</set>
+    <set token="cli_color">#8b98a5</set>
+    <set token="cli_cpu"></set>
+    <set token="cli_host">windows-server-2022-london</set>
+    <set token="hv_status">checking…</set>
+    <set token="hv_color">#8b98a5</set>
+    <set token="hv_detail">198.18.3.11</set>
+    <set token="app_status">checking…</set>
+    <set token="app_color">#8b98a5</set>
+    <set token="app_detail">web-app container</set>
+  </init>
 
   <fieldset submitButton="false" autoRun="true">
     <input type="time" token="tr">
-      <label>Time range</label>
+      <label>Time range (metrics/charts)</label>
       <default><earliest>-60m</earliest><latest>now</latest></default>
     </input>
-    <input type="text" token="ip"><label>Filter by source IP (optional)</label><default>*</default></input>
   </fieldset>
 
+  <!-- ============ status searches: each returns ONE row and sets tokens ============ -->
+  <search id="cliStatus">
+    <query>index=london_metrics sourcetype=perfmon:cpu earliest=-15m latest=now
+| stats count as c latest(Value) as cpu latest(_time) as lt latest(host) as host
+| eval up=if(c>0 AND (now()-lt)&lt;900,1,0)
+| eval cli_status=if(up=1,"ONLINE","OFFLINE"),
+       cli_color=if(up=1,"#53a051","#d93f3c"),
+       cli_cpu=if(c&gt;0,round(cpu,0)."% CPU","no live metrics"),
+       cli_host=coalesce(host,"windows-server-2022-london")
+| table cli_status cli_color cli_cpu cli_host</query>
+    <earliest>-15m</earliest><latest>now</latest>
+    <done>
+      <set token="cli_status">$result.cli_status$</set>
+      <set token="cli_color">$result.cli_color$</set>
+      <set token="cli_cpu">$result.cli_cpu$</set>
+      <set token="cli_host">$result.cli_host$</set>
+    </done>
+  </search>
+
+  <search id="hvStatus">
+    <query>index=berlin_proxmox sourcetype=proxmox:api earliest=-15m latest=now
+| stats count as c latest(_time) as lt
+| eval up=if(c&gt;0 AND (now()-lt)&lt;900,1,0)
+| eval hv_status=if(up=1,"REACHABLE","NOT REACHABLE"),
+       hv_color=if(up=1,"#53a051","#d93f3c"),
+       hv_detail=if(up=1,"Proxmox API responding","198.18.3.11 — no API data")
+| table hv_status hv_color hv_detail</query>
+    <earliest>-15m</earliest><latest>now</latest>
+    <done>
+      <set token="hv_status">$result.hv_status$</set>
+      <set token="hv_color">$result.hv_color$</set>
+      <set token="hv_detail">$result.hv_detail$</set>
+    </done>
+  </search>
+
+  <search id="appStatus">
+    <query>index=berlin_web sourcetype=webapp:probe earliest=-15m latest=now
+| stats count as c latest(reachable) as r latest(http_status) as code latest(_time) as lt
+| eval up=if(c&gt;0 AND r=1,1,0)
+| eval app_status=case(c=0,"UNKNOWN", r=1,"AVAILABLE", true(),"NOT AVAILABLE"),
+       app_color=if(up=1,"#53a051","#d93f3c"),
+       app_detail=if(c&gt;0,"probe: HTTP ".coalesce(code,"—"),"no probe data")
+| table app_status app_color app_detail</query>
+    <earliest>-15m</earliest><latest>now</latest>
+    <done>
+      <set token="app_status">$result.app_status$</set>
+      <set token="app_color">$result.app_color$</set>
+      <set token="app_detail">$result.app_detail$</set>
+    </done>
+  </search>
+
+  <!-- ============ the connection diagram (hero) ============ -->
   <row>
     <panel>
       <html>
-        <h2>Tracing one action across four layers</h2>
-        <p><b>The story:</b> a user logs into <b>Windows (London)</b>, opens the
-        <b>web-app</b> running in an <b>LXC container</b> on the <b>Proxmox hypervisor
-        (Berlin)</b>, and clicks a button. This dashboard lines up all four layers.</p>
-        <ul>
-          <li><b>Correlation keys:</b> <code>src_ip</code> (the Windows client IP shows up in
-          the web-app access log) and <b>time</b> (the timeline below overlays every layer).</li>
-          <li><b>RBAC:</b> this spans London + Berlin, so only <b>Gary (global)</b> sees the
-          whole picture — Leo sees just the Windows side, Ben just the Berlin side. Cross-domain
-          correlation is a global-analyst capability.</li>
-        </ul>
-        <p style="color:#8b98a5;">The four "locations" are subnets in one physical site (no
-        NAT), so the Windows client IP appears verbatim in the web-app access log — the
-        <code>src_ip</code> correlation below is exact.</p>
-        <p style="color:#8b98a5;">Layers ②–④ (web-app container, hypervisor, container
-        metrics) only populate after the web-app LXC container is deployed on Proxmox
-        (<code>create-webapp-container.sh</code>) — until Proxmox is reachable those panels
-        show "No results". Layer ① (Windows) is live now; generate fresh logons/activity
-        with <code>windows\generate-activity.ps1</code> so it shows in the last 60 minutes.</p>
+        <div style="display:flex;align-items:center;justify-content:center;gap:0;flex-wrap:wrap;padding:18px 8px;font-family:Roboto,Arial,sans-serif;">
+
+          <!-- CLIENT -->
+          <div style="flex:1 1 260px;max-width:320px;background:#0f1720;border:1px solid #2b3a4a;border-top:5px solid $cli_color$;border-radius:10px;padding:16px;">
+            <div style="font-size:11px;letter-spacing:1px;color:#8b98a5;text-transform:uppercase;">Client</div>
+            <div style="font-size:18px;font-weight:700;color:#e6edf3;margin:2px 0 8px;">Windows Server</div>
+            <div style="font-size:12px;color:#8b98a5;">London · $cli_host$</div>
+            <div style="display:inline-block;margin-top:10px;padding:4px 10px;border-radius:14px;background:$cli_color$;color:#0b0f14;font-weight:700;font-size:12px;">$cli_status$</div>
+            <div style="margin-top:8px;font-size:13px;color:#cdd9e5;">$cli_cpu$</div>
+          </div>
+
+          <!-- link client -> hypervisor -->
+          <div style="flex:0 0 70px;text-align:center;color:$hv_color$;font-size:26px;line-height:1;">&#8594;</div>
+
+          <!-- HYPERVISOR -->
+          <div style="flex:1 1 260px;max-width:320px;background:#0f1720;border:1px solid #2b3a4a;border-top:5px solid $hv_color$;border-radius:10px;padding:16px;">
+            <div style="font-size:11px;letter-spacing:1px;color:#8b98a5;text-transform:uppercase;">Hypervisor</div>
+            <div style="font-size:18px;font-weight:700;color:#e6edf3;margin:2px 0 8px;">Proxmox VE</div>
+            <div style="font-size:12px;color:#8b98a5;">Berlin · 198.18.3.11</div>
+            <div style="display:inline-block;margin-top:10px;padding:4px 10px;border-radius:14px;background:$hv_color$;color:#0b0f14;font-weight:700;font-size:12px;">$hv_status$</div>
+            <div style="margin-top:8px;font-size:13px;color:#cdd9e5;">$hv_detail$</div>
+          </div>
+
+          <!-- link hypervisor -> app -->
+          <div style="flex:0 0 70px;text-align:center;color:$app_color$;font-size:26px;line-height:1;">&#8594;</div>
+
+          <!-- APP -->
+          <div style="flex:1 1 260px;max-width:320px;background:#0f1720;border:1px solid #2b3a4a;border-top:5px solid $app_color$;border-radius:10px;padding:16px;">
+            <div style="font-size:11px;letter-spacing:1px;color:#8b98a5;text-transform:uppercase;">App</div>
+            <div style="font-size:18px;font-weight:700;color:#e6edf3;margin:2px 0 8px;">Web-app container</div>
+            <div style="font-size:12px;color:#8b98a5;">LXC on Proxmox · :8080</div>
+            <div style="display:inline-block;margin-top:10px;padding:4px 10px;border-radius:14px;background:$app_color$;color:#0b0f14;font-weight:700;font-size:12px;">$app_status$</div>
+            <div style="margin-top:8px;font-size:13px;color:#cdd9e5;">$app_detail$</div>
+          </div>
+
+        </div>
+        <p style="text-align:center;color:#8b98a5;font-size:12px;margin:0 0 6px;">
+          A user on the Windows client reaches the web-app running in an LXC container on the Proxmox hypervisor.
+          The hypervisor and app light up once Proxmox is reachable and <code>create-webapp-container.sh</code> has run.
+          Only <b>gary</b> (global) sees all three; Leo sees the client, Ben the Berlin side.
+        </p>
       </html>
     </panel>
   </row>
 
+  <!-- ============ per-node detail: three columns, left to right ============ -->
   <row>
+    <!-- CLIENT column -->
     <panel>
-      <title>Timeline — everything, overlaid (per minute)</title>
+      <title>Client — Windows Server (live metrics)</title>
       <chart>
+        <title>CPU %</title>
         <search>
-          <query>index=london_windows EventCode=4624 | eval series="1 · Windows logon"
-| append [ search index=berlin_web sourcetype=webapp:access src_ip="$ip$" | eval series="2 · Web-app request" ]
-| append [ search index=berlin_web sourcetype=webapp:probe reachable=1 | eval series="3 · Container reachable" ]
-| append [ search index=berlin_proxmox sourcetype=proxmox:api endpoint="cluster/resources" type=lxc status=running | eval series="4 · Containers running" ]
-| timechart span=1m count by series</query>
-          <earliest>$tr.earliest$</earliest><latest>$tr.latest$</latest>
-        </search>
-        <option name="charting.chart">column</option>
-        <option name="charting.chart.stackMode">stacked</option>
-        <option name="charting.legend.placement">bottom</option>
-      </chart>
-    </panel>
-  </row>
-
-  <row>
-    <panel>
-      <title>Correlate by source IP — Windows logon ↔ web-app traffic</title>
-      <table>
-        <search>
-          <query>index=london_windows EventCode=4624
-| rex "Account Name:\s+(?&lt;user&gt;[^\s]+)"
-| rex "Source Network Address:\s+(?&lt;ip&gt;[0-9.]+)"
-| stats latest(_time) as logon_time by ip user
-| append [ search index=berlin_web sourcetype=webapp:access src_ip="$ip$"
-    | stats count as requests, dc(path) as paths, latest(_time) as last_request by src_ip
-    | rename src_ip as ip ]
-| stats values(user) as "Windows user", max(logon_time) as logon_time, sum(requests) as "App requests", max(last_request) as last_request by ip
-| eval logon_time=strftime(logon_time,"%F %T"), last_request=strftime(last_request,"%F %T")
-| rename ip as "Source IP"
-| table "Source IP" "Windows user" logon_time "App requests" last_request</query>
-          <earliest>$tr.earliest$</earliest><latest>$tr.latest$</latest>
-        </search>
-        <option name="drilldown">none</option>
-      </table>
-    </panel>
-  </row>
-
-  <row>
-    <panel>
-      <title>① Windows client — logons (4624/4625)</title>
-      <table>
-        <search>
-          <query>index=london_windows (EventCode=4624 OR EventCode=4625)
-| rex "Account Name:\s+(?&lt;user&gt;[^\s]+)"
-| rex "Source Network Address:\s+(?&lt;src_ip&gt;[0-9.]+)"
-| eval result=if(EventCode=4624,"success","failure")
-| table _time host user src_ip result EventCode
-| sort - _time</query>
-          <earliest>$tr.earliest$</earliest><latest>$tr.latest$</latest>
-        </search>
-        <option name="drilldown">none</option>
-        <option name="count">15</option>
-      </table>
-    </panel>
-    <panel>
-      <title>① Windows client — CPU % (perfmon)</title>
-      <chart>
-        <search>
-          <query>index=london_metrics sourcetype=perfmon:cpu | timechart span=1m avg(Value) as "CPU %" by host</query>
+          <query>index=london_metrics sourcetype=perfmon:cpu | timechart span=1m avg(Value) as "CPU %"</query>
           <earliest>$tr.earliest$</earliest><latest>$tr.latest$</latest>
         </search>
         <option name="charting.chart">line</option>
-        <option name="charting.axisTitleY.text">CPU %</option>
+        <option name="charting.axisY.maximumNumber">100</option>
+        <option name="charting.legend.placement">none</option>
       </chart>
-    </panel>
-  </row>
-
-  <row>
-    <panel>
-      <title>② Web-app container — requests (what traffic)</title>
-      <table>
+      <chart>
+        <title>Memory used %</title>
         <search>
-          <query>index=berlin_web sourcetype=webapp:access src_ip="$ip$"
-| table _time src_ip method path status action name user_agent host
-| sort - _time</query>
+          <query>index=london_metrics sourcetype=perfmon:memory counter="% Committed Bytes In Use" | timechart span=1m avg(Value) as "Mem %"</query>
           <earliest>$tr.earliest$</earliest><latest>$tr.latest$</latest>
+        </search>
+        <option name="charting.chart">line</option>
+        <option name="charting.axisY.maximumNumber">100</option>
+        <option name="charting.legend.placement">none</option>
+      </chart>
+      <table>
+        <title>Windows events by type (last 45 days — run generate-activity.ps1 for fresh ones)</title>
+        <search>
+          <query>index=london_windows | stats count as events, max(_time) as last_seen by sourcetype
+| eval last_seen=strftime(last_seen,"%F %T") | sort - events</query>
+          <earliest>-45d</earliest><latest>now</latest>
         </search>
         <option name="drilldown">none</option>
-        <option name="count">20</option>
+        <option name="count">10</option>
       </table>
     </panel>
-    <panel>
-      <title>② Web-app container — requests over time (by path)</title>
-      <chart>
-        <search>
-          <query>index=berlin_web sourcetype=webapp:access src_ip="$ip$" | timechart span=1m count by path</query>
-          <earliest>$tr.earliest$</earliest><latest>$tr.latest$</latest>
-        </search>
-        <option name="charting.chart">column</option>
-        <option name="charting.chart.stackMode">stacked</option>
-        <option name="charting.legend.placement">bottom</option>
-      </chart>
-    </panel>
-  </row>
 
-  <row>
+    <!-- HYPERVISOR column -->
     <panel>
-      <title>③ Hypervisor — is the web-app container reachable?</title>
+      <title>Hypervisor — Proxmox (Berlin)</title>
       <single>
+        <title>API reachability (last 15 min)</title>
         <search>
-          <query>index=berlin_web sourcetype=webapp:probe | stats latest(reachable) as r latest(latency_ms) as lat latest(http_status) as code | eval status=if(r=1,"UP (".lat." ms, HTTP ".code.")","DOWN") | fields status</query>
+          <query>index=berlin_proxmox sourcetype=proxmox:api earliest=-15m latest=now
+| stats count as c | eval s=if(c&gt;0,"REACHABLE","NOT REACHABLE") | fields s</query>
           <earliest>-15m</earliest><latest>now</latest>
         </search>
         <option name="drilldown">none</option>
         <option name="colorBy">value</option>
         <option name="useColors">1</option>
+        <option name="colorMode">block</option>
         <option name="rangeColors">["0xd93f3c","0x53a051"]</option>
         <option name="rangeValues">[0]</option>
-        <option name="numberPrecision">0</option>
       </single>
-    </panel>
-    <panel>
-      <title>③ Hypervisor — containers &amp; VMs (latest state)</title>
+      <html>
+        <p style="color:#8b98a5;font-size:12px;">When Proxmox at <b>198.18.3.11</b> is reachable, the
+        ubuntu-berlin forwarder polls its API every 60s and this column shows the running
+        containers/VMs and node CPU/memory. It is currently unreachable, so the table below is empty.</p>
+      </html>
       <table>
+        <title>Containers &amp; VMs (from Proxmox API)</title>
         <search>
           <query>index=berlin_proxmox sourcetype=proxmox:api endpoint="cluster/resources" (type=lxc OR type=qemu)
 | stats latest(status) as Status latest(type) as Type latest(vmid) as VMID by name
 | rename name as Name | table VMID Type Name Status | sort VMID</query>
-          <earliest>-60m</earliest><latest>now</latest>
+          <earliest>$tr.earliest$</earliest><latest>$tr.latest$</latest>
         </search>
         <option name="drilldown">none</option>
         <format type="color" field="Status"><colorPalette type="map">{"running":#53a051,"stopped":#d93f3c}</colorPalette></format>
       </table>
     </panel>
-  </row>
 
-  <row>
+    <!-- APP column -->
     <panel>
-      <title>④ Container — CPU/Mem (webapp-berlin)</title>
-      <chart>
+      <title>App — Web-app container</title>
+      <single>
+        <title>Availability (probe, last 15 min)</title>
         <search>
-          <query>index=berlin_metrics sourcetype=linux:metrics host=webapp-berlin | timechart span=1m avg(cpu_pct) as "CPU %" avg(mem_used_pct) as "Mem %"</query>
+          <query>index=berlin_web sourcetype=webapp:probe earliest=-15m latest=now
+| stats latest(reachable) as r | eval s=case(isnull(r),"UNKNOWN", r=1,"AVAILABLE", true(),"NOT AVAILABLE") | fields s</query>
+          <earliest>-15m</earliest><latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="colorBy">value</option>
+        <option name="useColors">1</option>
+        <option name="colorMode">block</option>
+        <option name="rangeColors">["0xd93f3c","0x53a051"]</option>
+        <option name="rangeValues">[0]</option>
+      </single>
+      <table>
+        <title>Latest reachability probe</title>
+        <search>
+          <query>index=berlin_web sourcetype=webapp:probe
+| head 1 | eval checked=strftime(_time,"%F %T"),
+       state=if(reachable=1,"AVAILABLE","NOT AVAILABLE")
+| table checked state target http_status latency_ms</query>
+          <earliest>-60m</earliest><latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+      </table>
+      <chart>
+        <title>Reachability over time (1 = up, 0 = down)</title>
+        <search>
+          <query>index=berlin_web sourcetype=webapp:probe | timechart span=1m latest(reachable) as reachable</query>
           <earliest>$tr.earliest$</earliest><latest>$tr.latest$</latest>
         </search>
-        <option name="charting.chart">line</option>
-        <option name="charting.axisY.maximumNumber">100</option>
-        <option name="charting.legend.placement">bottom</option>
-      </chart>
-    </panel>
-    <panel>
-      <title>④ Container — reachability &amp; latency over time</title>
-      <chart>
-        <search>
-          <query>index=berlin_web sourcetype=webapp:probe | timechart span=1m latest(reachable) as reachable avg(latency_ms) as "latency (ms)"</query>
-          <earliest>$tr.earliest$</earliest><latest>$tr.latest$</latest>
-        </search>
-        <option name="charting.chart">line</option>
-        <option name="charting.legend.placement">bottom</option>
+        <option name="charting.chart">area</option>
+        <option name="charting.axisY.maximumNumber">1</option>
+        <option name="charting.legend.placement">none</option>
       </chart>
     </panel>
   </row>
