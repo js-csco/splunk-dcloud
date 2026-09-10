@@ -734,30 +734,6 @@ scripted inputs. In production you'd run them on a forwarder *in each location*;
 data still lands in the correct per-location index either way, so RBAC is
 unaffected — only the collection topology differs.
 
-## ThousandEyes Enterprise Agent (optional)
-
-Run a **ThousandEyes Enterprise Agent** as a Docker container on any Docker-capable
-lab host (an Ubuntu VM, or the Proxmox host as root) to add a network-visibility
-vantage point you can build TE tests against. The script installs Docker if needed,
-applies the ThousandEyes seccomp/apparmor profiles, and (re)creates the container.
-
-The **account token is a secret and is not stored in the repo** — pass it at runtime:
-
-```bash
-# on an Ubuntu VM (sudo -E preserves the env var):
-TEAGENT_ACCOUNT_TOKEN='<your-te-token>' \
-  curl -fsSL https://raw.githubusercontent.com/js-csco/splunk-dcloud/main/thousandeyes/create-te-agent.sh | sudo -E bash
-
-# or on the Proxmox host as root (no sudo):
-TEAGENT_ACCOUNT_TOKEN='<your-te-token>' \
-  curl -fsSL https://raw.githubusercontent.com/js-csco/splunk-dcloud/main/thousandeyes/create-te-agent.sh | bash
-```
-
-If you don't set `TEAGENT_ACCOUNT_TOKEN`, the script prompts for it. Overrides:
-`TE_AGENT_NAME` (default `dcloud-demo`), `HOST_VOL_AGENT_DIR` (default `/opt`). The
-agent then appears under **Cloud &amp; Enterprise Agents** in the ThousandEyes portal,
-where you create the test. Check it locally with `docker logs -f dcloud-demo`.
-
 ## Repo layout
 
 ```
