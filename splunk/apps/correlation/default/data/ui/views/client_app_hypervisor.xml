@@ -17,22 +17,19 @@
     <!-- ===================== CLIENT ===================== -->
     <panel>
       <title>Client — Linux Desktop (desktop-london)</title>
-      <single>
+      <table>
         <title>Status</title>
         <search>
           <query>index=london_metrics sourcetype=linux:metrics host=desktop-* earliest=-15m latest=now
 | stats count as c latest(_time) as lt
-| eval up=if(c&gt;0 AND (now()-lt)&lt;900,1,0)
-| eval status=if(up=1,"● ONLINE · SENDING","○ OFFLINE"), range=if(up=1,"low","severe")
-| table status range</query>
+| eval Status=if((c&gt;0 AND (now()-lt)&lt;900),"ONLINE","OFFLINE")
+| table Status</query>
           <earliest>-15m</earliest><latest>now</latest>
         </search>
-        <option name="colorBy">value</option>
-        <option name="colorMode">block</option>
-        <option name="useColors">1</option>
-        <option name="rangeColors">["0x53a051","0xd93f3c"]</option>
         <option name="drilldown">none</option>
-      </single>
+        <option name="count">1</option>
+        <format type="color" field="Status"><colorPalette type="map">{"ONLINE":#53a051,"REACHABLE":#53a051,"AVAILABLE":#53a051,"OFFLINE":#d93f3c,"NOT REACHABLE":#d93f3c,"NOT AVAILABLE":#d93f3c,"UNKNOWN":#f2b827}</colorPalette></format>
+      </table>
       <chart>
         <title>CPU % / Memory used %</title>
         <search>
@@ -69,22 +66,19 @@
     <!-- ===================== HYPERVISOR ===================== -->
     <panel>
       <title>Hypervisor — Proxmox VE (198.18.3.11)</title>
-      <single>
+      <table>
         <title>Status</title>
         <search>
           <query>index=berlin_proxmox sourcetype=proxmox:api earliest=-15m latest=now
 | stats count as c, count(eval(status=="error" OR status=="not_configured")) as errs
-| eval up=if(c&gt;errs,1,0)
-| eval status=if(up=1,"● REACHABLE","○ NOT REACHABLE"), range=if(up=1,"low","severe")
-| table status range</query>
+| eval Status=if(c&gt;errs,"REACHABLE","NOT REACHABLE")
+| table Status</query>
           <earliest>-15m</earliest><latest>now</latest>
         </search>
-        <option name="colorBy">value</option>
-        <option name="colorMode">block</option>
-        <option name="useColors">1</option>
-        <option name="rangeColors">["0x53a051","0xd93f3c"]</option>
         <option name="drilldown">none</option>
-      </single>
+        <option name="count">1</option>
+        <format type="color" field="Status"><colorPalette type="map">{"ONLINE":#53a051,"REACHABLE":#53a051,"AVAILABLE":#53a051,"OFFLINE":#d93f3c,"NOT REACHABLE":#d93f3c,"NOT AVAILABLE":#d93f3c,"UNKNOWN":#f2b827}</colorPalette></format>
+      </table>
       <chart>
         <title>Node CPU % / Memory used %</title>
         <search>
@@ -111,22 +105,19 @@
     <!-- ===================== APP ===================== -->
     <panel>
       <title>App — Web-app container (webapp-berlin)</title>
-      <single>
+      <table>
         <title>Status</title>
         <search>
           <query>index=berlin_web sourcetype=webapp:probe earliest=-15m latest=now
 | stats count as c latest(reachable) as r
-| eval up=if(c&gt;0 AND r=1,1,0)
-| eval status=case(c=0,"○ UNKNOWN", r=1,"● AVAILABLE", true(),"○ NOT AVAILABLE"), range=if(up=1,"low","severe")
-| table status range</query>
+| eval Status=case(c=0,"UNKNOWN", r=1,"AVAILABLE", true(),"NOT AVAILABLE")
+| table Status</query>
           <earliest>-15m</earliest><latest>now</latest>
         </search>
-        <option name="colorBy">value</option>
-        <option name="colorMode">block</option>
-        <option name="useColors">1</option>
-        <option name="rangeColors">["0x53a051","0xd93f3c"]</option>
         <option name="drilldown">none</option>
-      </single>
+        <option name="count">1</option>
+        <format type="color" field="Status"><colorPalette type="map">{"ONLINE":#53a051,"REACHABLE":#53a051,"AVAILABLE":#53a051,"OFFLINE":#d93f3c,"NOT REACHABLE":#d93f3c,"NOT AVAILABLE":#d93f3c,"UNKNOWN":#f2b827}</colorPalette></format>
+      </table>
       <chart>
         <title>Reachability (1=up) &amp; latency (ms)</title>
         <search>
