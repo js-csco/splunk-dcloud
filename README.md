@@ -585,9 +585,9 @@ Splunk ships a first-party **MCP Server** app ([Splunkbase app 7931](https://spl
 that exposes an MCP endpoint on the management port (`https://<host>:8089/services/mcp`),
 so an MCP client like **Claude Desktop** can search Splunk in plain language.
 
-**Install is automated.** `apply.sh` downloads it from Splunkbase at boot via the
-authenticated download API — it **prompts for your splunk.com username/password**
-(nothing is committed to the repo). For unattended runs, pass them as env instead:
+**Install is opt-in and non-interactive** (no boot prompt). To install from
+Splunkbase, pass your splunk.com creds as **env vars** when running `apply.sh`
+(nothing is committed to the repo):
 
 ```bash
 sudo SPLUNKBASE_USERNAME='you@example.com' SPLUNKBASE_PASSWORD='...' bash /opt/dcloud-splunk/apply.sh
@@ -785,7 +785,7 @@ splunk/apps/dcloud_lab/
 - [x] Save to GitHub: branch-per-save via KV queue + splunkd-context watcher (works around the search sandbox); apply.sh prompts for the token
 - [x] Get Data In: "Indexes and Sourcetypes" explorer (tstats, RBAC-aware, click-to-search)
 - [x] Data model (DCloudLab) + Pivot: point-and-click analytics over the lab data (Host Metrics / Web Requests / Network + asset fields), RBAC-aware, with a Pivot explainer dashboard
-- [x] Splunk MCP Server: auto-installed from Splunkbase at boot (`apply.sh` prompts for splunk.com creds) + "MCP Server & Claude Desktop" how-to dashboard
+- [x] Splunk MCP Server: opt-in Splunkbase install at boot (`apply.sh` reads `SPLUNKBASE_USERNAME`/`PASSWORD` env, no prompt) + "MCP Server & Claude Desktop" how-to dashboard
 - [ ] Real ITSI (premium): installable via the same Splunkbase path (`SPLUNKBASE_APP_IDS`) if entitled + licensed; heavy on a reset-each-session VM — interim "Service Health" dashboard preferred for demos
 - [ ] **IT Service Intelligence (ITSI)** — premium, separately-licensed. Plan: (1) interim "Service Health" dashboard built from existing syslog + metrics (KPIs green/amber/red) to show the concept; (2) evaluate a scripted install of the ITSI package + a small service/KPI set (needs the package staged + a license).
 - [ ] Remaining senders: Windows server (London → `london_windows`)

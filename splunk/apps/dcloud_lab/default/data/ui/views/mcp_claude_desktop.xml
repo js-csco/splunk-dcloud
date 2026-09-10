@@ -34,10 +34,10 @@
       <html>
         <h3>Setup (one time per session)</h3>
         <ol>
-          <li><b>Install the app</b> — done automatically by <code>apply.sh</code> when you
-          supply your splunk.com credentials at the startup prompt
-          (<i>"Splunk.com username for Splunkbase downloads"</i>). The table above should list
-          the MCP app. If not, re-run <code>apply.sh</code> and enter your creds.
+          <li><b>Install the app</b> — <code>apply.sh</code> installs it from Splunkbase when
+          you pass your splunk.com creds as env vars (no boot prompt):
+          <code>sudo SPLUNKBASE_USERNAME='you@example.com' SPLUNKBASE_PASSWORD='...' bash apply.sh</code>.
+          The table above should then list the MCP app.
           <br/><span style="color:#f2b827;"><b>Getting HTTP&#160;403?</b> Splunkbase requires
           you to <b>accept the app's license terms once in a browser</b> before the API will
           serve it. Log in at
