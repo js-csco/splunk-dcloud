@@ -63,14 +63,24 @@ label = dCloud Windows inputs
 [WinEventLog://Security]
 index = london_windows
 disabled = 0
+start_from = oldest
+current_only = 0
+checkpointInterval = 5
+evt_resolve_ad_obj = 0
 
 [WinEventLog://System]
 index = london_windows
 disabled = 0
+start_from = oldest
+current_only = 0
+checkpointInterval = 5
 
 [WinEventLog://Application]
 index = london_windows
 disabled = 0
+start_from = oldest
+current_only = 0
+checkpointInterval = 5
 
 [perfmon://CPU]
 object = Processor
@@ -118,9 +128,10 @@ if ($svc -and $svc.StartName -ne "LocalSystem") {
 # 4) restart to pick up inputs (this is what makes the WinEventLog/perfmon inputs live)
 & "$UF\bin\splunk.exe" restart 2>&1 | Write-Host
 
-# 5) verify: the WinEventLog/perfmon inputs should now be live, and the indexer reachable
-Write-Host "--- Active event-log / perfmon inputs (should list Security/System/Application + CPU/Memory) ---"
-& "$UF\bin\splunk.exe" list inputstatus -auth "admin:$AdminPw" 2>&1 | Select-String -Pattern "WinEventLog|perfmon|Security|System|Application|CPU|Memory" | Write-Host
+# 5) verify: confirm the WinEventLog stanzas are actually in the merged config
+#    (btool is authoritative - inputstatus can be misleading on a UF).
+Write-Host "--- btool: WinEventLog stanzas splunkd will use (should show 3 channels -> london_windows) ---"
+& "$UF\bin\splunk.exe" cmd btool inputs list WinEventLog 2>&1 | Write-Host
 Write-Host "--- Forward-server connection (should show ...:9997 active) ---"
 & "$UF\bin\splunk.exe" list forward-server -auth "admin:$AdminPw" 2>&1 | Write-Host
 
@@ -128,8 +139,9 @@ $ErrorActionPreference = $prevEAP
 
 Write-Host ""
 Write-Host "Done. Forwarding Windows events -> london_windows and perfmon -> london_metrics."
-Write-Host "Verify on the Splunk box (as gary/admin):"
-Write-Host "    index=_internal host=$env:COMPUTERNAME | stats count      (proves forwarding works)"
+Write-Host "Verify on the Splunk box (as gary/admin) - use time range = ALL TIME the first time:"
+Write-Host "    index=_internal host=$env:COMPUTERNAME | stats count            (proves forwarding works)"
+Write-Host "    index=london_metrics sourcetype=perfmon:* | stats count         (perfmon = current timestamps)"
 Write-Host "    index=london_windows | stats count by sourcetype"
-Write-Host "Note: WinEventLog Security only fills once there is logon/logoff activity;"
-Write-Host "System and Application should appear within a minute or two."
+Write-Host "IMPORTANT: WinEventLog backfills existing events with their ORIGINAL timestamps,"
+Write-Host "so a 'Last 15 minutes' search will hide them - search ALL TIME (or Last 7 days)."
