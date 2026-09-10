@@ -55,6 +55,16 @@ for app_src in "${SCRIPT_DIR}"/splunk/apps/*/; do
   chown -R "${SPLUNK_USER}:${SPLUNK_USER}" "${SPLUNK_HOME}/etc/apps/${app_name}" 2>/dev/null || true
 done
 
+# Remove retired apps so re-running on a live box doesn't leave stale apps behind
+# (the 'metrics' app was merged into infra_monitoring).
+for retired in metrics; do
+  if [ -d "${SPLUNK_HOME}/etc/apps/${retired}" ]; then
+    log "  removing retired app: ${retired}"
+    rm -rf "${SPLUNK_HOME}/etc/apps/${retired}"
+    CHANGED=1
+  fi
+done
+
 # --- default landing + home dashboard for ALL users -----------------------
 # Written BEFORE the start/restart below so Splunk reads it at (re)start.
 # [general_default] = org-wide defaults for users who haven't set their own.

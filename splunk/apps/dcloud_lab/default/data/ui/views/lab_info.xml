@@ -58,7 +58,7 @@
           <a href="/app/get_data_in/get_data_in_overview" style="text-decoration:none;background:#e67e22;color:#fff;padding:10px 14px;border-radius:8px;font-weight:600;font-size:13px;">Get Data In</a>
           <a href="/app/get_data_in/indexes_sourcetypes" style="text-decoration:none;background:#e67e22;color:#fff;padding:10px 14px;border-radius:8px;font-weight:600;font-size:13px;">Indexes &amp; Sourcetypes</a>
           <a href="/app/get_data_in/data_model_pivot" style="text-decoration:none;background:#e67e22;color:#fff;padding:10px 14px;border-radius:8px;font-weight:600;font-size:13px;">Data Model &amp; Pivot</a>
-          <a href="/app/metrics/host_metrics" style="text-decoration:none;background:#3fb950;color:#fff;padding:10px 14px;border-radius:8px;font-weight:600;font-size:13px;">Host &amp; Infra Metrics</a>
+          <a href="/app/infra_monitoring/host_metrics" style="text-decoration:none;background:#4a90d9;color:#fff;padding:10px 14px;border-radius:8px;font-weight:600;font-size:13px;">Host &amp; Infra Metrics</a>
           <a href="/app/alerts/alerts_overview" style="text-decoration:none;background:#d93f3c;color:#fff;padding:10px 14px;border-radius:8px;font-weight:600;font-size:13px;">Alerts</a>
           <a href="/app/infra_monitoring/onboarding_overview" style="text-decoration:none;background:#4a90d9;color:#fff;padding:10px 14px;border-radius:8px;font-weight:600;font-size:13px;">Infrastructure Monitoring</a>
           <a href="/app/infra_monitoring/asset_config" style="text-decoration:none;background:#4a90d9;color:#fff;padding:10px 14px;border-radius:8px;font-weight:600;font-size:13px;">Asset Configuration</a>

@@ -1,4 +1,0 @@
-<nav search_view="search" color="#3fb950">
-  <view name="host_metrics" default="true" />
-  <view name="search" />
-</nav>

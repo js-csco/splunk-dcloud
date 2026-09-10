@@ -107,7 +107,8 @@ curl -fsSL https://raw.githubusercontent.com/js-csco/splunk-dcloud/main/ubuntu/i
 > You want JSON with `cluster/resources` data, not `"status":"error"`.
 
 > The Splunk box collects **its own** host metrics automatically (`loc1_metrics`),
-> so the **Host & Infra Metrics** app has data even before the UFs are installed.
+> so the **Host & Infra Metrics** dashboard (in the Infrastructure Monitoring app)
+> has data even before the UFs are installed.
 
 **4. Linux desktop client (London)** — the end-user client in the **Client → App →
 Hypervisor** correlation. Install the Universal Forwarder on the Ubuntu 24.04 desktop;
@@ -298,9 +299,8 @@ whereas REST creation is immediate and reliable.
 
 Plus these apps:
 
-- **Host & Infra Metrics** → *Host Metrics* (CPU/mem/disk/load per machine — see "Host & infrastructure metrics" below).
 - **Alerts** → *Alerts — status & demo* (CPU/mem threshold + forwarder-health alerts — see "Alerts" below).
-- **Infrastructure Monitoring** → *Data Onboarding Overview* (what data is arriving, by host/index/sourcetype).
+- **Infrastructure Monitoring** → *Data Onboarding Overview*, *Host & Infra Metrics* (CPU/mem/disk/load per machine — see "Host & infrastructure metrics" below), and *Asset Configuration*.
 - **Correlation** → *Correlation 2 Sources* and *Correlation 3 Sources*: pick the
   sources and a correlation key (service / user / host) and find the same entity
   across separate sources in a time window (the canonical
@@ -411,8 +411,8 @@ marker event. Verify in Splunk: `index=london_linux host=ubuntu-london`, or open
 
 ## Host &amp; infrastructure metrics
 
-The **Host & Infra Metrics** app charts CPU / memory / disk / load for every
-machine.
+The **Host & Infra Metrics** dashboard (in the **Infrastructure Monitoring** app)
+charts CPU / memory / disk / load for every machine.
 
 **How the numbers get in:** a small agent samples the OS every 60s and emits one
 `key=value` line per sample. These land in per-location **event** indexes
@@ -422,7 +422,7 @@ config.
 
 | Source | Collector | → Index | Notes |
 |---|---|---|---|
-| Splunk host (loc1) | local scripted input (`metrics` app) | `loc1_metrics` | always on — no forwarder/network needed |
+| Splunk host (loc1) | local scripted input (`infra_monitoring` app) | `loc1_metrics` | always on — no forwarder/network needed |
 | ubuntu-london | UF `TA-dcloud-host` (`collect_host_metrics.sh`) | `london_metrics` | after `install-uf.sh london` |
 | desktop-london (client, 198.18.2.11) | UF `TA-dcloud-host` (metrics + sessions + processes) | `london_metrics` + `london_linux` | after `install-uf-desktop.sh` |
 | ubuntu-berlin | UF `TA-dcloud-host` | `berlin_metrics` | after `install-uf.sh berlin` |
@@ -448,7 +448,7 @@ per-node and per-guest CPU / memory / disk (from `/cluster/resources`) — we
 already poll it. The same UF poller (`poll_proxmox.py metrics`, run by
 `poll_proxmox_metrics.sh` every 60s) emits those numbers as metric JSON into
 `berlin_metrics` (sourcetype `proxmox:metrics`), so they appear on both the
-**Host & Infra Metrics** app and the *REST API — Proxmox* dashboard. No Proxmox
+**Host & Infra Metrics** dashboard and the *REST API — Proxmox* dashboard. No Proxmox
 metric-server (InfluxDB/Graphite) or extra agent is needed — it's the same
 ticket-auth API call, just emitted as metrics. (Requires the Berlin network to
 reach `198.18.3.11:8006`.)
