@@ -83,6 +83,38 @@ curl -fsSL https://raw.githubusercontent.com/js-csco/splunk-dcloud/main/ubuntu/i
 curl -fsSL https://raw.githubusercontent.com/js-csco/splunk-dcloud/main/ubuntu/generate-activity.sh | bash
 ```
 
+**6. (optional) install ITSI (premium)** — ITSI (Splunkbase app **1841**) installs
+**only by extracting its `.spl` into `etc/apps`** (not Splunk Web, not `splunk install
+app`). Copy your `.spl` onto the Splunk box and extract it. Do this **on the Splunk box
+(198.18.1.124)** each session (`/tmp` is wiped on reset).
+
+First get the file onto the box — either **SCP it** from a machine on the dCloud
+network (your laptop on the AnyConnect VPN, or the Ubuntu desktop `198.18.2.11`):
+
+```bash
+scp splunk-it-service-intelligence_*.spl <sshuser>@198.18.1.124:/tmp/
+```
+
+…or **pull it directly** on the box if it has outbound internet:
+
+```bash
+curl -fSL -o /tmp/itsi.spl "https://your-host/splunk-it-service-intelligence_x.y.z.spl"
+```
+
+Then extract and restart (the documented method):
+
+```bash
+sudo -u splunk /opt/splunk/bin/splunk stop
+sudo -u splunk tar -xf /tmp/splunk-it-service-intelligence_*.spl -C /opt/splunk/etc/apps
+sudo -u splunk /opt/splunk/bin/splunk start
+```
+
+> Re-run `apply.sh` afterwards (or it already ran) — it auto-installs **OpenJDK 17**
+> when it sees the `itsi` app (ITSI needs Java 8-11/17; Ubuntu 24.04's default is 21).
+> ITSI also needs its own run-time license. To avoid re-copying every session, host the
+> `.spl` at a URL and use `SPLUNK_INSTALL_URLS` instead (see the ITSI section below). The
+> **Lab Overview → ITSI Setup** dashboard has the full checklist.
+
 Then open `http://198.18.1.124:8000` → **Lab Overview → Setup Status** (all
 green) and log in as `leo` / `ben` / `gary` (password `C1sco12345`).
 
