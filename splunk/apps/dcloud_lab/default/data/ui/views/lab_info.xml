@@ -150,6 +150,7 @@
           </tbody>
         </table>
         <p style="color:#8b98a5;margin-top:8px;">Access from your laptop via the dCloud AnyConnect VPN, or hop through a host on the lab network. Splunk Web: <a href="http://198.18.1.124:8000" target="_blank">http://198.18.1.124:8000</a></p>
+        <p style="color:#f2b827;margin-top:4px;"><b>ubuntu-desktop-london over RDP:</b> the connection lands on the <b>xrdp/Xvnc</b> login — it just wants the OS account. Session <b>Xorg</b> (or Xvnc), user <b>cisco</b>, password <b>C1sco12345</b>. A plain "VNC authentication" prompt wants the same password. Black screen after login = the desktop is already open on the console (one GNOME session at a time) — log out of the console first, then reconnect.</p>
       </html>
     </panel>
   </row>

@@ -120,6 +120,12 @@ distinct host id `desktop-london` so it doesn't collide with the infra box
 curl -fsSL https://raw.githubusercontent.com/js-csco/splunk-dcloud/main/ubuntu/install-uf-desktop.sh | sudo bash
 ```
 
+> **Logging in over RDP:** the desktop uses **xrdp/Xvnc**, so RDP lands on the
+> xrdp login (or a "VNC authentication" prompt) — it wants the **OS account**:
+> session **Xorg** (or Xvnc), user **`cisco`**, password **`C1sco12345`**. A black
+> screen after login usually means the desktop is already open on the console
+> (GNOME allows one session) — log out of the console first, then reconnect.
+
 > A Windows client is still supported (`windows/install-uf.ps1` → `london_windows`)
 > if you specifically want to demo Windows Event Log / AD ingestion, but the Linux
 > desktop is simpler and is what the correlation dashboard's Client node expects.
