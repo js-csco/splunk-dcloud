@@ -158,8 +158,37 @@ sudo -u splunk /opt/splunk/bin/splunk start
 Then open `http://198.18.1.124:8000` → **Lab Overview → Setup Status** (all
 green) and log in as `leo` / `ben` / `gary` (password `C1sco12345`).
 
-> The Cisco routers (London/Berlin) are polled automatically by the Splunk box —
-> nothing to run there.
+> The Cisco routers (London/Berlin) are **SSH-polled** by the Splunk box into
+> `london_network` / `berlin_network` once they have a config — see below.
+
+### Cisco routers (console bring-up)
+
+The Catalyst 8000V routers ship **empty** and are reachable **only via console**
+(dCloud's web/VM console). They can't be SSH-polled until they have an IP + login,
+so paste a baseline config once per session. The configs are versioned in
+[`routers/`](routers/):
+
+- London → [`routers/london-cat8kv.txt`](routers/london-cat8kv.txt) (198.18.2.32)
+- Berlin → [`routers/berlin-cat8kv.txt`](routers/berlin-cat8kv.txt) (198.18.3.32)
+
+Steps at the console:
+1. If asked *"enter initial configuration dialog?"* answer **no**.
+2. Confirm which interface is connected: `show ip interface brief` (the config
+   assumes **GigabitEthernet1** — edit the file if yours differs).
+3. Paste the whole file. It sets hostname, the LAN IP, `username cisco/cisco`
+   (priv 15), a default route to the subnet gateway (`.1`), **SSH v2** (generates
+   the RSA key), syslog to the Splunk box, and saves with `write memory`.
+4. Verify from the Splunk box it's reachable: `ssh cisco@198.18.2.32 "show version"`.
+
+Each baseline gives the router what `ssh_router.sh` needs (creds in
+`splunk/apps/get_data_in/bin/routers.csv`); the poller then pulls `show`
+output every 5 min into `*_network`. Nothing to install on the router — it's
+plain IOS config.
+
+> **What to use:** any terminal at the console — just paste the block. For
+> hands-off automation you could drive the console with `expect`, or (once SSH is
+> up) push changes with Ansible `ios_config` / netmiko; for a reset-each-session
+> lab, pasting the versioned file is simplest and repeatable.
 
 ### Troubleshooting: DNS
 

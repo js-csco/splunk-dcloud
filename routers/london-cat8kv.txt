@@ -1,0 +1,41 @@
+! ===========================================================================
+! london-cat8kv - baseline console config for the London Cisco Catalyst 8000V.
+! Paste this at the console (answer "no" to the initial config dialog first).
+! Gives the router an IP, a local login (cisco/cisco), SSH v2, a default route
+! back to the Splunk box, and syslog - so the Splunk SSH poller (ssh_router.sh,
+! cisco/cisco @ 198.18.2.32) can reach it and data lands in london_network.
+!
+! Verify the data interface first with:  show ip interface brief
+! and replace GigabitEthernet1 below if the connected interface differs.
+! ===========================================================================
+enable
+configure terminal
+hostname london-cat8kv
+ip domain name dcloud.local
+no ip domain lookup
+!
+username cisco privilege 15 secret cisco
+enable secret cisco
+!
+interface GigabitEthernet1
+ description LAN - London 198.18.2.0/24
+ ip address 198.18.2.32 255.255.255.0
+ no shutdown
+exit
+!
+ip route 0.0.0.0 0.0.0.0 198.18.2.1
+!
+ip ssh version 2
+line vty 0 4
+ login local
+ transport input ssh
+ exec-timeout 30 0
+exit
+!
+service timestamps log datetime msec
+logging host 198.18.1.124
+logging trap informational
+!
+end
+crypto key generate rsa modulus 2048
+write memory
