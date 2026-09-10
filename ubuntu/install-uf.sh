@@ -109,6 +109,25 @@ if [ "${SITE}" = "berlin" ]; then
   run_root cp -a "${work}/splunk/uf-apps/TA-dcloud-proxmox" "${UF_HOME}/etc/apps/TA-dcloud-proxmox"
   run_root chmod +x "${UF_HOME}/etc/apps/TA-dcloud-proxmox/bin/"*.sh 2>/dev/null || true
   echo "Berlin: Proxmox poller deployed (berlin_proxmox + berlin_metrics)."
+  # Proxmox SECRET (password or token) -> out-of-repo var file (chmod 600), never
+  # committed. Host/port/user/site come from the committed proxmox_config.env.
+  if [ -z "${PROXMOX_PASSWORD:-}" ] && [ -z "${PROXMOX_TOKEN:-}" ] && [ -r /dev/tty ]; then
+    printf 'Proxmox password for %s at %s (blank to skip): ' \
+      "${PROXMOX_USER:-root@pam}" "${PROXMOX_HOST:-198.18.3.11}" > /dev/tty
+    IFS= read -rs PROXMOX_PASSWORD < /dev/tty || true; printf '\n' > /dev/tty
+  fi
+  if [ -n "${PROXMOX_PASSWORD:-}" ] || [ -n "${PROXMOX_TOKEN:-}" ]; then
+    run_root mkdir -p "${UF_HOME}/var/lib/dcloud"
+    tmpenv="$(mktemp)"
+    [ -n "${PROXMOX_TOKEN:-}" ]    && printf 'PROXMOX_TOKEN=%s\n'    "${PROXMOX_TOKEN}"    >> "$tmpenv"
+    [ -n "${PROXMOX_PASSWORD:-}" ] && printf 'PROXMOX_PASSWORD=%s\n' "${PROXMOX_PASSWORD}" >> "$tmpenv"
+    run_root cp "$tmpenv" "${UF_HOME}/var/lib/dcloud/proxmox.env"
+    run_root chmod 600 "${UF_HOME}/var/lib/dcloud/proxmox.env"
+    rm -f "$tmpenv"
+    echo "Berlin: Proxmox credential stored out-of-repo (var/lib/dcloud/proxmox.env)."
+  else
+    echo "Berlin: no Proxmox credential given - poller will report 'no creds' until set."
+  fi
   # Reachability probe for the web-app container (berlin_web / webapp:probe).
   WEBAPP_TARGET="${WEBAPP_TARGET:-198.18.3.50:8080}"
   run_root tee -a "${UF_HOME}/etc/apps/TA-dcloud-host/local/inputs.conf" >/dev/null <<EOF
