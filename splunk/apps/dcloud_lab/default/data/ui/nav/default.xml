@@ -3,6 +3,7 @@
   <view name="setup" />
   <view name="lab_overview" />
   <view name="mcp_claude_desktop" />
+  <view name="itsi_setup" />
   <view name="save_to_github" />
   <view name="search" />
   <view name="datasets" />

@@ -1,0 +1,90 @@
+<dashboard version="1.1" theme="dark">
+  <label>ITSI Setup</label>
+  <description>How to install IT Service Intelligence (premium) from your .spl file — and why it's manual.</description>
+
+  <row>
+    <panel>
+      <html>
+        <h2>Installing ITSI (IT Service Intelligence)</h2>
+        <p><b>ITSI is a premium, separately-licensed Splunk app</b> — it isn't part of the
+        config-as-code build (licensing + size), so it's installed by hand from the
+        <code>.spl</code> file you have. This page is the repeatable checklist.</p>
+        <p style="color:#f2b827;">Heads-up: ITSI is <b>heavy</b> (its own indexes, KV store,
+        saved searches, ML deps) and needs a <b>run-time license</b> (trial or purchased).
+        On this reset-each-session VM you'll re-do this after every reset. For a lighter demo
+        of the same idea, use the interim "Service Health" dashboard instead.</p>
+      </html>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
+      <title>Status — is ITSI installed?</title>
+      <table>
+        <search>
+          <query>| rest /services/apps/local | search title=itsi OR title=SA-ITOA OR label="*Service Intelligence*" | eval Status="installed" | table title label version Status</query>
+          <earliest>-1m</earliest><latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+      </table>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
+      <html>
+        <h3>Install it (pick one)</h3>
+        <p><b>A) Splunk Web (easiest):</b></p>
+        <ol>
+          <li><b>Apps ▸ Manage Apps</b> (top-left apps menu → Manage Apps), or go to
+          <code>/en-US/manager/appinstall/_upload</code>.</li>
+          <li><b>Install app from file</b> → choose your ITSI <code>.spl</code> →
+          check <b>Upgrade app</b> if re-installing → <b>Upload</b>.</li>
+          <li><b>Restart Splunk</b> when prompted.</li>
+        </ol>
+        <p><b>B) CLI</b> (if the .spl is on the box, e.g. you scp'd it to <code>/tmp</code>):</p>
+        <pre style="white-space:pre-wrap;background:#11151a;padding:12px;border-radius:6px;color:#cdd9e5;">sudo -u splunk /opt/splunk/bin/splunk install app /tmp/itsi.spl -auth admin:C1sco12345
+sudo systemctl restart Splunkd</pre>
+      </html>
+    </panel>
+    <panel>
+      <html>
+        <h3>After install</h3>
+        <ol>
+          <li><b>License:</b> ITSI needs its own license. Add a trial/eval under
+          <b>Settings ▸ Licensing</b> if prompted, or ITSI runs in a limited/trial state.</li>
+          <li><b>First run:</b> open the <b>IT Service Intelligence</b> app — it completes a
+          one-time setup and creates its indexes (e.g. <code>itsi_summary</code>) + KV store.</li>
+          <li><b>Point it at lab data:</b> create a couple of <b>Services</b> (e.g. "London
+          Hosts", "Berlin Hosts") with KPIs from our metrics/syslog
+          (<code>index=*_metrics</code>, <code>index=*_linux</code>) to get glass tables and
+          health scores.</li>
+        </ol>
+        <p style="color:#8b98a5;">RBAC note: ITSI has its own role model; the lab's
+        location roles won't automatically map to ITSI service access.</p>
+      </html>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
+      <html>
+        <h3>Making it survive the session reset</h3>
+        <p>The VM wipes each session, so the upload is lost. Options, cleanest first:</p>
+        <ul>
+          <li><b>Splunkbase auto-download</b> — if your splunk.com account is <b>entitled</b> to
+          ITSI, add its Splunkbase app id to the boot install:
+          <code>SPLUNKBASE_APP_IDS="7931 &lt;itsi_id&gt;"</code> when running
+          <code>apply.sh</code> (same flow as the MCP Server). It still needs a license.</li>
+          <li><b>Private URL</b> — host your <code>.spl</code> somewhere the lab can reach and
+          we add an <code>apply.sh</code> step that fetches + <code>splunk install app</code>s it
+          at boot (tell me the URL and I'll wire it — nothing gets committed to the repo).</li>
+          <li><b>Manual each session</b> — just re-upload via this page's steps (what you're
+          doing now).</li>
+        </ul>
+        <p style="color:#8b98a5;">Version check: make sure your ITSI build supports Splunk
+        <b>10.4</b> — if the app won't load after restart, that's the usual cause.</p>
+      </html>
+    </panel>
+  </row>
+</dashboard>
