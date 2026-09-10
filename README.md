@@ -62,7 +62,16 @@ curl -fsSL https://raw.githubusercontent.com/js-csco/splunk-dcloud/main/ubuntu/i
 > The Splunk box collects **its own** host metrics automatically (`loc1_metrics`),
 > so the **Host & Infra Metrics** app has data even before the UFs are installed.
 
-**4. (optional) demo data** — correlated events on the Ubuntu boxes:
+**4. windows-server-2022-london** — install the Universal Forwarder on the Windows
+client (Windows logons/events → `london_windows`, perfmon CPU/mem → `london_metrics`).
+Run this in an **elevated PowerShell** (Run as Administrator) on the Windows box — it
+is required for the **Client → App → Hypervisor** correlation to see the Windows side:
+
+```powershell
+iwr https://raw.githubusercontent.com/js-csco/splunk-dcloud/main/windows/install-uf.ps1 -UseBasicParsing | iex
+```
+
+**5. (optional) demo data** — correlated events on the Ubuntu boxes:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/js-csco/splunk-dcloud/main/ubuntu/generate-activity.sh | bash
@@ -431,10 +440,33 @@ sudo SPLUNKBASE_USERNAME='you@example.com' SPLUNKBASE_PASSWORD='...' bash /opt/d
 # install more Splunkbase apps too:  SPLUNKBASE_APP_IDS="7931 <id> ..."
 ```
 Mechanics: `lib/splunkbase_install.py` logs in → finds the latest release → downloads
-→ extracts into `etc/apps/`; the restart in `apply.sh` loads it. (This same path can
-fetch **ITSI** if your account is entitled — add its app id to `SPLUNKBASE_APP_IDS` —
-but ITSI also needs a run-time license and is heavy; the interim "Service Health"
-dashboard is the lighter demo option.)
+→ extracts into `etc/apps/`; the restart in `apply.sh` loads it.
+
+> **HTTP 403 on the download?** Splunkbase requires you to **accept the app's license
+> terms once in a browser** before the API will serve it. Log in at
+> [splunkbase.splunk.com/app/7931](https://splunkbase.splunk.com/app/7931), click
+> **Download**, accept the terms (you can cancel the actual download), then re-run
+> `apply.sh`. The app is **only** available from Splunkbase — the CiscoDevNet
+> `Splunk-MCP-Server-official` repo is documentation only, no downloadable package.
+
+**Install any app from a direct URL (ITSI, or when Splunkbase auth is a problem).**
+Host the `.spl`/`.tgz` where the lab can reach it and `apply.sh` will fetch + extract
+it server-side (it prompts, or set the env var). This needs no Splunkbase entitlement
+or terms acceptance:
+
+```bash
+sudo SPLUNK_INSTALL_URLS="https://your-host/itsi.spl https://your-host/other.tgz" \
+  bash /opt/dcloud-splunk/apply.sh
+```
+
+**ITSI note (important on Splunk 10):** the browser **"Install app from file" upload is
+capped at 512 MB by a limit hard-coded into the Splunk 10 Web UI** — `max_upload_size`
+does **not** raise it, so ITSI (well over 512 MB) **cannot** be installed through the
+UI on this 10.4 box ("Package is too large, must be less than 500 MB"). Install it
+**server-side** instead: via `SPLUNK_INSTALL_URLS` above, via the Splunkbase path
+(`SPLUNKBASE_APP_IDS="7931 <itsi_id>"`) if entitled, or via CLI
+(`splunk install app /tmp/itsi.spl` — no size limit). ITSI also needs its own run-time
+license; the interim "Service Health" dashboard is the lighter demo option.
 
 **Then, per session** (runtime state, so recreate each time): grant the app's MCP
 capability to your user/role (or just use `admin`), create a **bearer token**

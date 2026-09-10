@@ -120,6 +120,36 @@ else
   log "Splunkbase: no creds provided - skipping MCP Server install."
 fi
 
+# --- Install apps from direct URLs (ITSI, MCP, any .spl/.tgz) --------------
+# Guaranteed no-file-move path that needs no Splunkbase entitlement/terms: host
+# the package at a URL the lab can reach (your own file host, a temporary signed
+# link, an internal server) and it is fetched + extracted server-side, before
+# Splunk starts. Nothing is committed to the repo. Space-separated in
+# SPLUNK_INSTALL_URLS, or entered interactively. .spl and .tgz are both gzip
+# tarballs, so extraction handles either.
+if [ -z "${SPLUNK_INSTALL_URLS:-}" ] && [ -r /dev/tty ]; then
+  printf 'Direct URL(s) of .spl/.tgz apps to install (ITSI/others; space-separated; blank to skip): ' > /dev/tty
+  IFS= read -r SPLUNK_INSTALL_URLS < /dev/tty || true
+fi
+if [ -n "${SPLUNK_INSTALL_URLS:-}" ]; then
+  for _u in ${SPLUNK_INSTALL_URLS}; do
+    _tmp="$(mktemp /tmp/appdl.XXXXXX.tgz)"
+    log "Fetching app package: ${_u}"
+    if curl -fsSL --retry 3 -o "${_tmp}" "${_u}"; then
+      if tar -xzf "${_tmp}" -C "${SPLUNK_HOME}/etc/apps" 2>/dev/null; then
+        log "  installed app package from URL"
+        CHANGED=1
+      else
+        warn "  could not extract package (not a .spl/.tgz gzip tarball?)"
+      fi
+    else
+      warn "  download failed for one URL (unreachable / needs auth?)."
+    fi
+    rm -f "${_tmp}"
+  done
+  chown -R "${SPLUNK_USER}:${SPLUNK_USER}" "${SPLUNK_HOME}/etc/apps" 2>/dev/null || true
+fi
+
 # ===========================================================================
 # 2. Apply declarative config (start Splunk, or restart if config changed)
 # ===========================================================================

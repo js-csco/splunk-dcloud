@@ -33,22 +33,31 @@
   <row>
     <panel>
       <html>
-        <h3>Install it (pick one)</h3>
-        <p><b>A) Splunk Web (easiest):</b></p>
-        <ol>
-          <li><b>Apps ▸ Manage Apps</b> (top-left apps menu → Manage Apps), or go to
-          <code>/en-US/manager/appinstall/_upload</code>.</li>
-          <li><b>Install app from file</b> → choose your ITSI <code>.spl</code> →
-          check <b>Upgrade app</b> if re-installing → <b>Upload</b>.</li>
-          <li><b>Restart Splunk</b> when prompted.</li>
-        </ol>
-        <p><b>B) CLI — recommended for ITSI</b> (the .spl exceeds the Web UI upload cap;
-        the CLI has <b>no size limit</b>). Put the .spl on the box, e.g. <code>/tmp</code>:</p>
+        <h3>Why the Web UI upload fails on this box</h3>
+        <p style="color:#f2b827;"><b>The browser upload cannot work here.</b> In
+        <b>Splunk 10.0+</b> there is a <b>512&#160;MB limit hard-coded into the Web UI
+        component itself</b>. It is <b>not</b> the <code>max_upload_size</code> setting —
+        raising that (we set it to 1&#160;GB in <code>apply.sh</code>) does <b>not</b>
+        lift the UI cap. ITSI is well over 512&#160;MB, so
+        <i>"Package is too large, must be less than 500&#160;MB"</i> is expected and
+        unavoidable through the browser on 10.x. Install it <b>server-side</b> instead
+        (both options below have no size limit).</p>
+
+        <h3>Install it (pick one — both are server-side, no size limit)</h3>
+        <p><b>A) Auto-fetch at boot from a URL (no file-moving) — recommended:</b></p>
+        <p>Host your ITSI <code>.spl</code> anywhere the lab can reach (your file host, a
+        temporary signed link, an internal server), then run <code>apply.sh</code> — it
+        prompts for <b>Direct URL(s) of .spl/.tgz apps</b> (or set
+        <code>SPLUNK_INSTALL_URLS</code>). It <code>curl</code>s the package and extracts
+        it into <code>etc/apps</code> before Splunk starts. Nothing is committed to the
+        repo, and it re-installs automatically on every session reset.</p>
+        <pre style="white-space:pre-wrap;background:#11151a;padding:12px;border-radius:6px;color:#cdd9e5;">SPLUNK_INSTALL_URLS="https://your-host/itsi.spl" ./apply.sh</pre>
+
+        <p><b>B) CLI, if the .spl is already on the box:</b></p>
         <pre style="white-space:pre-wrap;background:#11151a;padding:12px;border-radius:6px;color:#cdd9e5;">sudo -u splunk /opt/splunk/bin/splunk install app /tmp/itsi.spl -auth admin:C1sco12345
 sudo systemctl restart Splunkd</pre>
-        <p style="color:#8b98a5;">If you still prefer the Web UI: <code>apply.sh</code> now
-        raises the upload limit to <b>1&#160;GB</b> (<code>web.conf max_upload_size</code>);
-        the default is ~500&#160;MB, which is why an ITSI upload was rejected.</p>
+        <p style="color:#8b98a5;">The CLI <code>install app</code> command has no upload
+        cap — the 512&#160;MB limit is a Web-UI-only restriction.</p>
       </html>
     </panel>
     <panel>
@@ -74,17 +83,19 @@ sudo systemctl restart Splunkd</pre>
     <panel>
       <html>
         <h3>Making it survive the session reset</h3>
-        <p>The VM wipes each session, so the upload is lost. Options, cleanest first:</p>
+        <p>The VM wipes each session, so a manual install is lost. Both boot options
+        below re-install automatically on every reset — no file-moving:</p>
         <ul>
+          <li><b>URL auto-fetch (any account)</b> — set
+          <code>SPLUNK_INSTALL_URLS="https://your-host/itsi.spl"</code> (or answer the
+          prompt) when running <code>apply.sh</code>. Works regardless of Splunkbase
+          entitlement; it still needs an ITSI run-time license after install.</li>
           <li><b>Splunkbase auto-download</b> — if your splunk.com account is <b>entitled</b> to
           ITSI, add its Splunkbase app id to the boot install:
           <code>SPLUNKBASE_APP_IDS="7931 &lt;itsi_id&gt;"</code> when running
-          <code>apply.sh</code> (same flow as the MCP Server). It still needs a license.</li>
-          <li><b>Private URL</b> — host your <code>.spl</code> somewhere the lab can reach and
-          we add an <code>apply.sh</code> step that fetches + <code>splunk install app</code>s it
-          at boot (tell me the URL and I'll wire it — nothing gets committed to the repo).</li>
-          <li><b>Manual each session</b> — just re-upload via this page's steps (what you're
-          doing now).</li>
+          <code>apply.sh</code> (same flow as the MCP Server). First download of any
+          Splunkbase app needs its <b>license terms accepted once in a browser</b> at
+          splunkbase.splunk.com while logged in, or the API returns HTTP&#160;403.</li>
         </ul>
         <p style="color:#8b98a5;">Version check: make sure your ITSI build supports Splunk
         <b>10.4</b> — if the app won't load after restart, that's the usual cause.</p>

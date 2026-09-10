@@ -37,7 +37,16 @@
           <li><b>Install the app</b> — done automatically by <code>apply.sh</code> when you
           supply your splunk.com credentials at the startup prompt
           (<i>"Splunk.com username for Splunkbase downloads"</i>). The table above should list
-          the MCP app. If not, re-run <code>apply.sh</code> and enter your creds.</li>
+          the MCP app. If not, re-run <code>apply.sh</code> and enter your creds.
+          <br/><span style="color:#f2b827;"><b>Getting HTTP&#160;403?</b> Splunkbase requires
+          you to <b>accept the app's license terms once in a browser</b> before the API will
+          serve it. Log in at
+          <a href="https://splunkbase.splunk.com/app/7931" target="_blank">splunkbase.splunk.com/app/7931</a>,
+          click <b>Download</b>, accept the terms (you can cancel the actual download), then
+          re-run <code>apply.sh</code> — the download then succeeds for your account.</span>
+          <br/><span style="color:#8b98a5;">No entitlement issues but still stuck? You can also
+          host the app <code>.spl</code> at a reachable URL and let <code>apply.sh</code> fetch
+          it via <code>SPLUNK_INSTALL_URLS</code> (see the ITSI Setup page — same mechanism).</span></li>
 
           <li><b>Grant the MCP capability</b> to the user/role that will connect. The simplest
           for a demo is to use <b>admin</b> (already has every capability). To use a lab user,
