@@ -1,15 +1,51 @@
 # splunk-dcloud
 
-GitHub-driven, self-rebuilding **Splunk RBAC lab** for Cisco **dCloud**. The
-dCloud VM resets to an empty template each session, so on every startup one
-command pulls this repo and rebuilds the entire Splunk configuration from
-scratch — per-location indexes, RBAC roles, users, and dashboards. Nothing is
-configured by hand; the lab is identical every time.
+> **A self-rebuilding Splunk demo lab for Cisco dCloud.** The VM resets to an empty
+> template each session; one startup command pulls this repo and rebuilds the entire
+> Splunk configuration from code — per-location indexes, RBAC, users, dashboards, and
+> data inputs. Nothing is configured by hand, so the lab is **identical every time**.
 
-To change the lab, edit files here and `git push` to `main` — the next session
-picks it up automatically. The dCloud startup command never changes.
+To change the lab, edit files here and `git push` to `main` — the next session picks
+it up automatically. The dCloud startup command never changes.
 
 <img src="splunk/apps/dcloud_lab/appserver/static/topology.svg" alt="Lab topology" width="640">
+
+### What's inside
+
+- **Location-based RBAC** — one index namespace per location (`loc1_*`, `london_*`,
+  `berlin_*`); roles grant access per location; three demo users.
+- **Every ingestion method** — Universal Forwarders (Linux + a desktop client),
+  scripted REST polling (Proxmox), SSH polling (Cisco routers), file monitors.
+- **Live demos** — host/infra metrics, alerts, asset inventory + enrichment, a
+  data model + Pivot, and a **Client → Hypervisor → App** correlation across a Linux
+  desktop, a Proxmox hypervisor, and a containerised web-app.
+- **Extras** — Splunk **MCP Server** (Claude Desktop), **ITSI** install path, and a
+  "Save to GitHub" flow to persist demo changes.
+
+### Table of contents
+
+| Setup | Concepts | Demos | Reference |
+|---|---|---|---|
+| [How it works](#how-it-works) | [Location-based RBAC](#location-based-rbac-the-core-design) | [Host &amp; infra metrics](#host--infrastructure-metrics) | [Get Data In](#get-data-in-ingestion-methods) |
+| [Startup (each session)](#startup-each-session) | [Dashboards](#dashboards-in-the-lab-overview-app) | [Alerts](#alerts) | [Save to GitHub](#save-to-github-persisting-demo-changes) |
+| [Cisco routers](#cisco-routers-console-bring-up) | [Sending data in](#sending-data-in-ubuntu--splunk) | [Asset Configuration](#asset-configuration-asset-inventory--enrichment) | [Repo layout](#repo-layout) |
+| [Troubleshooting: DNS](#troubleshooting-dns) | | [Client → Hypervisor → App](#client--app--hypervisor-correlation) | [Roadmap](#roadmap) |
+| | | [MCP Server](#splunk-mcp-server-claude-desktop) · [ITSI](#startup-each-session) | |
+
+### Hosts at a glance
+
+| Host | Location | Address | Feeds Splunk |
+|---|---|---|---|
+| splunk | loc1 | 198.18.1.124 | `loc1_*`; polls routers + Proxmox |
+| ubuntu-london | London | 198.18.2.x | UF → `london_linux`, `london_metrics` |
+| ubuntu-desktop-london (client) | London | 198.18.2.11 | UF → `london_metrics`, `london_linux` |
+| cat8kv-london (router) | London | 198.18.2.32 | SSH poll → `london_network` |
+| proxmox-berlin (hypervisor) | Berlin | 198.18.3.11 | API poll → `berlin_proxmox`, `berlin_metrics` |
+| webapp-berlin (LXC) | Berlin | 198.18.3.50:8080 | UF → `berlin_web`, `berlin_metrics` |
+| ubuntu-berlin | Berlin | 198.18.3.x | UF → `berlin_linux`, `berlin_metrics` |
+| cat8kv-berlin (router) | Berlin | 198.18.3.32 | SSH poll → `berlin_network` |
+
+Demo logins (all password `C1sco12345`): `admin` · `gary` (global) · `leo` (London) · `ben` (Berlin).
 
 ---
 
@@ -212,8 +248,8 @@ whole location with a single wildcard.
 | Location | Network | Devices | Indexes | Roles with access |
 |---|---|---|---|---|
 | loc1 | 198.18.1.0/24 | splunk (infrastructure) | `loc1_linux`, `loc1_metrics` | `role_global` only |
-| London (loc2) | 198.18.2.0/24 | ubuntu-london, windows-server-2022-london | `london_linux`, `london_windows`, `london_network`, `london_metrics` | `role_london`, `role_global` |
-| Berlin (loc3) | 198.18.3.0/24 | proxmox-9.2-berlin, ubuntu-berlin | `berlin_linux`, `berlin_proxmox`, `berlin_network`, `berlin_metrics` | `role_berlin`, `role_global` |
+| London (loc2) | 198.18.2.0/24 | ubuntu-london, ubuntu-desktop-london, cat8kv-london | `london_linux`, `london_metrics`, `london_network`, `london_windows` | `role_london`, `role_global` |
+| Berlin (loc3) | 198.18.3.0/24 | proxmox-berlin, webapp-berlin, ubuntu-berlin, cat8kv-berlin | `berlin_linux`, `berlin_metrics`, `berlin_proxmox`, `berlin_network`, `berlin_web` | `role_berlin`, `role_global` |
 
 > The `*_metrics` indexes need no RBAC changes — roles grant a whole location
 > by wildcard (`london_*`, `berlin_*`, `loc1_*`), so they're covered
@@ -485,34 +521,35 @@ free, since users only ever see events from indexes they're allowed to read.
 
 ## Client → App → Hypervisor correlation
 
-A full end-to-end scenario in the **Correlation** app (*Client → App → Hypervisor*):
-a user logs into **Windows (London)**, opens a **web-app** running in an **LXC
-container** on the **Proxmox hypervisor (Berlin)**, and clicks a button — and
-Splunk lines up all four layers, correlated by `src_ip` and time.
+A full end-to-end scenario in the **Correlation** app (*Client → Hypervisor → App*):
+a user on the **Linux desktop (London)** reaches a **web-app** running in an **LXC
+container** on the **Proxmox hypervisor (Berlin)** — and Splunk lines up all three
+layers with a live status per node, correlated by time (and `src_ip` for traffic).
 
 **Components / data:**
 
 | Layer | Data | Index / sourcetype |
 |---|---|---|
-| Windows client | logons (4624/4625), CPU/mem | `london_windows` (WinEventLog), `london_metrics` (perfmon) |
-| Web-app container | HTTP access log (method/path/src_ip/action) + host metrics | `berlin_web` (`webapp:access`), `berlin_metrics` |
-| Hypervisor | metrics, active containers, **is the app reachable?** | `berlin_proxmox`, `berlin_web` (`webapp:probe`) |
+| Client (Linux desktop) | live metrics, logged-on users, top processes | `london_metrics` (`linux:metrics`), `london_linux` (`linux:sessions`, `linux:ps`) |
+| Hypervisor (Proxmox) | node metrics, active containers, reachability | `berlin_proxmox` (`proxmox:api`), `berlin_metrics` (`proxmox:metrics`) |
+| App (web-app container) | HTTP access log + host metrics, **is it reachable?** | `berlin_web` (`webapp:access`, `webapp:probe`), `berlin_metrics` |
 
 **Set it up (each session):**
 
 ```bash
-# 1) On ubuntu-berlin — create the LXC on Proxmox + provision app + in-container UF
+# 1) Client — install the UF on the Ubuntu desktop (host desktop-london)
+curl -fsSL https://raw.githubusercontent.com/js-csco/splunk-dcloud/main/ubuntu/install-uf-desktop.sh | sudo bash
+
+# 2) On ubuntu-berlin — poll Proxmox (step 3 of Startup) and create the container
+curl -fsSL https://raw.githubusercontent.com/js-csco/splunk-dcloud/main/ubuntu/install-uf.sh | sudo bash -s -- berlin
 curl -fsSL https://raw.githubusercontent.com/js-csco/splunk-dcloud/main/ubuntu/create-webapp-container.sh | sudo bash
-#    (re-run ubuntu/install-uf.sh berlin too, to enable the reachability probe)
+#    (or run create-webapp-container.sh directly on the Proxmox host as root: | bash)
 
-# 2) On the Windows client (elevated PowerShell) — Windows UF (events + perfmon)
-Set-ExecutionPolicy Bypass -Scope Process -Force
-iwr https://raw.githubusercontent.com/js-csco/splunk-dcloud/main/windows/install-uf.ps1 -UseBasicParsing | iex
-
-# 3) Log into Windows, browse to http://198.18.3.50:8080/, click "Do something"
+# 3) Generate traffic so the App panels fill
+curl http://198.18.3.50:8080/
 ```
 
-Then open **Correlation → Client → App → Hypervisor** (as **gary** — see note below).
+Then open **Correlation → Client → Hypervisor → App** (as **gary** — see note below).
 
 - **The web-app container:** LXC `webapp-berlin` (VMID 200) at `198.18.3.50:8080`,
   created via `pct` over SSH to Proxmox; a tiny stdlib Python app (`webapp/app.py`)
@@ -521,13 +558,16 @@ Then open **Correlation → Client → App → Hypervisor** (as **gary** — see
   `berlin_web` (`webapp:probe`, `reachable`/`latency_ms`).
 
 **RBAC:** the correlation spans London + Berlin, so only **`role_global` (gary)**
-sees the whole chain; Leo sees only the Windows side, Ben only the Berlin side —
+sees the whole chain; Leo sees only the client side, Ben only the Berlin side —
 cross-domain correlation is a global-analyst capability.
 
 **Notes:**
-- The four "locations" are just four subnets in one physical site — no NAT, full
-  routing between them — so the Windows client IP appears verbatim in the web-app
-  access log and `src_ip` correlation is exact.
+- The "locations" are subnets in one physical site — no NAT, full routing between
+  them — so the client IP appears verbatim in the web-app access log and `src_ip`
+  correlation is exact.
+- A Windows client (`windows/install-uf.ps1` → `london_windows`) is still supported
+  if you'd rather demo Windows Event Log / AD ingestion; the Linux desktop is the
+  default and is what the dashboard's Client node reads.
 - **Depends on Proxmox being deployed/reachable** (host `198.18.3.11`, SSH root):
   the container is created there via `pct`. The create script auto-detects
   storage/template/gateway; override with `CT_STORAGE`/`CT_TEMPLATE`/`CT_GW`/

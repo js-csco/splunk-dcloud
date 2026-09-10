@@ -1,72 +1,166 @@
 <dashboard version="1.1" theme="dark">
   <label>Lab Info</label>
-  <description>What this lab is, how it is built, and where the code lives.</description>
+  <description>The lab at a glance — what it is, every host and how to reach it, the demo logins, and the topology.</description>
 
+  <!-- ===== live status strip ===== -->
+  <row>
+    <panel>
+      <title>Events (last 24h)</title>
+      <single>
+        <search>
+          <query>| tstats count where (index=london_* OR index=berlin_* OR index=loc1_*)</query>
+          <earliest>-24h</earliest><latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="colorBy">value</option>
+        <option name="rangeColors">["0x53a051","0x53a051"]</option>
+      </single>
+    </panel>
+    <panel>
+      <title>Lab indexes</title>
+      <single>
+        <search>
+          <query>| rest /services/data/indexes | search (title=london_* OR title=berlin_* OR title=loc1_*) | stats count</query>
+        </search>
+        <option name="drilldown">none</option>
+      </single>
+    </panel>
+    <panel>
+      <title>Hosts sending (24h)</title>
+      <single>
+        <search>
+          <query>| tstats dc(host) as hosts where (index=london_* OR index=berlin_* OR index=loc1_*)</query>
+          <earliest>-24h</earliest><latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="colorBy">value</option>
+        <option name="rangeColors">["0x53a051","0x53a051"]</option>
+      </single>
+    </panel>
+    <panel>
+      <title>Splunk uptime</title>
+      <single>
+        <search>
+          <query>| rest /services/server/info | eval uptime_hours=round(startup_time_delta/3600,1) | fields uptime_hours</query>
+        </search>
+        <option name="unit">h</option>
+        <option name="drilldown">none</option>
+      </single>
+    </panel>
+  </row>
+
+  <!-- ===== quick launch ===== -->
   <row>
     <panel>
       <html>
-        <h2 style="margin-bottom:6px;">Lab apps — quick launch</h2>
-        <p style="color:#8b98a5;margin-top:0;">Everything we built, one click away (you'll only see data your role allows).</p>
-        <div style="display:flex;flex-wrap:wrap;gap:10px;">
-          <a href="/app/get_data_in/get_data_in_overview" style="text-decoration:none;background:#e67e22;color:#fff;padding:12px 16px;border-radius:8px;font-weight:600;">Get Data In</a>
-          <a href="/app/get_data_in/indexes_sourcetypes" style="text-decoration:none;background:#e67e22;color:#fff;padding:12px 16px;border-radius:8px;font-weight:600;">Indexes &amp; Sourcetypes</a>
-          <a href="/app/get_data_in/data_model_pivot" style="text-decoration:none;background:#e67e22;color:#fff;padding:12px 16px;border-radius:8px;font-weight:600;">Data Model &amp; Pivot</a>
-          <a href="/app/metrics/host_metrics" style="text-decoration:none;background:#3fb950;color:#fff;padding:12px 16px;border-radius:8px;font-weight:600;">Host &amp; Infra Metrics</a>
-          <a href="/app/alerts/alerts_overview" style="text-decoration:none;background:#d93f3c;color:#fff;padding:12px 16px;border-radius:8px;font-weight:600;">Alerts</a>
-          <a href="/app/infra_monitoring/onboarding_overview" style="text-decoration:none;background:#4a90d9;color:#fff;padding:12px 16px;border-radius:8px;font-weight:600;">Infrastructure Monitoring</a>
-          <a href="/app/infra_monitoring/asset_config" style="text-decoration:none;background:#4a90d9;color:#fff;padding:12px 16px;border-radius:8px;font-weight:600;">Asset Configuration</a>
-          <a href="/app/correlation/correlation_2_sources" style="text-decoration:none;background:#9b59b6;color:#fff;padding:12px 16px;border-radius:8px;font-weight:600;">Correlation</a>
-          <a href="/app/correlation/client_app_hypervisor" style="text-decoration:none;background:#9b59b6;color:#fff;padding:12px 16px;border-radius:8px;font-weight:600;">Client → Hypervisor → App</a>
-          <a href="/app/dcloud_lab/setup" style="text-decoration:none;background:#65a637;color:#fff;padding:12px 16px;border-radius:8px;font-weight:600;">Setup Status</a>
-          <a href="/app/dcloud_lab/lab_overview" style="text-decoration:none;background:#65a637;color:#fff;padding:12px 16px;border-radius:8px;font-weight:600;">Ingestion &amp; Health</a>
-          <a href="/app/dcloud_lab/mcp_claude_desktop" style="text-decoration:none;background:#65a637;color:#fff;padding:12px 16px;border-radius:8px;font-weight:600;">MCP &amp; Claude Desktop</a>
-          <a href="/app/dcloud_lab/itsi_setup" style="text-decoration:none;background:#65a637;color:#fff;padding:12px 16px;border-radius:8px;font-weight:600;">ITSI Setup</a>
+        <div style="font-size:12px;letter-spacing:1px;color:#8b98a5;text-transform:uppercase;margin-bottom:8px;">Jump to an app</div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;">
+          <a href="/app/get_data_in/get_data_in_overview" style="text-decoration:none;background:#e67e22;color:#fff;padding:10px 14px;border-radius:8px;font-weight:600;font-size:13px;">Get Data In</a>
+          <a href="/app/get_data_in/indexes_sourcetypes" style="text-decoration:none;background:#e67e22;color:#fff;padding:10px 14px;border-radius:8px;font-weight:600;font-size:13px;">Indexes &amp; Sourcetypes</a>
+          <a href="/app/get_data_in/data_model_pivot" style="text-decoration:none;background:#e67e22;color:#fff;padding:10px 14px;border-radius:8px;font-weight:600;font-size:13px;">Data Model &amp; Pivot</a>
+          <a href="/app/metrics/host_metrics" style="text-decoration:none;background:#3fb950;color:#fff;padding:10px 14px;border-radius:8px;font-weight:600;font-size:13px;">Host &amp; Infra Metrics</a>
+          <a href="/app/alerts/alerts_overview" style="text-decoration:none;background:#d93f3c;color:#fff;padding:10px 14px;border-radius:8px;font-weight:600;font-size:13px;">Alerts</a>
+          <a href="/app/infra_monitoring/onboarding_overview" style="text-decoration:none;background:#4a90d9;color:#fff;padding:10px 14px;border-radius:8px;font-weight:600;font-size:13px;">Infrastructure Monitoring</a>
+          <a href="/app/infra_monitoring/asset_config" style="text-decoration:none;background:#4a90d9;color:#fff;padding:10px 14px;border-radius:8px;font-weight:600;font-size:13px;">Asset Configuration</a>
+          <a href="/app/correlation/correlation_2_sources" style="text-decoration:none;background:#9b59b6;color:#fff;padding:10px 14px;border-radius:8px;font-weight:600;font-size:13px;">Correlation</a>
+          <a href="/app/correlation/client_app_hypervisor" style="text-decoration:none;background:#9b59b6;color:#fff;padding:10px 14px;border-radius:8px;font-weight:600;font-size:13px;">Client → Hypervisor → App</a>
+          <a href="/app/dcloud_lab/setup" style="text-decoration:none;background:#65a637;color:#fff;padding:10px 14px;border-radius:8px;font-weight:600;font-size:13px;">Setup Status</a>
+          <a href="/app/dcloud_lab/lab_overview" style="text-decoration:none;background:#65a637;color:#fff;padding:10px 14px;border-radius:8px;font-weight:600;font-size:13px;">Ingestion &amp; Health</a>
+          <a href="/app/dcloud_lab/mcp_claude_desktop" style="text-decoration:none;background:#65a637;color:#fff;padding:10px 14px;border-radius:8px;font-weight:600;font-size:13px;">MCP &amp; Claude Desktop</a>
+          <a href="/app/dcloud_lab/itsi_setup" style="text-decoration:none;background:#65a637;color:#fff;padding:10px 14px;border-radius:8px;font-weight:600;font-size:13px;">ITSI Setup</a>
         </div>
       </html>
     </panel>
   </row>
 
+  <!-- ===== intro ===== -->
   <row>
     <panel>
       <html>
-        <h1>dCloud Splunk Lab</h1>
-        <p>
-          A self-rebuilding Splunk lab for Cisco dCloud. The environment resets to an
-          empty template each session, so on every startup a script pulls this project
-          from GitHub and re-creates the full configuration from scratch. Nothing here is
-          configured by hand - it is all code, so the lab is identical every time.
+        <h1 style="margin:0 0 6px;">dCloud Splunk Lab</h1>
+        <p style="color:#cdd9e5;max-width:900px;">
+          A <b>self-rebuilding</b> Splunk demo lab for Cisco dCloud. The VM resets to an empty
+          template each session, so on startup one command pulls this repo from GitHub and
+          re-creates the whole configuration — indexes, RBAC, users, dashboards — from code.
+          Nothing is configured by hand, so the lab is identical every time.
         </p>
-        <p>
-          Location-based access control (RBAC) is the <b>foundation</b> the lab is built on -
-          each location's data lives in its own indexes and roles grant access per location -
-          but the lab is a general demo platform, not only about RBAC.
-        </p>
-        <p>
-          <b>Repository:</b>
+        <p style="color:#8b98a5;">
+          <b>Foundation:</b> location-based RBAC — each location's data lives in its own indexes
+          and roles grant access per location. &#160;•&#160; <b>Repo:</b>
           <a href="https://github.com/js-csco/splunk-dcloud" target="_blank">github.com/js-csco/splunk-dcloud</a>
-        </p>
-        <h3>What gets pre-loaded on each session</h3>
-        <ul>
-          <li><b>6 indexes</b>, one namespace per location: london_* (London), berlin_* (Berlin), loc1_* (infra)</li>
-          <li><b>3 roles</b>: role_london (London only), role_berlin (Berlin only), role_global (everything)</li>
-          <li><b>3 users</b>: Leo (London), Ben (Berlin), Gary (global)</li>
-          <li><b>Dashboards</b>: Lab Info (this page), Setup Status, Ingestion &amp; Health</li>
-        </ul>
-        <p>
-          Start here, then open <b>Setup Status</b> to confirm everything loaded correctly
-          before the demo begins.
+          &#160;•&#160; New here? Open <b>Setup Status</b> to confirm everything loaded.
         </p>
       </html>
     </panel>
   </row>
 
+  <!-- ===== locations ===== -->
   <row>
     <panel>
-      <title>Demo logins</title>
+      <title>Locations</title>
+      <html>
+        <table style="border-collapse:collapse;width:100%;font-size:13px;">
+          <thead>
+            <tr style="background:#1b2430;color:#cdd9e5;text-align:left;">
+              <th style="padding:8px;border:1px solid #2b3a4a;">Location</th>
+              <th style="padding:8px;border:1px solid #2b3a4a;">Subnet</th>
+              <th style="padding:8px;border:1px solid #2b3a4a;">Index namespace</th>
+              <th style="padding:8px;border:1px solid #2b3a4a;">Roles with access</th>
+            </tr>
+          </thead>
+          <tbody style="color:#e6edf3;">
+            <tr><td style="padding:8px;border:1px solid #2b3a4a;"><b>Location 1</b> (infra)</td><td style="padding:8px;border:1px solid #2b3a4a;">198.18.1.0/24</td><td style="padding:8px;border:1px solid #2b3a4a;"><code>loc1_*</code></td><td style="padding:8px;border:1px solid #2b3a4a;">role_global</td></tr>
+            <tr><td style="padding:8px;border:1px solid #2b3a4a;"><b>London</b> (Location 2)</td><td style="padding:8px;border:1px solid #2b3a4a;">198.18.2.0/24</td><td style="padding:8px;border:1px solid #2b3a4a;"><code>london_*</code></td><td style="padding:8px;border:1px solid #2b3a4a;">role_london, role_global</td></tr>
+            <tr><td style="padding:8px;border:1px solid #2b3a4a;"><b>Berlin</b> (Location 3)</td><td style="padding:8px;border:1px solid #2b3a4a;">198.18.3.0/24</td><td style="padding:8px;border:1px solid #2b3a4a;"><code>berlin_*</code></td><td style="padding:8px;border:1px solid #2b3a4a;">role_berlin, role_global</td></tr>
+          </tbody>
+        </table>
+      </html>
+    </panel>
+  </row>
+
+  <!-- ===== all hosts ===== -->
+  <row>
+    <panel>
+      <title>Hosts &amp; access (demo credentials)</title>
+      <html>
+        <table style="border-collapse:collapse;width:100%;font-size:13px;">
+          <thead>
+            <tr style="background:#1b2430;color:#cdd9e5;text-align:left;">
+              <th style="padding:8px;border:1px solid #2b3a4a;">Host</th>
+              <th style="padding:8px;border:1px solid #2b3a4a;">Address</th>
+              <th style="padding:8px;border:1px solid #2b3a4a;">Access</th>
+              <th style="padding:8px;border:1px solid #2b3a4a;">User / Password</th>
+              <th style="padding:8px;border:1px solid #2b3a4a;">Feeds Splunk</th>
+            </tr>
+          </thead>
+          <tbody style="color:#e6edf3;">
+            <tr style="background:#101722;"><td colspan="5" style="padding:6px 8px;border:1px solid #2b3a4a;color:#8b98a5;font-weight:600;">Location 1 — infrastructure · 198.18.1.0/24</td></tr>
+            <tr><td style="padding:8px;border:1px solid #2b3a4a;"><b>splunk</b></td><td style="padding:8px;border:1px solid #2b3a4a;">198.18.1.124</td><td style="padding:8px;border:1px solid #2b3a4a;">Web 8000 · mgmt 8089 · SSH · receiver 9997</td><td style="padding:8px;border:1px solid #2b3a4a;">admin / C1sco12345</td><td style="padding:8px;border:1px solid #2b3a4a;"><code>loc1_metrics</code>, <code>loc1_linux</code>; polls routers + Proxmox</td></tr>
+
+            <tr style="background:#101722;"><td colspan="5" style="padding:6px 8px;border:1px solid #2b3a4a;color:#8b98a5;font-weight:600;">London · 198.18.2.0/24</td></tr>
+            <tr><td style="padding:8px;border:1px solid #2b3a4a;"><b>ubuntu-london</b></td><td style="padding:8px;border:1px solid #2b3a4a;">198.18.2.x (DHCP)</td><td style="padding:8px;border:1px solid #2b3a4a;">SSH · Console</td><td style="padding:8px;border:1px solid #2b3a4a;">cisco / C1sco12345</td><td style="padding:8px;border:1px solid #2b3a4a;">UF → <code>london_linux</code>, <code>london_metrics</code></td></tr>
+            <tr><td style="padding:8px;border:1px solid #2b3a4a;"><b>ubuntu-desktop-london</b> <span style="color:#8b98a5;">(client)</span></td><td style="padding:8px;border:1px solid #2b3a4a;">198.18.2.11</td><td style="padding:8px;border:1px solid #2b3a4a;">RDP · Console · SSH</td><td style="padding:8px;border:1px solid #2b3a4a;">cisco / C1sco12345</td><td style="padding:8px;border:1px solid #2b3a4a;">UF <code>desktop-london</code> → <code>london_metrics</code>, <code>london_linux</code></td></tr>
+            <tr><td style="padding:8px;border:1px solid #2b3a4a;"><b>cat8kv-london</b> <span style="color:#8b98a5;">(router)</span></td><td style="padding:8px;border:1px solid #2b3a4a;">198.18.2.32</td><td style="padding:8px;border:1px solid #2b3a4a;">SSH · Console</td><td style="padding:8px;border:1px solid #2b3a4a;">cisco / cisco</td><td style="padding:8px;border:1px solid #2b3a4a;">SSH poll → <code>london_network</code></td></tr>
+
+            <tr style="background:#101722;"><td colspan="5" style="padding:6px 8px;border:1px solid #2b3a4a;color:#8b98a5;font-weight:600;">Berlin · 198.18.3.0/24</td></tr>
+            <tr><td style="padding:8px;border:1px solid #2b3a4a;"><b>proxmox-berlin</b> <span style="color:#8b98a5;">(hypervisor)</span></td><td style="padding:8px;border:1px solid #2b3a4a;">198.18.3.11</td><td style="padding:8px;border:1px solid #2b3a4a;">Web 8006 · SSH</td><td style="padding:8px;border:1px solid #2b3a4a;">root / C1sco12345</td><td style="padding:8px;border:1px solid #2b3a4a;">API poll → <code>berlin_proxmox</code>, <code>berlin_metrics</code></td></tr>
+            <tr><td style="padding:8px;border:1px solid #2b3a4a;"><b>webapp-berlin</b> <span style="color:#8b98a5;">(LXC container)</span></td><td style="padding:8px;border:1px solid #2b3a4a;">198.18.3.50:8080</td><td style="padding:8px;border:1px solid #2b3a4a;">HTTP (on Proxmox)</td><td style="padding:8px;border:1px solid #2b3a4a;">root / C1sco12345</td><td style="padding:8px;border:1px solid #2b3a4a;">UF → <code>berlin_web</code>, <code>berlin_metrics</code></td></tr>
+            <tr><td style="padding:8px;border:1px solid #2b3a4a;"><b>ubuntu-berlin</b></td><td style="padding:8px;border:1px solid #2b3a4a;">198.18.3.x (DHCP)</td><td style="padding:8px;border:1px solid #2b3a4a;">SSH · Console</td><td style="padding:8px;border:1px solid #2b3a4a;">cisco / C1sco12345</td><td style="padding:8px;border:1px solid #2b3a4a;">UF → <code>berlin_linux</code>, <code>berlin_metrics</code>; runs Proxmox poller + web-app probe</td></tr>
+            <tr><td style="padding:8px;border:1px solid #2b3a4a;"><b>cat8kv-berlin</b> <span style="color:#8b98a5;">(router)</span></td><td style="padding:8px;border:1px solid #2b3a4a;">198.18.3.32</td><td style="padding:8px;border:1px solid #2b3a4a;">SSH · Console</td><td style="padding:8px;border:1px solid #2b3a4a;">cisco / cisco</td><td style="padding:8px;border:1px solid #2b3a4a;">SSH poll → <code>berlin_network</code></td></tr>
+          </tbody>
+        </table>
+        <p style="color:#8b98a5;margin-top:8px;">Access from your laptop via the dCloud AnyConnect VPN, or hop through a host on the lab network. Splunk Web: <a href="http://198.18.1.124:8000" target="_blank">http://198.18.1.124:8000</a></p>
+      </html>
+    </panel>
+  </row>
+
+  <!-- ===== demo logins ===== -->
+  <row>
+    <panel>
+      <title>Splunk demo logins (RBAC)</title>
       <html>
         <!-- Demo credentials for a throwaway lab. If you change the password in
              config/lab_users.csv, update it here too. -->
-        <p style="color:#8b98a5;">Web UI: <a href="http://198.18.1.124:8000" target="_blank">http://198.18.1.124:8000</a> — all demo accounts use the same password.</p>
         <table style="border-collapse:collapse;width:100%;font-size:13px;">
           <thead>
             <tr style="background:#1b2430;color:#cdd9e5;text-align:left;">
@@ -77,63 +171,17 @@
             </tr>
           </thead>
           <tbody style="color:#e6edf3;">
-            <tr>
-              <td style="padding:8px;border:1px solid #2b3a4a;"><b>admin</b></td>
-              <td style="padding:8px;border:1px solid #2b3a4a;">C1sco12345</td>
-              <td style="padding:8px;border:1px solid #2b3a4a;">admin</td>
-              <td style="padding:8px;border:1px solid #2b3a4a;">Everything (full admin)</td>
-            </tr>
-            <tr>
-              <td style="padding:8px;border:1px solid #2b3a4a;"><b>gary</b></td>
-              <td style="padding:8px;border:1px solid #2b3a4a;">C1sco12345</td>
-              <td style="padding:8px;border:1px solid #2b3a4a;">role_global</td>
-              <td style="padding:8px;border:1px solid #2b3a4a;">Everything — London + Berlin + loc1 infra</td>
-            </tr>
-            <tr>
-              <td style="padding:8px;border:1px solid #2b3a4a;"><b>leo</b></td>
-              <td style="padding:8px;border:1px solid #2b3a4a;">C1sco12345</td>
-              <td style="padding:8px;border:1px solid #2b3a4a;">role_london</td>
-              <td style="padding:8px;border:1px solid #2b3a4a;">London only — london_*</td>
-            </tr>
-            <tr>
-              <td style="padding:8px;border:1px solid #2b3a4a;"><b>ben</b></td>
-              <td style="padding:8px;border:1px solid #2b3a4a;">C1sco12345</td>
-              <td style="padding:8px;border:1px solid #2b3a4a;">role_berlin</td>
-              <td style="padding:8px;border:1px solid #2b3a4a;">Berlin only — berlin_*</td>
-            </tr>
+            <tr><td style="padding:8px;border:1px solid #2b3a4a;"><b>admin</b></td><td style="padding:8px;border:1px solid #2b3a4a;">C1sco12345</td><td style="padding:8px;border:1px solid #2b3a4a;">admin</td><td style="padding:8px;border:1px solid #2b3a4a;">Everything (full admin)</td></tr>
+            <tr><td style="padding:8px;border:1px solid #2b3a4a;"><b>gary</b></td><td style="padding:8px;border:1px solid #2b3a4a;">C1sco12345</td><td style="padding:8px;border:1px solid #2b3a4a;">role_global</td><td style="padding:8px;border:1px solid #2b3a4a;">Everything — London + Berlin + loc1</td></tr>
+            <tr><td style="padding:8px;border:1px solid #2b3a4a;"><b>leo</b></td><td style="padding:8px;border:1px solid #2b3a4a;">C1sco12345</td><td style="padding:8px;border:1px solid #2b3a4a;">role_london</td><td style="padding:8px;border:1px solid #2b3a4a;">London only — <code>london_*</code></td></tr>
+            <tr><td style="padding:8px;border:1px solid #2b3a4a;"><b>ben</b></td><td style="padding:8px;border:1px solid #2b3a4a;">C1sco12345</td><td style="padding:8px;border:1px solid #2b3a4a;">role_berlin</td><td style="padding:8px;border:1px solid #2b3a4a;">Berlin only — <code>berlin_*</code></td></tr>
           </tbody>
         </table>
       </html>
     </panel>
   </row>
 
-  <row>
-    <panel>
-      <title>Lab systems &amp; access (demo creds)</title>
-      <html>
-        <table style="border-collapse:collapse;width:100%;font-size:13px;">
-          <thead>
-            <tr style="background:#1b2430;color:#cdd9e5;text-align:left;">
-              <th style="padding:8px;border:1px solid #2b3a4a;">System</th>
-              <th style="padding:8px;border:1px solid #2b3a4a;">Location</th>
-              <th style="padding:8px;border:1px solid #2b3a4a;">Address</th>
-              <th style="padding:8px;border:1px solid #2b3a4a;">Access</th>
-              <th style="padding:8px;border:1px solid #2b3a4a;">User</th>
-              <th style="padding:8px;border:1px solid #2b3a4a;">Password</th>
-            </tr>
-          </thead>
-          <tbody style="color:#e6edf3;">
-            <tr><td style="padding:8px;border:1px solid #2b3a4a;"><b>Ubuntu Desktop (client)</b></td><td style="padding:8px;border:1px solid #2b3a4a;">London</td><td style="padding:8px;border:1px solid #2b3a4a;">198.18.2.11 (DHCP)</td><td style="padding:8px;border:1px solid #2b3a4a;">RDP + Console + SSH</td><td style="padding:8px;border:1px solid #2b3a4a;">cisco</td><td style="padding:8px;border:1px solid #2b3a4a;">C1sco12345</td></tr>
-            <tr><td style="padding:8px;border:1px solid #2b3a4a;"><b>Proxmox</b></td><td style="padding:8px;border:1px solid #2b3a4a;">Berlin</td><td style="padding:8px;border:1px solid #2b3a4a;">198.18.3.11 (web 8006 / SSH)</td><td style="padding:8px;border:1px solid #2b3a4a;">Web + SSH</td><td style="padding:8px;border:1px solid #2b3a4a;">root</td><td style="padding:8px;border:1px solid #2b3a4a;">C1sco12345</td></tr>
-            <tr><td style="padding:8px;border:1px solid #2b3a4a;"><b>Cisco Cat8kv</b></td><td style="padding:8px;border:1px solid #2b3a4a;">London</td><td style="padding:8px;border:1px solid #2b3a4a;">198.18.2.32</td><td style="padding:8px;border:1px solid #2b3a4a;">SSH</td><td style="padding:8px;border:1px solid #2b3a4a;">cisco</td><td style="padding:8px;border:1px solid #2b3a4a;">cisco</td></tr>
-            <tr><td style="padding:8px;border:1px solid #2b3a4a;"><b>Cisco Cat8kv</b></td><td style="padding:8px;border:1px solid #2b3a4a;">Berlin</td><td style="padding:8px;border:1px solid #2b3a4a;">198.18.3.32</td><td style="padding:8px;border:1px solid #2b3a4a;">SSH</td><td style="padding:8px;border:1px solid #2b3a4a;">cisco</td><td style="padding:8px;border:1px solid #2b3a4a;">cisco</td></tr>
-          </tbody>
-        </table>
-        <p style="color:#8b98a5;">These feed the <b>Get Data In</b> app (Proxmox via REST API polling → berlin_proxmox; routers via SSH → london_network / berlin_network).</p>
-      </html>
-    </panel>
-  </row>
-
+  <!-- ===== topology ===== -->
   <row>
     <panel>
       <title>Topology</title>
@@ -143,6 +191,7 @@
     </panel>
   </row>
 
+  <!-- ===== splunk environment ===== -->
   <row>
     <panel>
       <title>Splunk environment</title>
