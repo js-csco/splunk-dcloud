@@ -466,14 +466,16 @@ sudo SPLUNK_INSTALL_URLS="https://your-host/itsi.spl https://your-host/other.tgz
   bash /opt/dcloud-splunk/apply.sh
 ```
 
-**ITSI note (important on Splunk 10):** the browser **"Install app from file" upload is
-capped at 512 MB by a limit hard-coded into the Splunk 10 Web UI** — `max_upload_size`
-does **not** raise it, so ITSI (well over 512 MB) **cannot** be installed through the
-UI on this 10.4 box ("Package is too large, must be less than 500 MB"). Install it
-**server-side** instead: via `SPLUNK_INSTALL_URLS` above, via the Splunkbase path
-(`SPLUNKBASE_APP_IDS="7931 <itsi_id>"`) if entitled, or via CLI
-(`splunk install app /tmp/itsi.spl` — no size limit). ITSI also needs its own run-time
-license; the interim "Service Health" dashboard is the lighter demo option.
+**ITSI note (important):** ITSI is **Splunkbase app 1841**, and per Splunk's docs it
+installs **only by extracting the `.spl` into `etc/apps`** — it does **not** support
+Splunk Web upload *or* `splunk install app`. Both boot paths above do exactly this
+extraction, so use them: `SPLUNK_INSTALL_URLS="https://your-host/itsi.spl"` (any
+account), or `SPLUNKBASE_APP_IDS="1841"` if your splunk.com account is entitled.
+(The Splunk-10 Web UI also has a hard 512 MB upload cap that `max_upload_size` can't
+lift, but that's moot — the UI path is unsupported for ITSI regardless.) `apply.sh`
+auto-installs **OpenJDK 17** when it detects the `itsi` app (ITSI needs Java 8-11/17;
+Ubuntu 24.04's default is 21, which ITSI doesn't support). ITSI also needs its own
+run-time license; the interim "Service Health" dashboard is the lighter demo option.
 
 **Then, per session** (runtime state, so recreate each time): grant the app's MCP
 capability to your user/role (or just use `admin`), create a **bearer token**

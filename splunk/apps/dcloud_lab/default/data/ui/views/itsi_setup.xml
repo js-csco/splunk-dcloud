@@ -1,14 +1,16 @@
 <dashboard version="1.1" theme="dark">
   <label>ITSI Setup</label>
-  <description>How to install IT Service Intelligence (premium) from your .spl file — and why it's manual.</description>
+  <description>How to install IT Service Intelligence (Splunkbase app 1841) by extracting its .spl — the only supported method.</description>
 
   <row>
     <panel>
       <html>
         <h2>Installing ITSI (IT Service Intelligence)</h2>
-        <p><b>ITSI is a premium, separately-licensed Splunk app</b> — it isn't part of the
-        config-as-code build (licensing + size), so it's installed by hand from the
-        <code>.spl</code> file you have. This page is the repeatable checklist.</p>
+        <p><b>ITSI is a premium, separately-licensed Splunk app</b> (Splunkbase app
+        <b>1841</b>) — it isn't committed to the repo (licensing + size), so it's installed
+        from your own <code>.spl</code>. Per Splunk's docs it installs <b>only by extracting
+        the package into <code>etc/apps</code></b> — this page shows the repeatable ways to
+        do that automatically.</p>
         <p style="color:#f2b827;">Heads-up: ITSI is <b>heavy</b> (its own indexes, KV store,
         saved searches, ML deps) and needs a <b>run-time license</b> (trial or purchased).
         On this reset-each-session VM you'll re-do this after every reset. For a lighter demo
@@ -33,35 +35,54 @@
   <row>
     <panel>
       <html>
-        <h3>Why the Web UI upload fails on this box</h3>
-        <p style="color:#f2b827;"><b>The browser upload cannot work here.</b> In
-        <b>Splunk 10.0+</b> there is a <b>512&#160;MB limit hard-coded into the Web UI
-        component itself</b>. It is <b>not</b> the <code>max_upload_size</code> setting —
-        raising that (we set it to 1&#160;GB in <code>apply.sh</code>) does <b>not</b>
-        lift the UI cap. ITSI is well over 512&#160;MB, so
-        <i>"Package is too large, must be less than 500&#160;MB"</i> is expected and
-        unavoidable through the browser on 10.x. Install it <b>server-side</b> instead
-        (both options below have no size limit).</p>
+        <h3>ITSI installs by EXTRACTION only</h3>
+        <p style="color:#f2b827;">Per Splunk's own docs, ITSI (Splunkbase app
+        <b>1841</b>) <b>does not support</b> installation via <b>Splunk Web</b> <i>or</i> the
+        <code>splunk install app</code> command. The <b>only supported method</b> is to
+        <b>extract the <code>.spl</code> into <code>$SPLUNK_HOME/etc/apps</code></b> (stop
+        Splunk → untar → start). The <code>.spl</code> is just a gzip tarball, so this is
+        exactly what our boot install does — ITSI installs the same way as any other app
+        here, with no file-moving.</p>
+        <p style="color:#8b98a5;">(The Splunk-10 Web UI also has a hard 512&#160;MB upload
+        cap that <code>max_upload_size</code> can't lift — but even below that size, the UI
+        path is unsupported for ITSI regardless.)</p>
 
-        <h3>Install it (pick one — both are server-side, no size limit)</h3>
-        <p><b>A) Auto-fetch at boot from a URL (no file-moving) — recommended:</b></p>
-        <p>Host your ITSI <code>.spl</code> anywhere the lab can reach (your file host, a
-        temporary signed link, an internal server), then run <code>apply.sh</code> — it
+        <h3>Install it (pick one — both extract into etc/apps at boot)</h3>
+        <p><b>A) Auto-fetch from a URL (any account) — recommended:</b> host your ITSI
+        <code>.spl</code> where the lab can reach it, then run <code>apply.sh</code> — it
         prompts for <b>Direct URL(s) of .spl/.tgz apps</b> (or set
-        <code>SPLUNK_INSTALL_URLS</code>). It <code>curl</code>s the package and extracts
-        it into <code>etc/apps</code> before Splunk starts. Nothing is committed to the
-        repo, and it re-installs automatically on every session reset.</p>
-        <pre style="white-space:pre-wrap;background:#11151a;padding:12px;border-radius:6px;color:#cdd9e5;">SPLUNK_INSTALL_URLS="https://your-host/itsi.spl" ./apply.sh</pre>
+        <code>SPLUNK_INSTALL_URLS</code>), fetches it, and extracts it into
+        <code>etc/apps</code> before Splunk starts. Re-installs on every reset; nothing is
+        committed to the repo.</p>
+        <pre style="white-space:pre-wrap;background:#11151a;padding:12px;border-radius:6px;color:#cdd9e5;">SPLUNK_INSTALL_URLS="https://your-host/splunk-it-service-intelligence_x.y.z.spl" sudo -E ./apply.sh</pre>
 
-        <p><b>B) CLI, if the .spl is already on the box:</b></p>
-        <pre style="white-space:pre-wrap;background:#11151a;padding:12px;border-radius:6px;color:#cdd9e5;">sudo -u splunk /opt/splunk/bin/splunk install app /tmp/itsi.spl -auth admin:C1sco12345
-sudo systemctl restart Splunkd</pre>
-        <p style="color:#8b98a5;">The CLI <code>install app</code> command has no upload
-        cap — the 512&#160;MB limit is a Web-UI-only restriction.</p>
+        <p><b>B) Splunkbase auto-download (if entitled):</b> add ITSI's app id to the boot
+        install; the downloader extracts it into <code>etc/apps</code> the same way.</p>
+        <pre style="white-space:pre-wrap;background:#11151a;padding:12px;border-radius:6px;color:#cdd9e5;">SPLUNKBASE_APP_IDS="1841" sudo -E ./apply.sh</pre>
+        <p style="color:#8b98a5;">First Splunkbase download needs the app's terms accepted
+        once in a browser (app 1841), or the API returns HTTP&#160;403.</p>
+
+        <p><b>C) Manual, if the .spl is already on the box</b> (the documented steps):</p>
+        <pre style="white-space:pre-wrap;background:#11151a;padding:12px;border-radius:6px;color:#cdd9e5;">sudo -u splunk /opt/splunk/bin/splunk stop
+sudo -u splunk tar -xf /tmp/splunk-it-service-intelligence_x.y.z.spl -C /opt/splunk/etc/apps
+sudo -u splunk /opt/splunk/bin/splunk start</pre>
+        <p style="color:#d93f3c;">Do <b>not</b> use <code>splunk install app</code> for ITSI
+        — it is explicitly unsupported and can leave a broken install.</p>
       </html>
     </panel>
     <panel>
       <html>
+        <h3>Prerequisites (handled for you)</h3>
+        <ul>
+          <li><b>Java 8-11 or 17</b> — required for anomaly detection + notable-event
+          management. <code>apply.sh</code> auto-installs <code>openjdk-17</code> when it
+          sees the <code>itsi</code> app (Ubuntu 24.04's default JRE is 21, which ITSI does
+          <i>not</i> support, so 17 is pinned).</li>
+          <li><b>Default <code>admin</code> user</b> must exist (it does here) — deleting or
+          renaming it breaks ITSI.</li>
+          <li>ITSI can't share a search head with <b>Enterprise Security</b> or
+          <b>IT Essentials Work</b> — neither is installed here.</li>
+        </ul>
         <h3>After install</h3>
         <ol>
           <li><b>License:</b> ITSI needs its own license. Add a trial/eval under
@@ -91,11 +112,11 @@ sudo systemctl restart Splunkd</pre>
           prompt) when running <code>apply.sh</code>. Works regardless of Splunkbase
           entitlement; it still needs an ITSI run-time license after install.</li>
           <li><b>Splunkbase auto-download</b> — if your splunk.com account is <b>entitled</b> to
-          ITSI, add its Splunkbase app id to the boot install:
-          <code>SPLUNKBASE_APP_IDS="7931 &lt;itsi_id&gt;"</code> when running
-          <code>apply.sh</code> (same flow as the MCP Server). First download of any
-          Splunkbase app needs its <b>license terms accepted once in a browser</b> at
-          splunkbase.splunk.com while logged in, or the API returns HTTP&#160;403.</li>
+          ITSI, add its Splunkbase app id (<b>1841</b>) to the boot install:
+          <code>SPLUNKBASE_APP_IDS="1841"</code> when running <code>apply.sh</code> (same flow
+          as the MCP Server). First download of any Splunkbase app needs its <b>license terms
+          accepted once in a browser</b> at splunkbase.splunk.com while logged in, or the API
+          returns HTTP&#160;403.</li>
         </ul>
         <p style="color:#8b98a5;">Version check: make sure your ITSI build supports Splunk
         <b>10.4</b> — if the app won't load after restart, that's the usual cause.</p>

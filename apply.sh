@@ -150,6 +150,28 @@ if [ -n "${SPLUNK_INSTALL_URLS:-}" ]; then
   chown -R "${SPLUNK_USER}:${SPLUNK_USER}" "${SPLUNK_HOME}/etc/apps" 2>/dev/null || true
 fi
 
+# --- ITSI prerequisite: Java --------------------------------------------------
+# ITSI (installed by extracting its .spl into etc/apps - the ONLY supported
+# method; NOT Splunk Web, NOT `splunk install app`) needs a JRE for anomaly
+# detection + notable-event management. ITSI supports Java 8-11 or 17, so pin
+# openjdk-17 (Ubuntu 24.04's default JRE is 21, which ITSI does not support).
+# Runs before the restart below so ITSI starts with Java on PATH.
+if [ -d "${SPLUNK_HOME}/etc/apps/itsi" ]; then
+  if command -v java >/dev/null 2>&1 && java -version 2>&1 | grep -Eq '"(1\.8|9|1[01]|17)'; then
+    log "ITSI: supported Java already present ($(java -version 2>&1 | head -1))."
+  elif command -v apt-get >/dev/null 2>&1; then
+    log "ITSI detected - installing OpenJDK 17 (required for anomaly/notable features)..."
+    export DEBIAN_FRONTEND=noninteractive
+    if apt-get update -y >/dev/null 2>&1 && apt-get install -y openjdk-17-jre-headless >/dev/null 2>&1; then
+      log "  installed $(java -version 2>&1 | head -1)"
+    else
+      warn "  could not auto-install Java; install openjdk-17-jre-headless and set JAVA_HOME for ITSI."
+    fi
+  else
+    warn "ITSI detected but no supported Java and no apt-get; install a Java 8-11/17 JRE for ITSI."
+  fi
+fi
+
 # ===========================================================================
 # 2. Apply declarative config (start Splunk, or restart if config changed)
 # ===========================================================================
