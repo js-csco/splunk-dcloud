@@ -72,11 +72,21 @@ sourcetype = perfmon:memory
 disabled = 0
 "@ | Set-Content -Encoding ASCII "$ta\inputs.conf"
 
-# 3) ensure it forwards to the indexer (in case UF was pre-installed)
-& "$UF\bin\splunk.exe" add forward-server "$Indexer`:$RecvPort" -auth "admin:$AdminPw" 2>$null | Out-Null
+# Native splunk.exe calls below: a benign message on stderr (e.g. the MSI already
+# registered the indexer, so "forwarded-server already present") must NOT abort the
+# script under $ErrorActionPreference=Stop, or the restart never runs and no inputs
+# load. Drop to Continue for these, then restore.
+$prevEAP = $ErrorActionPreference
+$ErrorActionPreference = "Continue"
 
-# 4) restart to pick up inputs
-& "$UF\bin\splunk.exe" restart
+# 3) ensure it forwards to the indexer (the MSI's RECEIVING_INDEXER usually already
+#    did this; "already present" is expected and fine).
+& "$UF\bin\splunk.exe" add forward-server "$Indexer`:$RecvPort" -auth "admin:$AdminPw" 2>&1 | Out-Null
+
+# 4) restart to pick up inputs (this is what makes the WinEventLog/perfmon inputs live)
+& "$UF\bin\splunk.exe" restart 2>&1 | Write-Host
+
+$ErrorActionPreference = $prevEAP
 
 Write-Host "Done. Forwarding Windows events -> london_windows and perfmon -> london_metrics."
 Write-Host "Log in to Windows and open http://<container-ip>:8080/ to generate correlated activity."

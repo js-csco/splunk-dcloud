@@ -39,11 +39,17 @@ def _get(url, token=None, timeout=180):
 
 def login(user, pw):
     data = parse.urlencode({"username": user, "password": pw}).encode()
-    with request.urlopen(request.Request(LOGIN, data=data), timeout=30, context=_ctx) as r:
-        body = r.read().decode("utf-8", "replace")
+    try:
+        with request.urlopen(request.Request(LOGIN, data=data), timeout=30, context=_ctx) as r:
+            body = r.read().decode("utf-8", "replace")
+    except error.HTTPError as exc:
+        snippet = exc.read().decode("utf-8", "replace")[:200] if hasattr(exc, "read") else ""
+        raise RuntimeError("login HTTP %s at %s | %s" % (exc.code, LOGIN, snippet.replace("\n", " ")))
     m = re.search(r"<id>([^<]+)</id>", body)
     if not m:
-        raise RuntimeError("login failed (check splunk.com username/password)")
+        # Endpoint change or non-XML reply reads as a bad login otherwise; show what came back.
+        raise RuntimeError("login: no <id> token in reply (check creds, or endpoint changed) | "
+                           "first 200 chars: %s" % body[:200].replace("\n", " "))
     return m.group(1).strip()
 
 
