@@ -15,6 +15,35 @@
     </input>
   </fieldset>
 
+  <!-- Correlated feed health: Active only if every key show-command delivered
+       data in the last 15 min; red if any one is missing. -->
+  <row>
+    <panel>
+      <title>Router feed — correlated status (last 15 min, $site$)</title>
+      <table>
+        <search>
+          <query>(index=london_network OR index=berlin_network) sourcetype=cisco:ios site=$site$
+| stats sum(eval(if(command="show version",1,0))) as v,
+        sum(eval(if(command="show license summary",1,0))) as l,
+        sum(eval(if(like(command,"show ntp%"),1,0))) as n,
+        sum(eval(if(command="show ip interface brief",1,0))) as i
+| eval Status=if(v&gt;0 AND l&gt;0 AND n&gt;0 AND i&gt;0,"Active","Not active"),
+       Version=if(v&gt;0,"OK","no data"), License=if(l&gt;0,"OK","no data"),
+       NTP=if(n&gt;0,"OK","no data"), Interfaces=if(i&gt;0,"OK","no data")
+| table Status Version License NTP Interfaces</query>
+          <earliest>-15m</earliest><latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="count">1</option>
+        <format type="color" field="Status"><colorPalette type="map">{"Active":#53a051,"Not active":#d93f3c}</colorPalette></format>
+        <format type="color" field="Version"><colorPalette type="map">{"OK":#53a051,"no data":#d93f3c}</colorPalette></format>
+        <format type="color" field="License"><colorPalette type="map">{"OK":#53a051,"no data":#d93f3c}</colorPalette></format>
+        <format type="color" field="NTP"><colorPalette type="map">{"OK":#53a051,"no data":#d93f3c}</colorPalette></format>
+        <format type="color" field="Interfaces"><colorPalette type="map">{"OK":#53a051,"no data":#d93f3c}</colorPalette></format>
+      </table>
+    </panel>
+  </row>
+
   <row>
     <panel>
       <html>
