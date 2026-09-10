@@ -281,6 +281,7 @@ config.
 |---|---|---|---|
 | Splunk host (loc1) | local scripted input (`metrics` app) | `loc1_metrics` | always on — no forwarder/network needed |
 | ubuntu-london | UF `TA-dcloud-host` (`collect_host_metrics.sh`) | `london_metrics` | after `install-uf.sh london` |
+| desktop-london (client, 198.18.2.11) | UF `TA-dcloud-host` (metrics + sessions + processes) | `london_metrics` + `london_linux` | after `install-uf-desktop.sh` |
 | ubuntu-berlin | UF `TA-dcloud-host` | `berlin_metrics` | after `install-uf.sh berlin` |
 | Proxmox (Berlin) | UF `TA-dcloud-proxmox` (`poll_proxmox.py metrics`) | `berlin_metrics` | per-node & per-guest CPU/mem/disk |
 
