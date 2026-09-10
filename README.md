@@ -59,6 +59,16 @@ curl -fsSL https://raw.githubusercontent.com/js-csco/splunk-dcloud/main/ubuntu/f
 curl -fsSL https://raw.githubusercontent.com/js-csco/splunk-dcloud/main/ubuntu/install-uf.sh        | sudo bash -s -- berlin
 ```
 
+> **Proxmox polling:** `install-uf.sh berlin` prompts for the **Proxmox password**
+> (*"Proxmox password for root@pam at 198.18.3.11"*) — enter `cisco`. It's stored
+> out-of-repo at `/opt/splunkforwarder/var/lib/dcloud/proxmox.env` (not committed).
+> Leave it blank to skip. Verify the poller authenticates:
+> ```bash
+> sudo -u splunk /opt/splunkforwarder/bin/splunk cmd python3 \
+>   /opt/splunkforwarder/etc/apps/TA-dcloud-proxmox/bin/poll_proxmox.py
+> ```
+> You want JSON with `cluster/resources` data, not `"status":"error"`.
+
 > The Splunk box collects **its own** host metrics automatically (`loc1_metrics`),
 > so the **Host & Infra Metrics** app has data even before the UFs are installed.
 
@@ -77,13 +87,35 @@ curl -fsSL https://raw.githubusercontent.com/js-csco/splunk-dcloud/main/ubuntu/i
 > if you specifically want to demo Windows Event Log / AD ingestion, but the Linux
 > desktop is simpler and is what the correlation dashboard's Client node expects.
 
-**5. (optional) demo data** — correlated events on the Ubuntu boxes:
+**5. web-app container on Proxmox (Berlin)** — completes the **Client → Hypervisor →
+App** correlation. Requires Proxmox reachable at `198.18.3.11` and step 3 done. Run
+this **on ubuntu-berlin** — it SSHes to Proxmox (root/cisco), creates an Ubuntu LXC
+(VMID 200) at `198.18.3.50`, and provisions the web-app + a UF inside it (access log
+→ `berlin_web` `webapp:access`, host metrics → `berlin_metrics`, host `webapp-berlin`):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/js-csco/splunk-dcloud/main/ubuntu/create-webapp-container.sh | sudo bash
+```
+
+Then generate a little traffic so the App panels fill (from the desktop or anywhere on
+the lab network):
+
+```bash
+curl http://198.18.3.50:8080/
+```
+
+> The **first** run downloads an Ubuntu LXC template on Proxmox (`pveam`), so Proxmox
+> needs outbound internet; the container also needs it for the UF + app install. After
+> this, the **Correlation → Client → Hypervisor → App** dashboard shows all three nodes
+> green.
+
+**6. (optional) demo data** — correlated events on the Ubuntu boxes:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/js-csco/splunk-dcloud/main/ubuntu/generate-activity.sh | bash
 ```
 
-**6. (optional) install ITSI (premium)** — ITSI (Splunkbase app **1841**) installs
+**7. (optional) install ITSI (premium)** — ITSI (Splunkbase app **1841**) installs
 **only by extracting its `.spl` into `etc/apps`** (not Splunk Web, not `splunk install
 app`). Copy your `.spl` onto the Splunk box and extract it. Do this **on the Splunk box
 (198.18.1.124)** each session (`/tmp` is wiped on reset).
