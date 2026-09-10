@@ -66,10 +66,21 @@ else
     TEMPLATE="local:vztmpl/${AVAIL}"
   fi
   echo "Using storage=${STORAGE} template=${TEMPLATE}"
-  remote "pct create ${VMID} '${TEMPLATE}' --hostname ${CTNAME} --cores 1 --memory 512 --swap 256 \
-    --net0 name=eth0,bridge=${BRIDGE},ip=${CT_IP}/24,gw=${CT_GW} \
-    --storage ${STORAGE} --rootfs ${STORAGE}:4 --unprivileged 1 --features nesting=1 \
-    --onboot 1 --password '${PPW}' --description 'dCloud demo web-app (Splunk correlation)'"
+  create_ct() {
+    remote "pct create ${VMID} '${TEMPLATE}' --hostname ${CTNAME} --cores 1 --memory 512 --swap 256 \
+      --net0 name=eth0,bridge=${BRIDGE},ip=${CT_IP}/24,gw=${CT_GW} \
+      --storage $1 --rootfs $1:4 --unprivileged 1 --features nesting=1 \
+      --onboot 1 --password '${PPW}' --description 'dCloud demo web-app (Splunk correlation)'"
+  }
+  # The detected storage (often local-lvm) can be defined but unusable on dCloud
+  # Proxmox (e.g. "no such logical volume pve/data"). If create fails, fall back to
+  # the directory storage 'local' - enable container content on it and retry.
+  if ! create_ct "${STORAGE}"; then
+    echo "pct create on '${STORAGE}' failed - enabling rootdir on 'local' and retrying there..." >&2
+    remote "pvesm set local --content rootdir,images,vztmpl,iso,backup,snippets" || true
+    STORAGE=local
+    create_ct "${STORAGE}"
+  fi
   remote "pct start ${VMID}"
 fi
 
