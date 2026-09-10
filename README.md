@@ -62,14 +62,20 @@ curl -fsSL https://raw.githubusercontent.com/js-csco/splunk-dcloud/main/ubuntu/i
 > The Splunk box collects **its own** host metrics automatically (`loc1_metrics`),
 > so the **Host & Infra Metrics** app has data even before the UFs are installed.
 
-**4. windows-server-2022-london** — install the Universal Forwarder on the Windows
-client (Windows logons/events → `london_windows`, perfmon CPU/mem → `london_metrics`).
-Run this in an **elevated PowerShell** (Run as Administrator) on the Windows box — it
-is required for the **Client → App → Hypervisor** correlation to see the Windows side:
+**4. Linux desktop client (London)** — the end-user client in the **Client → App →
+Hypervisor** correlation. Install the Universal Forwarder on the Ubuntu 24.04 desktop;
+it forwards, all with **live timestamps**: host metrics → `london_metrics`, and
+logged-on users / top processes / `/var/log` logins → `london_linux`. It gets the
+distinct host id `desktop-london` so it doesn't collide with the infra box
+`ubuntu-london`:
 
-```powershell
-iwr https://raw.githubusercontent.com/js-csco/splunk-dcloud/main/windows/install-uf.ps1 -UseBasicParsing | iex
+```bash
+curl -fsSL https://raw.githubusercontent.com/js-csco/splunk-dcloud/main/ubuntu/install-uf-desktop.sh | sudo bash
 ```
+
+> A Windows client is still supported (`windows/install-uf.ps1` → `london_windows`)
+> if you specifically want to demo Windows Event Log / AD ingestion, but the Linux
+> desktop is simpler and is what the correlation dashboard's Client node expects.
 
 **5. (optional) demo data** — correlated events on the Ubuntu boxes:
 

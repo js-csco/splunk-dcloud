@@ -1,6 +1,6 @@
 <form version="1.1" theme="dark">
   <label>Client → App → Hypervisor</label>
-  <description>The path from a user's Windows client, across the Proxmox hypervisor, to the web-app — with live status for each node.</description>
+  <description>The path from a user's Linux desktop, across the Proxmox hypervisor, to the web-app — with live status for each node.</description>
 
   <!-- Seed status tokens so the diagram never flashes raw $tokens$ before the
        status searches below finish. -->
@@ -8,7 +8,7 @@
     <set token="cli_status">checking…</set>
     <set token="cli_color">#8b98a5</set>
     <set token="cli_cpu"></set>
-    <set token="cli_host">windows-server-2022-london</set>
+    <set token="cli_host">desktop-london</set>
     <set token="hv_status">checking…</set>
     <set token="hv_color">#8b98a5</set>
     <set token="hv_detail">198.18.3.11</set>
@@ -26,13 +26,13 @@
 
   <!-- ============ status searches: each returns ONE row and sets tokens ============ -->
   <search id="cliStatus">
-    <query>index=london_metrics sourcetype=perfmon:cpu earliest=-15m latest=now
-| stats count as c latest(Value) as cpu latest(_time) as lt latest(host) as host
-| eval up=if(c>0 AND (now()-lt)&lt;900,1,0)
+    <query>index=london_metrics sourcetype=linux:metrics host=desktop-* earliest=-15m latest=now
+| stats count as c latest(cpu_pct) as cpu latest(_time) as lt latest(host) as host
+| eval up=if(c&gt;0 AND (now()-lt)&lt;900,1,0)
 | eval cli_status=if(up=1,"ONLINE","OFFLINE"),
        cli_color=if(up=1,"#53a051","#d93f3c"),
        cli_cpu=if(c&gt;0,round(cpu,0)."% CPU","no live metrics"),
-       cli_host=coalesce(host,"windows-server-2022-london")
+       cli_host=coalesce(host,"desktop-london")
 | table cli_status cli_color cli_cpu cli_host</query>
     <earliest>-15m</earliest><latest>now</latest>
     <done>
@@ -84,7 +84,7 @@
           <!-- CLIENT -->
           <div style="flex:1 1 260px;max-width:320px;background:#0f1720;border:1px solid #2b3a4a;border-top:5px solid $cli_color$;border-radius:10px;padding:16px;">
             <div style="font-size:11px;letter-spacing:1px;color:#8b98a5;text-transform:uppercase;">Client</div>
-            <div style="font-size:18px;font-weight:700;color:#e6edf3;margin:2px 0 8px;">Windows Server</div>
+            <div style="font-size:18px;font-weight:700;color:#e6edf3;margin:2px 0 8px;">Linux Desktop</div>
             <div style="font-size:12px;color:#8b98a5;">London · $cli_host$</div>
             <div style="display:inline-block;margin-top:10px;padding:4px 10px;border-radius:14px;background:$cli_color$;color:#0b0f14;font-weight:700;font-size:12px;">$cli_status$</div>
             <div style="margin-top:8px;font-size:13px;color:#cdd9e5;">$cli_cpu$</div>
@@ -116,7 +116,7 @@
 
         </div>
         <p style="text-align:center;color:#8b98a5;font-size:12px;margin:0 0 6px;">
-          A user on the Windows client reaches the web-app running in an LXC container on the Proxmox hypervisor.
+          A user on the Linux desktop reaches the web-app running in an LXC container on the Proxmox hypervisor.
           The hypervisor and app light up once Proxmox is reachable and <code>create-webapp-container.sh</code> has run.
           Only <b>gary</b> (global) sees all three; Leo sees the client, Ben the Berlin side.
         </p>
@@ -128,36 +128,39 @@
   <row>
     <!-- CLIENT column -->
     <panel>
-      <title>Client — Windows Server (live metrics)</title>
-      <chart>
-        <title>CPU %</title>
-        <search>
-          <query>index=london_metrics sourcetype=perfmon:cpu | timechart span=1m avg(Value) as "CPU %"</query>
-          <earliest>$tr.earliest$</earliest><latest>$tr.latest$</latest>
-        </search>
-        <option name="charting.chart">line</option>
-        <option name="charting.axisY.maximumNumber">100</option>
-        <option name="charting.legend.placement">none</option>
-      </chart>
-      <chart>
-        <title>Memory used %</title>
-        <search>
-          <query>index=london_metrics sourcetype=perfmon:memory counter="% Committed Bytes In Use" | timechart span=1m avg(Value) as "Mem %"</query>
-          <earliest>$tr.earliest$</earliest><latest>$tr.latest$</latest>
-        </search>
-        <option name="charting.chart">line</option>
-        <option name="charting.axisY.maximumNumber">100</option>
-        <option name="charting.legend.placement">none</option>
-      </chart>
+      <title>Client — Linux Desktop (live)</title>
       <table>
-        <title>Windows events by type (last 45 days — run generate-activity.ps1 for fresh ones)</title>
+        <title>Logged-on users (current)</title>
         <search>
-          <query>index=london_windows | stats count as events, max(_time) as last_seen by sourcetype
-| eval last_seen=strftime(last_seen,"%F %T") | sort - events</query>
-          <earliest>-45d</earliest><latest>now</latest>
+          <query>index=london_linux sourcetype=linux:sessions host=desktop-* event=session status=logged_in
+| stats latest(_time) as last, latest(from) as from, latest(login_time) as login_time by user tty
+| eval last=strftime(last,"%F %T")
+| table user tty from login_time last | sort user</query>
+          <earliest>-15m</earliest><latest>now</latest>
         </search>
         <option name="drilldown">none</option>
-        <option name="count">10</option>
+      </table>
+      <chart>
+        <title>CPU % / Memory used %</title>
+        <search>
+          <query>index=london_metrics sourcetype=linux:metrics host=desktop-* | timechart span=1m avg(cpu_pct) as "CPU %" avg(mem_used_pct) as "Mem %"</query>
+          <earliest>$tr.earliest$</earliest><latest>$tr.latest$</latest>
+        </search>
+        <option name="charting.chart">line</option>
+        <option name="charting.axisY.maximumNumber">100</option>
+        <option name="charting.legend.placement">bottom</option>
+      </chart>
+      <table>
+        <title>Top processes by CPU (latest snapshot)</title>
+        <search>
+          <query>index=london_linux sourcetype=linux:ps host=desktop-* event=process
+| stats latest(pcpu) as "CPU %", latest(pmem) as "Mem %", latest(user) as user, latest(_time) as t by comm pid
+| where t &gt;= relative_time(now(),"-3m")
+| sort - "CPU %" | head 10
+| table comm pid user "CPU %" "Mem %"</query>
+          <earliest>-15m</earliest><latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
       </table>
     </panel>
 
