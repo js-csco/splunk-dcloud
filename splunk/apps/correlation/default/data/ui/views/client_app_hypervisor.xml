@@ -45,11 +45,11 @@
 
   <search id="hvStatus">
     <query>index=berlin_proxmox sourcetype=proxmox:api earliest=-15m latest=now
-| stats count as c latest(_time) as lt
-| eval up=if(c&gt;0 AND (now()-lt)&lt;900,1,0)
+| stats count as c, count(eval(status=="error" OR status=="not_configured")) as errs, latest(message) as msg
+| eval up=if(c&gt;errs,1,0)
 | eval hv_status=if(up=1,"REACHABLE","NOT REACHABLE"),
        hv_color=if(up=1,"#53a051","#d93f3c"),
-       hv_detail=if(up=1,"Proxmox API responding","198.18.3.11 — no API data")
+       hv_detail=case(up=1,"Proxmox API responding", c=0,"198.18.3.11 — no poll data", true(),"198.18.3.11 — "+coalesce(msg,"API error"))
 | table hv_status hv_color hv_detail</query>
     <earliest>-15m</earliest><latest>now</latest>
     <done>
@@ -168,7 +168,8 @@
         <title>API reachability (last 15 min)</title>
         <search>
           <query>index=berlin_proxmox sourcetype=proxmox:api earliest=-15m latest=now
-| stats count as c | eval s=if(c&gt;0,"REACHABLE","NOT REACHABLE") | fields s</query>
+| stats count as c, count(eval(status=="error" OR status=="not_configured")) as errs
+| eval s=if(c&gt;errs,"REACHABLE","NOT REACHABLE") | fields s</query>
           <earliest>-15m</earliest><latest>now</latest>
         </search>
         <option name="drilldown">none</option>
