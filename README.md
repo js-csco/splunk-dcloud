@@ -42,6 +42,7 @@ it up automatically. The dCloud startup command never changes.
 | cat8kv-london (router) | London | 198.18.2.32 | SSH poll → `london_network` |
 | proxmox-berlin (hypervisor) | Berlin | 198.18.3.11 | API poll → `berlin_proxmox`, `berlin_metrics` |
 | webapp-berlin (LXC) | Berlin | 198.18.3.50:8080 | UF → `berlin_web`, `berlin_metrics` |
+| db-berlin (PostgreSQL LXC) | Berlin | 198.18.3.51:5432 | UF → `berlin_db`, `berlin_metrics` |
 | ubuntu-berlin | Berlin | 198.18.3.x | UF → `berlin_linux`, `berlin_metrics` |
 | cat8kv-berlin (router) | Berlin | 198.18.3.32 | SSH poll → `berlin_network` |
 
@@ -147,6 +148,19 @@ locally, no SSH):
 ```bash
 curl -fsSL https://raw.githubusercontent.com/js-csco/splunk-dcloud/main/ubuntu/create-webapp-container.sh | bash
 ```
+
+**5b. database container (Berlin)** — a second service: a PostgreSQL LXC (VMID 201) at
+`198.18.3.51`. The web-app's "Save entry to database" button writes rows here (each row
+records the client `src_ip`). Postgres logs → `berlin_db`, metrics → `berlin_metrics`
+(host `db-berlin`). Same run options (ubuntu-berlin with sudo, or Proxmox host as root):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/js-csco/splunk-dcloud/main/ubuntu/create-db-container.sh | sudo bash
+```
+
+> "App available" (and the **Service Health** rollup on *Client → Hypervisor → App*)
+> is green only when **both** containers are running and the app+DB are reachable —
+> stop either container in Proxmox to show it flip to red.
 
 Then generate a little traffic so the App panels fill (from the desktop or anywhere on
 the lab network):
@@ -256,7 +270,7 @@ whole location with a single wildcard.
 |---|---|---|---|---|
 | loc1 | 198.18.1.0/24 | splunk (infrastructure) | `loc1_linux`, `loc1_metrics` | `role_global` only |
 | London (loc2) | 198.18.2.0/24 | ubuntu-london, ubuntu-desktop-london, cat8kv-london | `london_linux`, `london_metrics`, `london_network`, `london_windows` | `role_london`, `role_global` |
-| Berlin (loc3) | 198.18.3.0/24 | proxmox-berlin, webapp-berlin, ubuntu-berlin, cat8kv-berlin | `berlin_linux`, `berlin_metrics`, `berlin_proxmox`, `berlin_network`, `berlin_web` | `role_berlin`, `role_global` |
+| Berlin (loc3) | 198.18.3.0/24 | proxmox-berlin, webapp-berlin, db-berlin, ubuntu-berlin, cat8kv-berlin | `berlin_linux`, `berlin_metrics`, `berlin_proxmox`, `berlin_network`, `berlin_web`, `berlin_db` | `role_berlin`, `role_global` |
 
 > The `*_metrics` indexes need no RBAC changes — roles grant a whole location
 > by wildcard (`london_*`, `berlin_*`, `loc1_*`), so they're covered

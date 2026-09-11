@@ -9,6 +9,37 @@
     </input>
   </fieldset>
 
+  <!-- ===================== SERVICE HEALTH (top rollup) ===================== -->
+  <!-- One correlated verdict: AVAILABLE only if the client is online, the
+       hypervisor is reachable, BOTH containers (webapp + db) are running, and the
+       app+db are reachable (the probe hits /healthz, which is 503 when the DB is
+       down). Any one down -> UNAVAILABLE (red). -->
+  <row>
+    <panel>
+      <title>Service Health — end-to-end</title>
+      <single>
+        <search>
+          <query>| makeresults
+| appendcols [ search index=london_metrics sourcetype=linux:metrics host=desktop-* earliest=-15m latest=now | stats count as c latest(_time) as lt | eval client=if(c&gt;0 AND (now()-lt)&lt;900,1,0) | fields client ]
+| appendcols [ search index=berlin_proxmox sourcetype=proxmox:api earliest=-15m latest=now | stats count as c, count(eval(status="error" OR status="not_configured")) as e | eval hv=if(c&gt;e,1,0) | fields hv ]
+| appendcols [ search index=berlin_proxmox sourcetype=proxmox:api endpoint="cluster/resources" name=webapp-berlin status=running earliest=-15m latest=now | stats count as c | eval webct=if(c&gt;0,1,0) | fields webct ]
+| appendcols [ search index=berlin_proxmox sourcetype=proxmox:api endpoint="cluster/resources" name=db-berlin status=running earliest=-15m latest=now | stats count as c | eval dbct=if(c&gt;0,1,0) | fields dbct ]
+| appendcols [ search index=berlin_web sourcetype=webapp:probe earliest=-15m latest=now | stats latest(reachable) as r | eval app=if(r=1,1,0) | fields app ]
+| eval client=coalesce(client,0), hv=coalesce(hv,0), webct=coalesce(webct,0), dbct=coalesce(dbct,0), app=coalesce(app,0)
+| eval Health=if(client=1 AND hv=1 AND webct=1 AND dbct=1 AND app=1,"● AVAILABLE","● UNAVAILABLE")
+| eval range=if(Health=="● AVAILABLE","low","severe")
+| table Health range</query>
+          <earliest>-15m</earliest><latest>now</latest>
+        </search>
+        <option name="colorBy">value</option>
+        <option name="colorMode">block</option>
+        <option name="useColors">1</option>
+        <option name="rangeColors">["0x53a051","0xd93f3c"]</option>
+        <option name="drilldown">none</option>
+      </single>
+    </panel>
+  </row>
+
   <!-- three entity columns: status tile -> metrics -> detail. Each status is a
        single-value panel that runs its own search and colours itself green/red
        via the `range` field (green when online/reachable/available). -->
@@ -102,21 +133,28 @@
       </table>
     </panel>
 
-    <!-- ===================== APP ===================== -->
+    <!-- ===================== APP (web-app + database) ===================== -->
     <panel>
-      <title>App — Web-app container (webapp-berlin)</title>
+      <title>App — Web-app + Database (webapp-berlin, db-berlin)</title>
       <table>
-        <title>Status</title>
+        <title>Status — available only if BOTH containers run and the app+DB are reachable</title>
         <search>
-          <query>index=berlin_web sourcetype=webapp:probe earliest=-15m latest=now
-| stats count as c latest(reachable) as r
-| eval Status=case(c=0,"UNKNOWN", r=1,"AVAILABLE", true(),"NOT AVAILABLE")
-| table Status</query>
+          <query>| makeresults
+| appendcols [ search index=berlin_proxmox sourcetype=proxmox:api endpoint="cluster/resources" name=webapp-berlin status=running earliest=-15m latest=now | stats count as c | eval web=if(c&gt;0,"running","down") | fields web ]
+| appendcols [ search index=berlin_proxmox sourcetype=proxmox:api endpoint="cluster/resources" name=db-berlin status=running earliest=-15m latest=now | stats count as c | eval db=if(c&gt;0,"running","down") | fields db ]
+| appendcols [ search index=berlin_web sourcetype=webapp:probe earliest=-15m latest=now | stats latest(reachable) as r | eval app=if(r=1,"yes","no") | fields app ]
+| eval web=coalesce(web,"down"), db=coalesce(db,"down"), app=coalesce(app,"no")
+| eval Status=if(web="running" AND db="running" AND app="yes","AVAILABLE","NOT AVAILABLE")
+| rename web as "Web container", db as "DB container", app as "App+DB reachable"
+| table Status "Web container" "DB container" "App+DB reachable"</query>
           <earliest>-15m</earliest><latest>now</latest>
         </search>
         <option name="drilldown">none</option>
         <option name="count">1</option>
-        <format type="color" field="Status"><colorPalette type="map">{"ONLINE":#53a051,"REACHABLE":#53a051,"AVAILABLE":#53a051,"OFFLINE":#d93f3c,"NOT REACHABLE":#d93f3c,"NOT AVAILABLE":#d93f3c,"UNKNOWN":#f2b827}</colorPalette></format>
+        <format type="color" field="Status"><colorPalette type="map">{"AVAILABLE":#53a051,"NOT AVAILABLE":#d93f3c}</colorPalette></format>
+        <format type="color" field="Web container"><colorPalette type="map">{"running":#53a051,"down":#d93f3c}</colorPalette></format>
+        <format type="color" field="DB container"><colorPalette type="map">{"running":#53a051,"down":#d93f3c}</colorPalette></format>
+        <format type="color" field="App+DB reachable"><colorPalette type="map">{"yes":#53a051,"no":#d93f3c}</colorPalette></format>
       </table>
       <chart>
         <title>Reachability (1=up) &amp; latency (ms)</title>
@@ -137,6 +175,18 @@
         </search>
         <option name="drilldown">none</option>
       </table>
+      <table>
+        <title>Recent DB writes (button clicks → PostgreSQL)</title>
+        <search>
+          <query>index=berlin_web sourcetype=webapp:access action=db_write
+| sort - _time | head 10
+| eval t=strftime(_time,"%F %T"), result=if(db_ok=="true" OR db_ok==1,"ok","FAILED")
+| table t src_ip name note result db_rows</query>
+          <earliest>$tr.earliest$</earliest><latest>$tr.latest$</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <format type="color" field="result"><colorPalette type="map">{"ok":#53a051,"FAILED":#d93f3c}</colorPalette></format>
+      </table>
     </panel>
 
   </row>
@@ -145,9 +195,10 @@
     <panel>
       <html>
         <p style="text-align:center;color:#8b98a5;font-size:12px;margin:6px 0;">
-          A user on the Linux desktop reaches the web-app running in an LXC container on the Proxmox hypervisor.
-          The Hypervisor and App columns light up once Proxmox is reachable and <code>create-webapp-container.sh</code> has run.
-          Only <b>gary</b> (global) sees all three; Leo sees the client, Ben the Berlin side.
+          A user on the Linux desktop reaches the web-app (webapp-berlin), which writes to the PostgreSQL
+          container (db-berlin) — both LXC on the Proxmox hypervisor. Service Health up top is AVAILABLE only
+          when the client is online, the hypervisor is reachable, BOTH containers run, and the app+DB are
+          reachable. Only <b>gary</b> (global) sees all of it; Leo sees the client, Ben the Berlin side.
         </p>
       </html>
     </panel>

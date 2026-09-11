@@ -38,6 +38,12 @@ export DEBIAN_FRONTEND=noninteractive
 command -v python3 >/dev/null 2>&1 || { apt-get update -y && apt-get install -y python3; }
 command -v curl    >/dev/null 2>&1 || { apt-get update -y && apt-get install -y curl; }
 command -v wget    >/dev/null 2>&1 || { apt-get update -y && apt-get install -y wget; }
+# psycopg2 so the app can write to the PostgreSQL container (db-berlin). No pip.
+python3 -c 'import psycopg2' 2>/dev/null || { apt-get update -y && apt-get install -y python3-psycopg2; }
+
+# Where the PostgreSQL container lives (the "Save entry to database" button).
+DB_HOST="${DB_HOST:-198.18.3.51}"; DB_PORT="${DB_PORT:-5432}"
+DB_NAME="${DB_NAME:-demo}"; DB_USER="${DB_USER:-demo}"; DB_PASS="${DB_PASS:-C1sco12345}"
 
 # --- 1) the web-app --------------------------------------------------------
 mkdir -p /opt/webapp /var/log/webapp
@@ -50,6 +56,11 @@ After=network-online.target
 [Service]
 Environment=WEBAPP_PORT=${PORT}
 Environment=WEBAPP_LOG=/var/log/webapp/access.log
+Environment=DB_HOST=${DB_HOST}
+Environment=DB_PORT=${DB_PORT}
+Environment=DB_NAME=${DB_NAME}
+Environment=DB_USER=${DB_USER}
+Environment=DB_PASS=${DB_PASS}
 ExecStart=/usr/bin/python3 /opt/webapp/app.py
 Restart=always
 
