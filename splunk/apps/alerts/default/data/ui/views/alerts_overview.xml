@@ -17,6 +17,22 @@
         <p style="color:#f2b827;"><b>Email note:</b> the alert fires regardless, but delivery
         needs an SMTP relay Splunk can reach (Settings &#8594; Server settings &#8594; Email
         settings). See the repo README "Alerts" section.</p>
+
+        <h3>Webex alert action (Trap &#8594; Webex, not email)</h3>
+        <p>A custom <b>Webex message</b> alert action is bundled. Two demo alerts use it,
+        <b>disabled by default</b> — enable them in <b>Settings &#8594; Searches, reports, and alerts</b>
+        once a Webex credential is set:</p>
+        <ul>
+          <li><b>SNMP trap received &#8594; Webex</b> — fires when SC4SNMP writes a trap into the
+          regional SNMP index (e.g. a device reload / linkDown).</li>
+          <li><b>Service unavailable &#8594; Webex</b> — fires when the composite web+DB service
+          becomes UNAVAILABLE.</li>
+        </ul>
+        <p style="color:#8b98a5;">The Webex credential lives out-of-repo in
+        <code>var/lib/dcloud/webex.env</code> — set <code>WEBEX_WEBHOOK_URL</code> (an incoming
+        webhook) <i>or</i> <code>WEBEX_BOT_TOKEN</code> + <code>WEBEX_ROOM_ID</code> as env vars at
+        session start and <code>apply.sh</code> writes the file. You can attach this action to any
+        alert (Save As &#8594; Alert &#8594; Add Actions &#8594; Webex message).</p>
       </html>
     </panel>
   </row>

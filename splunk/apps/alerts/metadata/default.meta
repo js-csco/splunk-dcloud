@@ -13,3 +13,11 @@ export = system
 # Share the scheduled alerts globally so they're visible/manageable everywhere.
 [savedsearches]
 export = system
+
+# The custom "Webex message" alert action must be visible/selectable app-wide.
+[alert_actions]
+export = system
+
+[alert_actions/webex_notify]
+access = read : [ * ], write : [ admin ]
+export = system

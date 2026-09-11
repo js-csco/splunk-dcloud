@@ -1,0 +1,91 @@
+<form version="1.1" theme="dark">
+  <label>Silent Devices</label>
+  <description>Catch hosts that have STOPPED sending — the failure a trap can't tell you about (a hard power-off sends no trap). Absence-of-data heartbeat, RBAC-scoped.</description>
+
+  <fieldset submitButton="false" autoRun="true">
+    <input type="dropdown" token="mins">
+      <label>Silent if no data for (minutes)</label>
+      <choice value="5">5</choice>
+      <choice value="10">10</choice>
+      <choice value="15">15</choice>
+      <choice value="30">30</choice>
+      <default>5</default>
+    </input>
+    <input type="dropdown" token="win">
+      <label>Look back over</label>
+      <choice value="-24h">24 hours</choice>
+      <choice value="-7d">7 days</choice>
+      <default>-24h</default>
+    </input>
+  </fieldset>
+
+  <row>
+    <panel>
+      <title>Silent devices (no data for &gt; $mins$ min)</title>
+      <single>
+        <search>
+          <query>| tstats latest(_time) as last where index=london_* OR index=berlin_* OR index=loc1_* by host
+| eval mins=(now()-last)/60 | where mins &gt; $mins$ | stats count</query>
+          <earliest>$win$</earliest><latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="colorBy">value</option>
+        <option name="colorMode">block</option>
+        <option name="useColors">1</option>
+        <option name="rangeValues">[0]</option>
+        <option name="rangeColors">["0x53a051","0xd93f3c"]</option>
+        <option name="underLabel">0 = all devices reporting</option>
+      </single>
+    </panel>
+    <panel>
+      <title>Devices reporting</title>
+      <single>
+        <search>
+          <query>| tstats latest(_time) as last where index=london_* OR index=berlin_* OR index=loc1_* by host
+| eval mins=(now()-last)/60 | where mins &lt;= $mins$ | stats count</query>
+          <earliest>$win$</earliest><latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="colorBy">value</option>
+        <option name="rangeColors">["0x53a051","0x53a051"]</option>
+      </single>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
+      <title>Every device — last seen (silent first)</title>
+      <table>
+        <search>
+          <query>| tstats latest(_time) as last where index=london_* OR index=berlin_* OR index=loc1_* by host
+| eval mins_since=round((now()-last)/60,1), "Last seen"=strftime(last,"%F %T"),
+       Status=if(mins_since &gt; $mins$,"SILENT","reporting")
+| lookup dcloud_assets_berlin_lk host OUTPUT asset_name asset_type
+| lookup dcloud_assets_london_lk host OUTPUT asset_name asset_type
+| lookup dcloud_assets_loc1_lk host OUTPUT asset_name asset_type
+| rename host as Host, asset_name as Asset, asset_type as Type, mins_since as "Min since"
+| table Status Host Asset Type "Last seen" "Min since"
+| sort - Status "Min since"</query>
+          <earliest>$win$</earliest><latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="count">50</option>
+        <format type="color" field="Status"><colorPalette type="map">{"SILENT":#d93f3c,"reporting":#53a051}</colorPalette></format>
+      </table>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
+      <html>
+        <p style="color:#8b98a5;font-size:12px;">
+          <b>Why this matters:</b> a graceful shutdown often sends an SNMP trap, but a <b>hard power-off,
+          crash, or network cut sends nothing</b> — the device just goes quiet. This panel catches that by
+          <i>absence</i> of data (last event older than the threshold). It's RBAC-scoped: Ben sees only Berlin
+          hosts, Leo only London, Gary all. Turn it into an alert (Save As → Alert) to get notified when a
+          device goes silent.
+        </p>
+      </html>
+    </panel>
+  </row>
+</form>

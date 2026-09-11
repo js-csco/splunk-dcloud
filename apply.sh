@@ -281,8 +281,30 @@ else
   log "Get Data In: using committed Proxmox config (proxmox_config.env)."
 fi
 
-# Make any deployed app bin scripts executable.
+# Webex custom alert action: persist the Webex credential (if provided) so the
+# "Webex message" alert action can post. Stored outside any app dir; committed
+# secrets are avoided (this is a real account credential, unlike the throwaway
+# lab creds). Env-only, no prompt, so boot stays unattended. Set either
+# WEBEX_WEBHOOK_URL (incoming webhook) OR WEBEX_BOT_TOKEN + WEBEX_ROOM_ID.
+if [ -n "${WEBEX_WEBHOOK_URL:-}" ] || { [ -n "${WEBEX_BOT_TOKEN:-}" ] && [ -n "${WEBEX_ROOM_ID:-}" ]; }; then
+  mkdir -p "${TOKEN_DIR}"
+  {
+    [ -n "${WEBEX_WEBHOOK_URL:-}" ] && echo "WEBEX_WEBHOOK_URL=${WEBEX_WEBHOOK_URL}"
+    [ -n "${WEBEX_BOT_TOKEN:-}" ]   && echo "WEBEX_BOT_TOKEN=${WEBEX_BOT_TOKEN}"
+    [ -n "${WEBEX_ROOM_ID:-}" ]     && echo "WEBEX_ROOM_ID=${WEBEX_ROOM_ID}"
+  } > "${TOKEN_DIR}/webex.env"
+  chmod 700 "${TOKEN_DIR}"; chmod 600 "${TOKEN_DIR}/webex.env"
+  chown -R "${SPLUNK_USER}:${SPLUNK_USER}" "${TOKEN_DIR}" 2>/dev/null || true
+  log "Alerts: Webex credential stored (Webex alert action is active)."
+elif [ -s "${TOKEN_DIR}/webex.env" ]; then
+  log "Alerts: keeping existing Webex credential on the box."
+else
+  log "Alerts: no Webex credential set - the 'Webex message' alert action will no-op until WEBEX_WEBHOOK_URL (or WEBEX_BOT_TOKEN + WEBEX_ROOM_ID) is provided."
+fi
+
+# Make any deployed app bin scripts executable (shell + custom alert actions).
 chmod +x "${SPLUNK_HOME}/etc/apps/"*/bin/*.sh 2>/dev/null || true
+chmod +x "${SPLUNK_HOME}/etc/apps/"*/bin/*.py 2>/dev/null || true
 
 # ===========================================================================
 # 5. Feed the Splunk host's own logs into loc1_linux
