@@ -29,17 +29,22 @@ export = system
 export = system
 access = read : [ admin, power ], write : [ admin ]
 
+# Lookup DEFINITIONS are globally readable so the automatic props enrichment
+# (LOOKUP-dcloud_asset_*) loads for every role without "Could not load lookup"
+# warnings. The actual asset DATA stays gated by the KV COLLECTIONS below, so a
+# user still can't read another location's inventory (inputlookup returns empty).
+# Write stays per-location.
 [transforms/dcloud_assets_loc1_lk]
 export = system
-access = read : [ role_global, admin, power ], write : [ role_global, admin ]
+access = read : [ * ], write : [ role_global, admin ]
 
 [transforms/dcloud_assets_london_lk]
 export = system
-access = read : [ role_london, role_global, admin, power ], write : [ role_london, role_global, admin ]
+access = read : [ * ], write : [ role_london, role_global, admin ]
 
 [transforms/dcloud_assets_berlin_lk]
 export = system
-access = read : [ role_berlin, role_global, admin, power ], write : [ role_berlin, role_global, admin ]
+access = read : [ * ], write : [ role_berlin, role_global, admin ]
 
 [collections/dcloud_assets_loc1]
 export = system

@@ -511,19 +511,23 @@ the "Asset Configuration" feature customers know from other tools.
 
 **RBAC — enforced per location (important):** KV Store lookups are *not*
 automatically covered by index RBAC, so the inventory is scoped **deliberately**.
-Each collection + lookup definition is read/write-gated per role in
+The **KV collections** (the data) are read/write-gated per role in
 `metadata/default.meta`, matching the index wall:
 
-| Inventory | Readable/editable by |
+| Inventory collection | Readable/editable by |
 |---|---|
 | `dcloud_assets_loc1` | `role_global` (admin) |
 | `dcloud_assets_london` | `role_london`, `role_global` |
 | `dcloud_assets_berlin` | `role_berlin`, `role_global` |
 
-So **Ben sees/edits only Berlin**, Leo only London, Gary all — and it's genuinely
-enforced (even a raw `| inputlookup dcloud_assets_london_lk` is denied for Ben),
-not just hidden in the dashboard. Event *enrichment* follows the same wall for
-free, since users only ever see events from indexes they're allowed to read.
+So **Ben sees/edits only Berlin**, Leo only London, Gary all — genuinely enforced
+at the data layer (a raw `| inputlookup dcloud_assets_london_lk` returns nothing
+for Ben), not just hidden in the dashboard. The **lookup *definitions*** are
+globally readable so the automatic props enrichment loads for every role without
+"Could not load lookup" warnings; the collection ACL above is what actually gates
+the data. Event *enrichment* follows the same wall for free, since users only ever
+see events from indexes they're allowed to read (and the Asset Configuration
+dashboard shows each role only the location table(s) it can access).
 
 ## Client → App → Hypervisor correlation
 
