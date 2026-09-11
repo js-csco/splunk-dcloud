@@ -138,8 +138,16 @@ sourcetype = webapp:probe
 host = ubuntu-berlin
 interval = 60
 disabled = 0
+
+[script://./bin/check_ports.sh ${WEBAPP_TARGET} ${DB_TARGET:-198.18.3.51:5432}]
+index = berlin_web
+sourcetype = port:probe
+host = ubuntu-berlin
+interval = 60
+disabled = 0
 EOF
-  echo "Berlin: web-app reachability probe -> ${WEBAPP_TARGET} (berlin_web)."
+  run_root chmod +x "${UF_HOME}/etc/apps/TA-dcloud-host/bin/check_ports.sh" 2>/dev/null || true
+  echo "Berlin: web-app probe + TCP port probes (8080, 5432) -> berlin_web."
 else
   # Never leave a stale Proxmox poller on the London box.
   run_root rm -rf "${UF_HOME}/etc/apps/TA-dcloud-proxmox" 2>/dev/null || true

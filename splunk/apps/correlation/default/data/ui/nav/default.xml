@@ -2,5 +2,6 @@
   <view name="correlation_2_sources" default="true" />
   <view name="correlation_3_sources" />
   <view name="client_app_hypervisor" />
+  <view name="root_cause_analysis" />
   <view name="search" />
 </nav>

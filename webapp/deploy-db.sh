@@ -96,7 +96,8 @@ EOF
 TA="${UF_HOME}/etc/apps/TA-dcloud-db"
 mkdir -p "${TA}/bin" "${TA}/local"
 curl -fsSL "${RAW}/splunk/apps/infra_monitoring/bin/collect_host_metrics.sh" -o "${TA}/bin/collect_host_metrics.sh"
-chmod +x "${TA}/bin/collect_host_metrics.sh"
+curl -fsSL "${RAW}/splunk/uf-apps/TA-dcloud-host/bin/collect_processes.sh" -o "${TA}/bin/collect_processes.sh"
+chmod +x "${TA}/bin/"*.sh
 cat > "${TA}/local/inputs.conf" <<EOF
 [monitor://${PGLOG_GLOB}]
 index = ${DB_INDEX}
@@ -107,6 +108,13 @@ disabled = 0
 [script://./bin/collect_host_metrics.sh berlin]
 index = ${METRICS_INDEX}
 sourcetype = linux:metrics
+host = ${HOSTLABEL}
+interval = 60
+disabled = 0
+
+[script://./bin/collect_processes.sh]
+index = ${DB_INDEX}
+sourcetype = linux:ps
 host = ${HOSTLABEL}
 interval = 60
 disabled = 0

@@ -1,0 +1,156 @@
+<form version="1.1" theme="dark">
+  <label>Root Cause Analysis</label>
+  <description>When the service is down, which layer is to blame? Top-down checks — client, hypervisor, both containers, their ports, app/DB health — plus corroborating SNMP traps.</description>
+
+  <fieldset submitButton="false" autoRun="true">
+    <input type="time" token="tr">
+      <label>Time range (charts)</label>
+      <default><earliest>-60m</earliest><latest>now</latest></default>
+    </input>
+  </fieldset>
+
+  <!-- ============ root-cause verdict (deepest broken layer, top-down) ============ -->
+  <row>
+    <panel>
+      <title>Root cause</title>
+      <single>
+        <search>
+          <query>| makeresults
+| appendcols [ search index=london_metrics sourcetype=linux:metrics host=desktop-* earliest=-15m latest=now | stats count as c latest(_time) as lt | eval client=if(c&gt;0 AND (now()-lt)&lt;900,1,0) | fields client ]
+| appendcols [ search index=berlin_proxmox sourcetype=proxmox:api earliest=-15m latest=now | stats count as c, count(eval(status="error" OR status="not_configured")) as e | eval hv=if(c&gt;e,1,0) | fields hv ]
+| appendcols [ search index=berlin_proxmox sourcetype=proxmox:api endpoint="cluster/resources" name=webapp-berlin status=running earliest=-15m latest=now | stats count as c | eval webct=if(c&gt;0,1,0) | fields webct ]
+| appendcols [ search index=berlin_proxmox sourcetype=proxmox:api endpoint="cluster/resources" name=db-berlin status=running earliest=-15m latest=now | stats count as c | eval dbct=if(c&gt;0,1,0) | fields dbct ]
+| appendcols [ search index=berlin_web sourcetype=port:probe port=8080 earliest=-15m latest=now | stats latest(open) as o | eval p8080=if(o=1,1,0) | fields p8080 ]
+| appendcols [ search index=berlin_web sourcetype=port:probe port=5432 earliest=-15m latest=now | stats latest(open) as o | eval p5432=if(o=1,1,0) | fields p5432 ]
+| appendcols [ search index=berlin_web sourcetype=webapp:probe earliest=-15m latest=now | stats latest(reachable) as r | eval app=if(r=1,1,0) | fields app ]
+| eval client=coalesce(client,0), hv=coalesce(hv,0), webct=coalesce(webct,0), dbct=coalesce(dbct,0), p8080=coalesce(p8080,0), p5432=coalesce(p5432,0), app=coalesce(app,0)
+| eval RootCause=case(
+    hv=0,"Hypervisor (Proxmox) unreachable",
+    webct=0,"Web container (webapp-berlin) stopped",
+    dbct=0,"DB container (db-berlin) stopped",
+    p5432=0,"DB port 5432 closed",
+    p8080=0,"Web port 8080 closed",
+    app=0,"App/DB unhealthy (/healthz not 200)",
+    client=0,"Client offline",
+    true(),"All healthy — no root cause")
+| eval range=if(RootCause="All healthy — no root cause","low","severe")
+| table RootCause range</query>
+          <earliest>-15m</earliest><latest>now</latest>
+        </search>
+        <option name="colorBy">value</option>
+        <option name="colorMode">block</option>
+        <option name="useColors">1</option>
+        <option name="rangeColors">["0x53a051","0xd93f3c"]</option>
+        <option name="drilldown">none</option>
+      </single>
+    </panel>
+  </row>
+
+  <!-- ============ the layer-by-layer chain ============ -->
+  <row>
+    <panel>
+      <title>Layer checks (the chain, in order)</title>
+      <table>
+        <search>
+          <query>| makeresults
+| appendcols [ search index=london_metrics sourcetype=linux:metrics host=desktop-* earliest=-15m latest=now | stats count as c latest(_time) as lt | eval v=if(c&gt;0 AND (now()-lt)&lt;900,"OK","FAIL") | fields v | rename v as "1 Client" ]
+| appendcols [ search index=berlin_proxmox sourcetype=proxmox:api earliest=-15m latest=now | stats count as c, count(eval(status="error" OR status="not_configured")) as e | eval v=if(c&gt;e,"OK","FAIL") | fields v | rename v as "2 Hypervisor" ]
+| appendcols [ search index=berlin_proxmox sourcetype=proxmox:api endpoint="cluster/resources" name=webapp-berlin status=running earliest=-15m latest=now | stats count as c | eval v=if(c&gt;0,"OK","FAIL") | fields v | rename v as "3 Web container" ]
+| appendcols [ search index=berlin_proxmox sourcetype=proxmox:api endpoint="cluster/resources" name=db-berlin status=running earliest=-15m latest=now | stats count as c | eval v=if(c&gt;0,"OK","FAIL") | fields v | rename v as "4 DB container" ]
+| appendcols [ search index=berlin_web sourcetype=port:probe port=8080 earliest=-15m latest=now | stats latest(open) as o | eval v=if(o=1,"OK","FAIL") | fields v | rename v as "5 Web :8080" ]
+| appendcols [ search index=berlin_web sourcetype=port:probe port=5432 earliest=-15m latest=now | stats latest(open) as o | eval v=if(o=1,"OK","FAIL") | fields v | rename v as "6 DB :5432" ]
+| appendcols [ search index=berlin_web sourcetype=webapp:probe earliest=-15m latest=now | stats latest(reachable) as r | eval v=if(r=1,"OK","FAIL") | fields v | rename v as "7 App /healthz" ]
+| fields - _time
+| table "1 Client" "2 Hypervisor" "3 Web container" "4 DB container" "5 Web :8080" "6 DB :5432" "7 App /healthz"</query>
+          <earliest>-15m</earliest><latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="count">1</option>
+        <format type="color"><colorPalette type="map">{"OK":#53a051,"FAIL":#d93f3c}</colorPalette></format>
+      </table>
+    </panel>
+  </row>
+
+  <!-- ============ ports + processes ============ -->
+  <row>
+    <panel>
+      <title>Port availability (TCP probe from ubuntu-berlin)</title>
+      <table>
+        <search>
+          <query>index=berlin_web sourcetype=port:probe
+| stats latest(open) as open latest(_time) as last by service target
+| eval State=if(open=1,"open","closed"), "Last checked"=strftime(last,"%F %T")
+| rename service as Service, target as Target | table Service Target State "Last checked" | sort Service</query>
+          <earliest>-15m</earliest><latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <format type="color" field="State"><colorPalette type="map">{"open":#53a051,"closed":#d93f3c}</colorPalette></format>
+      </table>
+    </panel>
+    <panel>
+      <title>Reachability &amp; latency over time (app /healthz)</title>
+      <chart>
+        <search>
+          <query>index=berlin_web sourcetype=webapp:probe | timechart span=1m latest(reachable) as reachable avg(latency_ms) as "latency (ms)"</query>
+          <earliest>$tr.earliest$</earliest><latest>$tr.latest$</latest>
+        </search>
+        <option name="charting.chart">line</option>
+        <option name="charting.legend.placement">bottom</option>
+      </chart>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
+      <title>Processes — web container (webapp-berlin)</title>
+      <table>
+        <search>
+          <query>index=berlin_web sourcetype=linux:ps host=webapp-berlin event=process
+| stats latest(pcpu) as "CPU %", latest(pmem) as "Mem %", latest(_time) as t by comm pid
+| where t &gt;= relative_time(now(),"-3m") | sort - "CPU %" | head 8 | table comm pid "CPU %" "Mem %"</query>
+          <earliest>-15m</earliest><latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+      </table>
+    </panel>
+    <panel>
+      <title>Processes — DB container (db-berlin)</title>
+      <table>
+        <search>
+          <query>index=berlin_db sourcetype=linux:ps host=db-berlin event=process
+| stats latest(pcpu) as "CPU %", latest(pmem) as "Mem %", latest(_time) as t by comm pid
+| where t &gt;= relative_time(now(),"-3m") | sort - "CPU %" | head 8 | table comm pid "CPU %" "Mem %"</query>
+          <earliest>-15m</earliest><latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+      </table>
+    </panel>
+  </row>
+
+  <!-- ============ corroborating SNMP traps ============ -->
+  <row>
+    <panel>
+      <title>Corroborating SNMP traps (real-time, from SC4SNMP)</title>
+      <event>
+        <search>
+          <query>index=berlin_snmp | sort - _time | head 15</query>
+          <earliest>$tr.earliest$</earliest><latest>$tr.latest$</latest>
+        </search>
+        <option name="list.drilldown">none</option>
+        <option name="maxLines">8</option>
+      </event>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
+      <html>
+        <p style="text-align:center;color:#8b98a5;font-size:12px;margin:6px 0;">
+          Read the chain top-down: the first <b>FAIL</b> is the root cause the verdict names. A stopped container,
+          a closed port, or a failed <code>/healthz</code> each points at a different culprit — and an SNMP trap
+          (e.g. a link/host-down notification) often explains <i>why</i> in real time. Only <b>gary</b> sees the whole chain.
+        </p>
+      </html>
+    </panel>
+  </row>
+</form>
