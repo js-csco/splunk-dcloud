@@ -5,10 +5,11 @@
 # "App available" only when BOTH the web-app and the DB container are up.
 #
 # Run it EITHER:
-#   * on ubuntu-berlin (SSHes to Proxmox; needs sudo):
-#       curl -fsSL https://raw.githubusercontent.com/js-csco/splunk-dcloud/main/ubuntu/create-db-container.sh | sudo bash
-#   * OR directly on the Proxmox host as root (runs pct locally):
+#   * directly on the Proxmox host as root (recommended - runs pct locally, no
+#     SSH; Proxmox is Debian and has NO sudo, so use plain `bash`, not sudo):
 #       curl -fsSL https://raw.githubusercontent.com/js-csco/splunk-dcloud/main/ubuntu/create-db-container.sh | bash
+#   * OR on ubuntu-berlin (SSHes to Proxmox; that box has sudo):
+#       curl -fsSL https://raw.githubusercontent.com/js-csco/splunk-dcloud/main/ubuntu/create-db-container.sh | sudo bash
 #
 # Overridable via env: PROXMOX_HOST, PROXMOX_PW, CT_VMID, CT_IP, CT_GW,
 # CT_BRIDGE, CT_STORAGE, CT_TEMPLATE.

@@ -2,10 +2,11 @@
 # ===========================================================================
 # create-webapp-container.sh - create the web-app LXC on the Berlin Proxmox and
 # provision it. Run it EITHER:
-#   * on ubuntu-berlin (SSHes to Proxmox; needs sudo):
-#       curl -fsSL https://raw.githubusercontent.com/js-csco/splunk-dcloud/main/ubuntu/create-webapp-container.sh | sudo bash
-#   * OR directly on the Proxmox host as root (no sudo on Proxmox; runs pct locally):
+#   * directly on the Proxmox host as root (recommended - runs pct locally, no
+#     SSH; Proxmox is Debian and has NO sudo, so use plain `bash`, not sudo):
 #       curl -fsSL https://raw.githubusercontent.com/js-csco/splunk-dcloud/main/ubuntu/create-webapp-container.sh | bash
+#   * OR on ubuntu-berlin (SSHes to Proxmox; that box has sudo):
+#       curl -fsSL https://raw.githubusercontent.com/js-csco/splunk-dcloud/main/ubuntu/create-webapp-container.sh | sudo bash
 #
 # It SSHes to Proxmox (root/C1sco12345) and uses `pct` to create + start an
 # unprivileged Ubuntu LXC at a fixed IP, then runs webapp/deploy-webapp.sh

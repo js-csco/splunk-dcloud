@@ -153,7 +153,14 @@ curl -fsSL https://raw.githubusercontent.com/js-csco/splunk-dcloud/main/ubuntu/c
 **5b. database container (Berlin)** — a second service: a PostgreSQL LXC (VMID 201) at
 `198.18.3.51`. The web-app's "Save entry to database" button writes rows here (each row
 records the client `src_ip`). Postgres logs → `berlin_db`, metrics → `berlin_metrics`
-(host `db-berlin`). Same run options (ubuntu-berlin with sudo, or Proxmox host as root):
+(host `db-berlin`). Run it **either** on the **Proxmox host as root** (Debian — no `sudo`;
+runs `pct` locally, no SSH):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/js-csco/splunk-dcloud/main/ubuntu/create-db-container.sh | bash
+```
+
+…**or** on ubuntu-berlin (SSHes to Proxmox, needs sudo):
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/js-csco/splunk-dcloud/main/ubuntu/create-db-container.sh | sudo bash
@@ -174,6 +181,24 @@ curl http://198.18.3.50:8080/
 > needs outbound internet; the container also needs it for the UF + app install. After
 > this, the **Correlation → Client → Hypervisor → App** dashboard shows all three nodes
 > green.
+
+**5c. (optional) SNMP via SC4SNMP (Berlin)** — real-time SNMP into Splunk the supported
+way, on the dedicated VM `ubuntu-berlin-snmp` (198.18.3.52). Two commands:
+
+```bash
+# 1) On the Proxmox host (as root, no sudo) — give SC4SNMP a device to poll by
+#    enabling its SNMP agent (community 'dcloud'):
+curl -fsSL https://raw.githubusercontent.com/js-csco/splunk-dcloud/main/snmp/enable-proxmox-snmpd.sh | bash
+
+# 2) On ubuntu-berlin-snmp (198.18.3.52) — stand up the SC4SNMP Docker stack.
+#    -E preserves any overrides (e.g. SC4SNMP_REF=vX.Y.Z); HEC token/index
+#    default to the lab values apply.sh already set on Splunk:
+curl -fsSL https://raw.githubusercontent.com/js-csco/splunk-dcloud/main/snmp/setup-sc4snmp.sh | sudo -E bash
+```
+
+> Watch it in **Get Data In → SNMP — Splunk Connect (SC4SNMP)** (index `berlin_snmp`,
+> RBAC-scoped to Berlin). Full detail, traps, and version-pinning notes are in the
+> [SNMP via SC4SNMP](#snmp-via-splunk-connect-for-snmp-sc4snmp) section below.
 
 **6. (optional) demo data** — correlated events on the Ubuntu boxes:
 
@@ -691,7 +716,7 @@ splunkd's context, so outbound calls work, unlike the search sandbox).
 | File monitor | UF tails `/var/log` → `*_linux` | ✅ live after `install-uf.sh` |
 | REST / API (Proxmox) | UF on ubuntu-berlin polls the local Proxmox API every 60s → `berlin_proxmox` (events) + `berlin_metrics` (metrics) | ✅ live after `install-uf.sh berlin` |
 | SSH (Cisco Catalyst) | scripted input SSHes in, runs show commands → `london_network`/`berlin_network` | ✅ live (London 198.18.2.32, Berlin 198.18.3.32) |
-| SNMP | Splunk Connect for SNMP (SC4SNMP) | ⏳ planned |
+| SNMP | Splunk Connect for SNMP (SC4SNMP), dedicated VM → HEC → `berlin_snmp` | ✅ live after `snmp/setup-sc4snmp.sh` |
 | SOAP | XML web service | ⏸ parked |
 
 **Proxmox REST poller** — works out of the box using the committed lab creds in
