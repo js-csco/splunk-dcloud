@@ -43,6 +43,7 @@ it up automatically. The dCloud startup command never changes.
 | proxmox-berlin (hypervisor) | Berlin | 198.18.3.11 | API poll → `berlin_proxmox`, `berlin_metrics` |
 | webapp-berlin (LXC) | Berlin | 198.18.3.50:8080 | UF → `berlin_web`, `berlin_metrics` |
 | db-berlin (PostgreSQL LXC) | Berlin | 198.18.3.51:5432 | UF → `berlin_db`, `berlin_metrics` |
+| ubuntu-berlin-snmp (SC4SNMP) | Berlin | 198.18.3.52 | SC4SNMP → HEC → `berlin_snmp` |
 | ubuntu-berlin | Berlin | 198.18.3.x | UF → `berlin_linux`, `berlin_metrics` |
 | cat8kv-berlin (router) | Berlin | 198.18.3.32 | SSH poll → `berlin_network` |
 
@@ -270,7 +271,7 @@ whole location with a single wildcard.
 |---|---|---|---|---|
 | loc1 | 198.18.1.0/24 | splunk (infrastructure) | `loc1_linux`, `loc1_metrics` | `role_global` only |
 | London (loc2) | 198.18.2.0/24 | ubuntu-london, ubuntu-desktop-london, cat8kv-london | `london_linux`, `london_metrics`, `london_network`, `london_windows` | `role_london`, `role_global` |
-| Berlin (loc3) | 198.18.3.0/24 | proxmox-berlin, webapp-berlin, db-berlin, ubuntu-berlin, cat8kv-berlin | `berlin_linux`, `berlin_metrics`, `berlin_proxmox`, `berlin_network`, `berlin_web`, `berlin_db` | `role_berlin`, `role_global` |
+| Berlin (loc3) | 198.18.3.0/24 | proxmox-berlin, webapp-berlin, db-berlin, ubuntu-berlin, ubuntu-berlin-snmp, cat8kv-berlin | `berlin_linux`, `berlin_metrics`, `berlin_proxmox`, `berlin_network`, `berlin_web`, `berlin_db`, `berlin_snmp` | `role_berlin`, `role_global` |
 
 > The `*_metrics` indexes need no RBAC changes — roles grant a whole location
 > by wildcard (`london_*`, `berlin_*`, `loc1_*`), so they're covered
@@ -751,6 +752,40 @@ dashboard reflects it. Each action also logs a `proxmox-ctl` syslog event.
 scripted inputs. In production you'd run them on a forwarder *in each location*;
 data still lands in the correct per-location index either way, so RBAC is
 unaffected — only the collection topology differs.
+
+## SNMP via Splunk Connect for SNMP (SC4SNMP)
+
+Real-time SNMP into Splunk the **supported** way. SC4SNMP is a small Docker-Compose
+microservice stack (Mongo, Redis, workers, scheduler, a trap receiver and a sender)
+that **polls** devices (GET, UDP 161) and **receives traps** (UDP 162), then ships to
+Splunk over **HEC**. It runs on a **dedicated VM** (`ubuntu-berlin-snmp`, 198.18.3.52)
+so it's independent of Proxmox — switching Proxmox off in a demo doesn't kill it.
+
+SNMP is **regional / RBAC-scoped**: Berlin devices land in `berlin_snmp` (London in
+`london_snmp` once routers are added), so the same per-location wall applies.
+
+`apply.sh` enables **HEC** on the Splunk box (port 8088, fixed lab token → `berlin_snmp`).
+Then:
+
+```bash
+# 1) let SC4SNMP poll a device - enable its SNMP agent (community 'dcloud'):
+#    on the Proxmox host (and/or inside containers)
+curl -fsSL https://raw.githubusercontent.com/js-csco/splunk-dcloud/main/snmp/enable-proxmox-snmpd.sh | bash
+
+# 2) stand up SC4SNMP on ubuntu-berlin-snmp (pin a released tag for stability):
+curl -fsSL https://raw.githubusercontent.com/js-csco/splunk-dcloud/main/snmp/setup-sc4snmp.sh | sudo -E bash
+#    (override with SC4SNMP_REF=vX.Y.Z ; HEC/index default to the lab values)
+
+# 3) traps (real-time): point a device's trap sink at 198.18.3.52:162
+```
+
+Watch it in **Get Data In → SNMP — Splunk Connect (SC4SNMP)**. First cut polls
+**Proxmox** and receives **container/app traps**; routers are a later addition.
+
+> SC4SNMP's compose layout / `.env` keys change between versions, so `setup-sc4snmp.sh`
+> clones the **official** repo and only overrides our values (HEC host/token/index,
+> inventory) — on first run, confirm against the cloned `docker_compose/.env` of the
+> `SC4SNMP_REF` you pinned.
 
 ## Repo layout
 

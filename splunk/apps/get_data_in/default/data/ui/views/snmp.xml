@@ -1,0 +1,118 @@
+<dashboard version="1.1" theme="dark">
+  <label>SNMP — Splunk Connect (SC4SNMP)</label>
+  <description>Real-time SNMP into Splunk via Splunk Connect for SNMP — polled metrics (GET) and pushed traps — from Proxmox and the Berlin services.</description>
+
+  <fieldset submitButton="false" autoRun="true">
+    <input type="time" token="tr">
+      <label>Time range (charts)</label>
+      <default><earliest>-60m</earliest><latest>now</latest></default>
+    </input>
+  </fieldset>
+
+  <row>
+    <panel>
+      <html>
+        <h2>SNMP via Splunk Connect for SNMP (SC4SNMP)</h2>
+        <p>SNMP has two modes: <b>GET/polling</b> (the collector asks a device on
+        UDP&#160;161 every N seconds) and <b>traps</b> (the device <i>pushes</i> an alert
+        to the collector on UDP&#160;162 the moment something happens — the real-time bit).
+        <b>SC4SNMP</b> (the supported Splunk tool) runs as a small Docker Compose stack on
+        <code>ubuntu-berlin-snmp</code> (198.18.3.52) and ships both to Splunk over HEC.</p>
+        <p style="color:#8b98a5;">Regional + RBAC: Berlin devices land in <code>berlin_snmp</code>
+        (London in <code>london_snmp</code> when routers are added), so the same per-location
+        wall applies — Ben sees Berlin SNMP, Leo London, Gary both.</p>
+      </html>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
+      <title>SNMP feed — status (last 15 min)</title>
+      <table>
+        <search>
+          <query>| tstats count as c where index=berlin_snmp OR index=london_snmp
+| eval Status=if(c&gt;0,"ACTIVE","NO DATA")
+| table Status c | rename c as Events</query>
+          <earliest>-15m</earliest><latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="count">1</option>
+        <format type="color" field="Status"><colorPalette type="map">{"ACTIVE":#53a051,"NO DATA":#d93f3c}</colorPalette></format>
+      </table>
+    </panel>
+    <panel>
+      <title>Devices reporting (last 60 min)</title>
+      <single>
+        <search>
+          <query>index=berlin_snmp OR index=london_snmp | stats dc(host) as hosts</query>
+          <earliest>-60m</earliest><latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="colorBy">value</option>
+        <option name="rangeColors">["0x53a051","0x53a051"]</option>
+      </single>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
+      <title>SNMP events over time (by sourcetype)</title>
+      <chart>
+        <search>
+          <query>index=berlin_snmp OR index=london_snmp | timechart span=1m count by sourcetype</query>
+          <earliest>$tr.earliest$</earliest><latest>$tr.latest$</latest>
+        </search>
+        <option name="charting.chart">column</option>
+        <option name="charting.chart.stackMode">stacked</option>
+        <option name="charting.legend.placement">bottom</option>
+      </chart>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
+      <title>What's arriving (by host / sourcetype)</title>
+      <table>
+        <search>
+          <query>index=berlin_snmp OR index=london_snmp
+| stats count as Events, latest(_time) as last by host sourcetype
+| eval "Last seen"=strftime(last,"%F %T") | rename host as Host, sourcetype as Sourcetype
+| table Host Sourcetype Events "Last seen" | sort - Events</query>
+          <earliest>$tr.earliest$</earliest><latest>$tr.latest$</latest>
+        </search>
+        <option name="drilldown">none</option>
+      </table>
+    </panel>
+    <panel>
+      <title>Recent SNMP events / traps</title>
+      <event>
+        <search>
+          <query>index=berlin_snmp OR index=london_snmp | sort - _time | head 20</query>
+          <earliest>$tr.earliest$</earliest><latest>$tr.latest$</latest>
+        </search>
+        <option name="list.drilldown">none</option>
+        <option name="maxLines">10</option>
+      </event>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
+      <title>How it works &amp; setup</title>
+      <html>
+        <ol>
+          <li><b>Collector:</b> SC4SNMP (Docker Compose) on <b>ubuntu-berlin-snmp</b> —
+          <code>snmp/setup-sc4snmp.sh</code>. It polls devices and listens for traps, then
+          ships to Splunk HEC (enabled by <code>apply.sh</code>, index <code>berlin_snmp</code>).</li>
+          <li><b>Poll a device:</b> enable its SNMP agent — e.g. Proxmox via
+          <code>snmp/enable-proxmox-snmpd.sh</code> (community <code>dcloud</code>) — and add it
+          to the SC4SNMP inventory.</li>
+          <li><b>Traps (real-time):</b> point a device's trap sink at
+          <code>198.18.3.52:162</code>; the trap shows here within a second or two.</li>
+        </ol>
+        <p style="color:#8b98a5;">Runs independently of Proxmox (its own VM), so switching
+        Proxmox off in a demo doesn't take the SNMP collector down with it.</p>
+      </html>
+    </panel>
+  </row>
+</dashboard>
