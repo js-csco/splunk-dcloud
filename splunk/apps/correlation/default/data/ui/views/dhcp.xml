@@ -1,0 +1,238 @@
+<form version="1.1" theme="dark">
+  <label>DHCP</label>
+  <description>Static device gone rogue on DHCP — detect a critical device that was silently switched from a static IP to a DHCP lease. (DHCP + NAC + Asset + NetFlow)</description>
+
+  <!-- Shared demo fleet. Inline sample data so the story renders with zero
+       ingestion; swap in the real searches (see "Data inputs" at the bottom)
+       once DHCP / NAC / NetFlow feeds are onboarded. -->
+  <search id="fleet">
+    <query>| makeresults format=csv data="device,mac,expected_ip,addressing,criticality,site,dhcp_ip,lease_min,switchport,vlan,detected
+XRAY-BER-01,00:1B:44:11:3A:B7,198.18.3.40,static,Critical,Berlin,198.18.3.187,240,Gi1/0/14,30,2026-09-10 08:42
+CT-LON-02,00:1B:44:22:7C:19,198.18.2.41,static,Critical,London,,,Gi1/0/9,20,
+MRI-LON-01,00:1B:44:22:5D:02,198.18.2.42,static,Critical,London,,,Gi1/0/7,20,
+ULTRASOUND-BER-03,00:1B:44:33:1F:88,198.18.3.44,static,High,Berlin,198.18.3.199,60,Gi1/0/18,30,2026-09-11 14:04
+VENTILATOR-BER-07,00:1B:44:33:2A:55,198.18.3.45,static,Critical,Berlin,,,Gi1/0/20,30,
+INFUSION-BER-14,00:1B:44:33:9A:41,,dhcp,Medium,Berlin,198.18.3.205,120,Gi1/0/22,30,
+LABPRINTER-LON-05,00:1B:44:22:8E:77,,dhcp,Low,London,198.18.2.150,1440,Gi1/0/30,20,
+PACS-SRV-BER-01,00:1B:44:33:00:01,198.18.3.20,static,Critical,Berlin,,,Gi1/0/1,30,
+DEXA-LON-04,00:1B:44:22:6B:33,198.18.2.43,static,High,London,,,Gi1/0/11,20,
+ENDOSCOPY-BER-09,00:1B:44:33:4C:12,198.18.3.46,static,High,Berlin,,,Gi1/0/24,30,"
+| eval violation=if(addressing=="static" AND dhcp_ip!="", "YES", "")</query>
+    <earliest>-24h</earliest>
+    <latest>now</latest>
+  </search>
+
+  <row>
+    <panel>
+      <html>
+        <div style="background:#2a1416;border-left:4px solid #d93f3c;border-radius:8px;padding:16px 18px;">
+          <div style="font-size:19px;font-weight:700;color:#e6edf3;">🩻 Static device gone rogue on DHCP</div>
+          <p style="color:#cdd9e5;font-size:13px;line-height:1.6;margin:8px 0 0;">
+            <i>„Ein Röntgengerät ist letzte Woche ausgestiegen, weil die IP-Adresse aus
+            unerklärlichen Gründen auf DHCP umgestellt wurde, was zu längerer Ursachenbehebung
+            geführt hat."</i>
+          </p>
+          <p style="color:#8b98a5;font-size:13px;line-height:1.6;margin:10px 0 0;">
+            A device that <b>must</b> keep a fixed IP was silently switched to DHCP, got a new
+            address, and dropped off the imaging network — hours lost finding out why. Splunk
+            catches it the moment it happens: a <b>static-assigned device that takes a DHCP
+            lease</b>. Correlate <b>DHCP</b> (the lease), <b>NAC/ISE</b> (which device &amp;
+            profile), the <b>asset inventory</b> (it should be static), and <b>NetFlow</b> (the
+            imaging traffic that broke).
+          </p>
+        </div>
+      </html>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
+      <title>Devices monitored</title>
+      <single>
+        <search base="fleet"><query>| stats count</query></search>
+        <option name="drilldown">none</option>
+        <option name="colorBy">value</option>
+        <option name="rangeColors">["0x53a051","0x53a051"]</option>
+        <option name="underLabel">across all sites</option>
+      </single>
+    </panel>
+    <panel>
+      <title>Must-be-static devices</title>
+      <single>
+        <search base="fleet"><query>| where addressing=="static" | stats count</query></search>
+        <option name="drilldown">none</option>
+        <option name="colorBy">value</option>
+        <option name="rangeColors">["0x006d9c","0x006d9c"]</option>
+        <option name="underLabel">reserved / fixed IP expected</option>
+      </single>
+    </panel>
+    <panel>
+      <title>⚠ Static devices now on DHCP</title>
+      <single>
+        <search base="fleet"><query>| where violation=="YES" | stats count</query></search>
+        <option name="drilldown">none</option>
+        <option name="colorBy">value</option>
+        <option name="colorMode">block</option>
+        <option name="useColors">1</option>
+        <option name="rangeValues">[0]</option>
+        <option name="rangeColors">["0x53a051","0xd93f3c"]</option>
+        <option name="underLabel">0 = healthy — RED = investigate now</option>
+      </single>
+    </panel>
+    <panel>
+      <title>Devices currently on a DHCP lease</title>
+      <single>
+        <search base="fleet"><query>| where dhcp_ip!="" | stats count</query></search>
+        <option name="drilldown">none</option>
+        <option name="colorBy">value</option>
+        <option name="rangeColors">["0xf2b827","0xf2b827"]</option>
+        <option name="underLabel">incl. devices meant to be static</option>
+      </single>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
+      <title>🚨 The smoking gun — static devices that took a DHCP lease</title>
+      <table>
+        <search base="fleet">
+          <query>| where violation=="YES"
+| eval Impact=if(criticality=="Critical","● Critical — patient-facing","● High")
+| rename device as Device, criticality as Criticality, site as Site,
+         expected_ip as "Expected static IP", dhcp_ip as "Actual DHCP IP",
+         lease_min as "Lease (min)", switchport as Switchport, detected as "First seen on DHCP"
+| table Device Criticality Site "Expected static IP" "Actual DHCP IP" "Lease (min)" Switchport "First seen on DHCP" Impact</query>
+        </search>
+        <option name="drilldown">none</option>
+        <format type="color" field="Criticality">
+          <colorPalette type="map">{"Critical":#d93f3c,"High":#f2b827}</colorPalette>
+        </format>
+        <format type="color" field="Impact">
+          <colorPalette type="map">{"● Critical — patient-facing":#d93f3c,"● High":#f2b827}</colorPalette>
+        </format>
+      </table>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
+      <title>DHCP lease activity (7 days) — violations spike above the baseline</title>
+      <chart>
+        <search>
+          <query>| makeresults count=84
+| streamstats count as h
+| eval _time=now()-(84-h)*7200
+| eval "Normal DHCP leases"=10+(h%7)*2
+| eval "Static-device violations"=case(h==61,1, h==78,1, true(),0)
+| timechart span=12h sum("Normal DHCP leases") as "Normal DHCP leases" sum("Static-device violations") as "Static-device violations"</query>
+          <earliest>-7d</earliest><latest>now</latest>
+        </search>
+        <option name="charting.chart">column</option>
+        <option name="charting.chart.stackMode">stacked</option>
+        <option name="charting.legend.placement">bottom</option>
+        <option name="charting.fieldColors">{"Normal DHCP leases":0x4a90d9,"Static-device violations":0xd93f3c}</option>
+        <option name="charting.drilldown">none</option>
+      </chart>
+    </panel>
+    <panel>
+      <title>NetFlow impact — XRAY-BER-01 traffic to PACS hands off to the new IP</title>
+      <chart>
+        <search>
+          <query>| makeresults count=48
+| streamstats count as i
+| eval _time=now()-(48-i)*1800
+| eval "From static IP 198.18.3.40 (KB/s)"=if(i&lt;=30, 480+(i*4), 0)
+| eval "From new DHCP IP 198.18.3.187 (KB/s)"=if(i&gt;30, 120+((i-30)*18), 0)
+| timechart span=30m max("From static IP 198.18.3.40 (KB/s)") as "From static IP 198.18.3.40 (KB/s)" max("From new DHCP IP 198.18.3.187 (KB/s)") as "From new DHCP IP 198.18.3.187 (KB/s)"</query>
+          <earliest>-24h</earliest><latest>now</latest>
+        </search>
+        <option name="charting.chart">area</option>
+        <option name="charting.legend.placement">bottom</option>
+        <option name="charting.fieldColors">{"From static IP 198.18.3.40 (KB/s)":0x53a051,"From new DHCP IP 198.18.3.187 (KB/s)":0xf2b827}</option>
+        <option name="charting.drilldown">none</option>
+      </chart>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
+      <title>NAC / ISE — who is this device? (identity, profile, port, posture)</title>
+      <table>
+        <search>
+          <query>| makeresults format=csv data="mac,device,endpoint_profile,auth,method,nac_ip,switchport,vlan,posture
+00:1B:44:11:3A:B7,XRAY-BER-01,Medical / Imaging (X-ray),Success,802.1X,198.18.3.187,Gi1/0/14,30,Compliant
+00:1B:44:33:1F:88,ULTRASOUND-BER-03,Medical / Ultrasound,Success,802.1X,198.18.3.199,Gi1/0/18,30,Compliant
+00:1B:44:22:7C:19,CT-LON-02,Medical / Imaging (CT),Success,802.1X,198.18.2.41,Gi1/0/9,20,Compliant
+00:1B:44:33:00:01,PACS-SRV-BER-01,Server / PACS,Success,MAB,198.18.3.20,Gi1/0/1,30,Compliant"
+| eval Flag=if(mac=="00:1B:44:11:3A:B7" OR mac=="00:1B:44:33:1F:88","● On DHCP — expected static","ok")
+| rename mac as MAC, device as Device, endpoint_profile as "ISE endpoint profile",
+         auth as Auth, method as Method, nac_ip as "IP (from NAC)", switchport as Switchport, posture as Posture
+| table Device MAC "ISE endpoint profile" Auth Method "IP (from NAC)" Switchport Posture Flag</query>
+          <earliest>-24h</earliest><latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <format type="color" field="Flag">
+          <colorPalette type="map">{"● On DHCP — expected static":#d93f3c,"ok":#53a051}</colorPalette>
+        </format>
+        <format type="color" field="Auth">
+          <colorPalette type="map">{"Success":#53a051}</colorPalette>
+        </format>
+      </table>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
+      <html>
+        <h3 style="color:#9b59b6;">Data inputs for this use case</h3>
+        <table style="width:100%;border-collapse:collapse;font-size:13px;">
+          <tr style="color:#8b98a5;text-align:left;">
+            <th style="padding:6px 10px;border-bottom:1px solid #2a3138;">Source</th>
+            <th style="padding:6px 10px;border-bottom:1px solid #2a3138;">Role</th>
+            <th style="padding:6px 10px;border-bottom:1px solid #2a3138;">What it gives you</th>
+          </tr>
+          <tr>
+            <td style="padding:6px 10px;color:#e6edf3;"><b>DHCP server</b></td>
+            <td style="padding:6px 10px;color:#53a051;">Primary — the detection</td>
+            <td style="padding:6px 10px;color:#cdd9e5;">The lease itself: MAC → new IP, lease time, hostname. ISC dhcpd, Windows DHCP, Infoblox, or Cisco IOS DHCP.</td>
+          </tr>
+          <tr>
+            <td style="padding:6px 10px;color:#e6edf3;"><b>NAC / Cisco ISE</b></td>
+            <td style="padding:6px 10px;color:#4a90d9;">Identity &amp; profile</td>
+            <td style="padding:6px 10px;color:#cdd9e5;">Endpoint profile ("Medical / X-ray"), 802.1X/MAB auth, switchport, VLAN, posture — turns a MAC into "the X-ray". RADIUS accounting.</td>
+          </tr>
+          <tr>
+            <td style="padding:6px 10px;color:#e6edf3;"><b>Asset inventory / IPAM</b></td>
+            <td style="padding:6px 10px;color:#4a90d9;">Expected state</td>
+            <td style="padding:6px 10px;color:#cdd9e5;">Which devices must be static, their reserved IP and criticality. This lab already ships asset lookups (Infra Monitoring ▸ Asset Config).</td>
+          </tr>
+          <tr>
+            <td style="padding:6px 10px;color:#e6edf3;"><b>NetFlow</b></td>
+            <td style="padding:6px 10px;color:#f2b827;">Optional — impact</td>
+            <td style="padding:6px 10px;color:#cdd9e5;">Shows the device's traffic to PACS/imaging dropping on the old IP and resuming on the new one. Great "why it broke" evidence; not needed to detect.</td>
+          </tr>
+          <tr>
+            <td style="padding:6px 10px;color:#e6edf3;">Switch / DHCP snooping, DNS</td>
+            <td style="padding:6px 10px;color:#8b98a5;">Nice-to-have</td>
+            <td style="padding:6px 10px;color:#cdd9e5;">DHCP-snooping binding changes and dynamic-DNS re-registration corroborate the flip.</td>
+          </tr>
+        </table>
+
+        <h3 style="color:#9b59b6;margin-top:18px;">The real detection search (once DHCP + asset are onboarded)</h3>
+        <p style="color:#8b98a5;font-size:12px;">The panels above use inline sample data so the
+        story renders with no ingestion. With a real DHCP feed and the asset lookup, the core
+        detection is a single correlation search — schedule it as an alert (→ Webex):</p>
+        <pre style="white-space:pre-wrap;background:#11151a;padding:12px;border-radius:6px;color:#cdd9e5;font-size:12px;">index=* sourcetype=isc:dhcp (DHCPACK OR DHCPREQUEST)
+| rex "DHCP(ACK|REQUEST).*?(?&lt;dhcp_ip&gt;\d+\.\d+\.\d+\.\d+).*?(?&lt;mac&gt;([0-9a-f]{2}:){5}[0-9a-f]{2})"
+| stats latest(_time) as last latest(dhcp_ip) as dhcp_ip by mac
+| lookup dcloud_assets_berlin_lk mac OUTPUT device expected_ip addressing criticality
+| lookup dcloud_assets_london_lk mac OUTPUT device expected_ip addressing criticality
+| where addressing="static" AND dhcp_ip!=expected_ip
+| eval detected=strftime(last,"%F %T")
+| table detected device criticality mac expected_ip dhcp_ip</pre>
+        <p style="color:#8b98a5;font-size:12px;">(Optionally join NAC/ISE on <code>mac</code> for
+        the endpoint profile + switchport, and NetFlow on the IPs for the impact chart.)</p>
+      </html>
+    </panel>
+  </row>
+</form>
