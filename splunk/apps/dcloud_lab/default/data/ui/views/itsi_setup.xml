@@ -68,6 +68,22 @@
     </panel>
   </row>
 
+  <row>
+    <panel>
+      <title>License manager this box reports to (who to ask for an ITSI license)</title>
+      <table>
+        <search>
+          <query>| rest /services/licenser/localslave
+| eval "License manager (master_uri)"=coalesce(master_uri,"(standalone — this box is its own manager)")
+| table "License manager (master_uri)" last_master_contact_attempt_time last_master_contact_success_time</query>
+          <earliest>-1m</earliest><latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="count">1</option>
+      </table>
+    </panel>
+  </row>
+
   <!-- The 3 steps -->
   <row>
     <panel>
