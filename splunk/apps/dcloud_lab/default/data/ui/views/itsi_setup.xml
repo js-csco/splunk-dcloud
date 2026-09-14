@@ -73,14 +73,17 @@
     <panel>
       <html>
         <div style="background:#11151a;border:1px solid #2a3138;border-radius:10px;padding:16px;min-height:210px;">
-          <div style="font-size:15px;font-weight:700;color:#65a637;">1 · License <span style="color:#8b98a5;font-weight:400;font-size:12px;">(optional)</span></div>
-          <p style="color:#cdd9e5;font-size:13px;line-height:1.55;margin:8px 0;">Skip to run free
-          ITE-W. For full ITSI, put your <code>.lic</code> on the server — easiest via Step 2's
-          <code>ITSI_LICENSE_URL</code>, or drop the file:</p>
-          <pre style="white-space:pre-wrap;background:#0b0e12;padding:10px;border-radius:6px;color:#cdd9e5;font-size:12px;">sudo install -o splunk -g splunk itsi.lic \
-  /opt/splunk/etc/licenses/enterprise/</pre>
-          <p style="color:#8b98a5;font-size:12px;margin:6px 0 0;">Or Splunk Web: <b>Settings ▸
-          Licensing ▸ Add license</b>.</p>
+          <div style="font-size:15px;font-weight:700;color:#65a637;">1 · License <span style="color:#8b98a5;font-weight:400;font-size:12px;">(demo orgs: skip)</span></div>
+          <p style="color:#cdd9e5;font-size:13px;line-height:1.55;margin:8px 0;"><b>Just skip it →
+          run free ITE-W</b> (services, KPIs, Service Analyzer). Zero risk.</p>
+          <p style="color:#f2b827;font-size:12px;line-height:1.5;margin:8px 0;">⚠ In a Splunk
+          <b>demo org</b> this box is a <b>license peer</b> — its license comes from a central
+          manager, so a local <code>.lic</code> is <b>ignored</b> and switching to a local
+          manager <b>breaks the platform</b>. Don't do that.</p>
+          <p style="color:#cdd9e5;font-size:12px;line-height:1.5;margin:8px 0 0;">Need full ITSI?
+          Have the ITSI license added on the <b>central license manager</b> — this peer then
+          inherits it automatically. Check the <b>Licenses loaded</b> panel above; if an ITSI row
+          is already there, you're done.</p>
         </div>
       </html>
     </panel>
@@ -92,10 +95,10 @@
           <code>.spl</code> at a URL, then run <code>apply.sh</code> — it extracts it into
           <code>etc/apps</code>, installs Java, and restarts:</p>
           <pre style="white-space:pre-wrap;background:#0b0e12;padding:10px;border-radius:6px;color:#cdd9e5;font-size:12px;">sudo SPLUNK_INSTALL_URLS="https://host/itew_501.spl" \
-     ITSI_LICENSE_URL="https://host/itsi.lic" \
      bash /opt/dcloud-splunk/apply.sh</pre>
-          <p style="color:#8b98a5;font-size:12px;margin:6px 0 0;"><code>ITSI_LICENSE_URL</code> is
-          optional. Entitled account? Use <code>SPLUNKBASE_APP_IDS="5403"</code> instead.</p>
+          <p style="color:#8b98a5;font-size:12px;margin:6px 0 0;">Entitled account? Use
+          <code>SPLUNKBASE_APP_IDS="5403"</code> instead. (<code>ITSI_LICENSE_URL</code> only
+          applies to a <b>standalone</b> instance — ignored on a demo-org license peer.)</p>
         </div>
       </html>
     </panel>
