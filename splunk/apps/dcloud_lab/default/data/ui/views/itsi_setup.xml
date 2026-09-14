@@ -136,6 +136,25 @@
   <row>
     <panel>
       <html>
+        <div style="background:#11151a;border:1px solid #2a3138;border-radius:10px;padding:14px 16px;">
+          <div style="font-size:14px;font-weight:700;color:#65a637;">Optional · Fill it with demo Services &amp; KPIs</div>
+          <p style="color:#cdd9e5;font-size:12px;line-height:1.55;margin:6px 0;">ITE-W installs
+          <b>empty</b>. This seeds demo Entities, Services (London / Berlin infra, Web service) and
+          KPIs from data already flowing in the lab. Run <b>once, after</b> the app is installed:</p>
+          <pre style="white-space:pre-wrap;background:#0b0e12;padding:10px;border-radius:6px;color:#cdd9e5;font-size:12px;">sudo -u splunk /opt/splunk/bin/python3 \
+  /opt/dcloud-splunk/itsi/seed_itsi_demo.py \
+  --user admin --password C1sco12345 --verbose</pre>
+          <p style="color:#8b98a5;font-size:12px;margin:6px 0 0;">KPIs take a few minutes of
+          scheduled runs to show values. ITSI's API varies by version — <code>--verbose</code>
+          prints any rejection so it can be tuned.</p>
+        </div>
+      </html>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
+      <html>
         <p style="color:#8b98a5;font-size:12px;line-height:1.6;">
           <b>Get the package:</b> Splunkbase app <b>5403</b>, version <b>5.0.x</b> (supports Splunk
           10.2–10.5). &#160;•&#160; <b>Install method:</b> extract the <code>.spl</code> into

@@ -239,6 +239,16 @@ and stages the license into `etc/licenses/enterprise` before starting Splunk.
 > Re-run `apply.sh` afterwards for the Java prerequisite. The **Lab Overview → ITSI Setup**
 > dashboard has the full checklist.
 
+> **ITE-W installs empty.** Once the app is up, populate it with demo Entities, Services
+> (London/Berlin infrastructure, Web service) and KPIs — built from data already flowing in
+> the lab — with the one-time seeder:
+> ```bash
+> sudo -u splunk /opt/splunk/bin/python3 \
+>   /opt/dcloud-splunk/itsi/seed_itsi_demo.py --user admin --password C1sco12345 --verbose
+> ```
+> Best-effort: ITSI's REST schema shifts between versions, so `--verbose` prints any rejection
+> to tune `itsi/seed_itsi_demo.py`. KPIs take a few scheduled runs to show values.
+
 Then open `http://198.18.1.124:8000` → **Lab Overview → Setup Status** (all
 green) and log in as `leo` / `ben` / `gary` (password `C1sco12345`).
 
