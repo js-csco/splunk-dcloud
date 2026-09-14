@@ -1,4 +1,5 @@
 <nav search_view="search" color="#d93f3c">
   <view name="alerts_overview" default="true" />
+  <view name="webex_bot_alerts" />
   <view name="search" />
 </nav>

@@ -1,0 +1,145 @@
+<dashboard version="1.1" theme="dark">
+  <label>Webex Bot Alerts</label>
+  <description>Bring your own Webex bot: create a bot token + space, wire it into the lab, and send Splunk alerts to Webex.</description>
+
+  <row>
+    <panel>
+      <html>
+        <h2>Send Splunk alerts to Webex — bring your own bot</h2>
+        <p>This lab ships a custom <b>"Webex message"</b> alert action. It has no standing
+        connection to Webex — when an alert fires, Splunk runs a small script that makes a
+        single outbound HTTPS call to Webex using <b>your</b> credential. Everyone brings their
+        own bot, so nothing sensitive is committed to the repo. Three steps: <b>1)</b> create a
+        bot, <b>2)</b> create a space and get its room ID, <b>3)</b> wire the credential into
+        the lab. Then enable an alert and watch messages land in your space.</p>
+      </html>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
+      <title>1 — Create a Webex bot (get the token)</title>
+      <html>
+        <ol style="line-height:1.7;">
+          <li>Go to <a href="https://developer.webex.com/my-apps/new/bot" target="_blank" rel="noopener">developer.webex.com/my-apps/new/bot</a> and sign in with your Webex account.</li>
+          <li>Fill in a <b>Bot name</b>, a unique <b>Bot username</b> (e.g. <code>dcloud-splunk-bot</code> → becomes <code>dcloud-splunk-bot@webex.bot</code>), pick an icon, add a description.</li>
+          <li>Click <b>Add Bot</b>.</li>
+          <li>Copy the <b>Bot access token</b> shown on the next screen — <b style="color:#f2b827;">this is shown only once</b>. This is your <code>WEBEX_BOT_TOKEN</code>.</li>
+        </ol>
+        <p style="color:#8b98a5;font-size:12px;">Bot tokens are long-lived (~100 years), unlike
+        the 12-hour personal developer token — which is why a bot is the right choice for an
+        unattended alert action. If you lose the token, open the bot under <b>My Webex Apps</b>
+        and regenerate it.</p>
+      </html>
+    </panel>
+    <panel>
+      <title>2 — Create a space and get its room ID</title>
+      <html>
+        <ol style="line-height:1.7;">
+          <li>In the <b>Webex app</b>, create a space, e.g. <b>"dCloud Alerts"</b>.</li>
+          <li><b style="color:#f2b827;">Add your bot to the space</b> by its
+          <code>…@webex.bot</code> username. A bot can only post to spaces it belongs to — this
+          is the step people forget.</li>
+          <li>Get the space's ID: open the interactive <b>List Rooms</b> docs at
+          <a href="https://developer.webex.com/docs/api/v1/rooms/list-rooms" target="_blank" rel="noopener">developer.webex.com/docs/api/v1/rooms/list-rooms</a>,
+          paste your <b>bot token</b> as the bearer, run <code>GET /v1/rooms</code>, find your
+          space by title, and copy its <code>id</code>. This is your <code>WEBEX_ROOM_ID</code>.</li>
+        </ol>
+        <p style="color:#8b98a5;font-size:12px;">Prefer zero setup? A Webex <b>Incoming Webhook</b>
+        gives you a single URL and needs no room ID — set <code>WEBEX_WEBHOOK_URL</code> instead
+        of the token+room. Create one from a space: <b>Apps ▸ Incoming Webhooks ▸ Add</b>.</p>
+      </html>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
+      <title>3 — Wire the credential into the lab</title>
+      <html>
+        <p>The credential lives <b>out of the repo</b> in
+        <code>$SPLUNK_HOME/var/lib/dcloud/webex.env</code>. The easy path: pass it to
+        <code>apply.sh</code> as env vars at session start and it writes the file for you.</p>
+        <p><b>Option A — bot token + room ID:</b></p>
+        <pre style="white-space:pre-wrap;background:#11151a;padding:12px;border-radius:6px;color:#cdd9e5;">sudo WEBEX_BOT_TOKEN='&lt;your bot token&gt;' \
+     WEBEX_ROOM_ID='&lt;your room id&gt;' \
+     bash /opt/dcloud-splunk/apply.sh</pre>
+        <p><b>Option B — incoming webhook (one value):</b></p>
+        <pre style="white-space:pre-wrap;background:#11151a;padding:12px;border-radius:6px;color:#cdd9e5;">sudo WEBEX_WEBHOOK_URL='https://webexapis.com/v1/webhooks/incoming/XXXX' \
+     bash /opt/dcloud-splunk/apply.sh</pre>
+        <p><b>Or write the file directly</b> (no re-run of apply.sh needed — the action reads it
+        on each fire):</p>
+        <pre style="white-space:pre-wrap;background:#11151a;padding:12px;border-radius:6px;color:#cdd9e5;">sudo install -d -m700 -o splunk -g splunk /opt/splunk/var/lib/dcloud
+sudo -u splunk tee /opt/splunk/var/lib/dcloud/webex.env &gt;/dev/null &lt;&lt;'EOF'
+WEBEX_BOT_TOKEN=&lt;your bot token&gt;
+WEBEX_ROOM_ID=&lt;your room id&gt;
+EOF
+sudo chmod 600 /opt/splunk/var/lib/dcloud/webex.env</pre>
+        <p style="color:#8b98a5;font-size:12px;">The file is chmod 600 and owned by the splunk
+        user. It is never committed and is wiped on session reset (re-run apply.sh with the env
+        vars, or the dCloud startup command, to recreate it).</p>
+      </html>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
+      <title>Is a credential wired up? (recent send attempts)</title>
+      <table>
+        <search>
+          <query>index=_internal sourcetype=splunkd "webex_notify:"
+| rex field=_raw "webex_notify:\s+(?&lt;detail&gt;.*)$"
+| eval Result=case(like(detail,"sent%"),"● sent", like(detail,"no Webex credential%"),"● no credential set", 1==1,"● error")
+| table _time Result detail
+| sort - _time</query>
+          <earliest>-24h</earliest><latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="count">10</option>
+        <format type="color" field="Result">
+          <colorPalette type="map">{"● sent":#53a051,"● no credential set":#f2b827,"● error":#d93f3c}</colorPalette>
+        </format>
+      </table>
+    </panel>
+    <panel>
+      <title>Demo alerts using the Webex action</title>
+      <table>
+        <search>
+          <query>| rest /servicesNS/-/alerts/saved/searches
+| search action.webex_notify=1
+| eval Enabled=if(disabled=0 AND is_scheduled=1,"● enabled","○ disabled")
+| rename title as Alert, cron_schedule as Schedule
+| table Alert Enabled Schedule action.webex_notify.param.message
+| rename action.webex_notify.param.message as "Message sent"</query>
+          <earliest>-1m</earliest><latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <format type="color" field="Enabled">
+          <colorPalette type="map">{"● enabled":#53a051,"○ disabled":#8b98a5}</colorPalette>
+        </format>
+      </table>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
+      <title>4 — Test it</title>
+      <html>
+        <ol style="line-height:1.7;">
+          <li>Go to <b>Settings ▸ Searches, reports, and alerts</b> (in the Search &amp; Reporting
+          app), find <b>"dcloud - SNMP trap received → Webex"</b> or <b>"dcloud - Service
+          unavailable → Webex"</b>, and <b>enable</b> it (they ship disabled).</li>
+          <li>Or attach the action to any search: <b>Save As ▸ Alert ▸ Add Actions ▸ Webex
+          message</b>, set the message, and run it.</li>
+          <li>Fire it (open the alert and click <b>Run</b>, or wait for its schedule). A message
+          appears in your Webex space, and the <b>send-attempts</b> panel above turns green
+          (<code>sent (HTTP 200)</code>).</li>
+        </ol>
+        <p style="color:#f2b827;font-size:12px;"><b>Troubleshooting:</b> yellow "no credential
+        set" → <code>webex.env</code> is missing or empty (step 3). Red "error" → usually the
+        bot isn't a member of the space (step 2), a bad token, or the room ID is wrong; the
+        detail column shows the HTTP status from Webex. The lab must have outbound HTTPS to
+        <code>webexapis.com</code>.</p>
+      </html>
+    </panel>
+  </row>
+</dashboard>

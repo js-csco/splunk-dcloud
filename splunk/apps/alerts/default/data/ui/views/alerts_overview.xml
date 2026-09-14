@@ -33,6 +33,9 @@
         webhook) <i>or</i> <code>WEBEX_BOT_TOKEN</code> + <code>WEBEX_ROOM_ID</code> as env vars at
         session start and <code>apply.sh</code> writes the file. You can attach this action to any
         alert (Save As &#8594; Alert &#8594; Add Actions &#8594; Webex message).</p>
+        <p><b>&#8594; See the <a href="/app/alerts/webex_bot_alerts">Webex Bot Alerts</a>
+        dashboard</b> for step-by-step: create your own bot token + space, wire it in, and a live
+        "did it send?" status. Bring your own bot.</p>
       </html>
     </panel>
   </row>
