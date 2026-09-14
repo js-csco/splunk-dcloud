@@ -1,112 +1,115 @@
 <dashboard version="1.1" theme="dark">
   <label>ITSI Setup</label>
-  <description>How to install IT Essentials Work / ITSI (Splunkbase app 5403) by extracting its .spl — the only supported method — and unlock premium features with a license.</description>
+  <description>Install IT Essentials Work / ITSI (app 5403, v5.0.x) in three steps.</description>
 
   <row>
     <panel>
       <html>
-        <h2>Installing ITSI / IT Essentials Work</h2>
-        <p><b>ITSI and IT Essentials Work (ITE-W) are the same package</b> — Splunkbase app
-        <b>5403</b>, one download. With <b>no ITSI license</b> it runs as the <b>free ITE-W</b>
-        (entities, services, KPIs, Service Analyzer); add a valid <b>ITSI license</b> and the
-        premium features (glass tables, ML/adaptive thresholding, episode/notable management)
-        unlock as full ITSI — <b>same app, no reinstall</b>. It isn't committed to the repo
-        (licensing + size), so it's installed from the <code>.spl</code>. Per Splunk's docs it
-        installs <b>only by extracting the package into <code>etc/apps</code></b> — this page
-        shows the repeatable ways to do that automatically.</p>
-        <p style="color:#f2b827;">Use the <b>5.0.x</b> line (5.0.1 is current) — it supports
-        Splunk <b>10.2–10.5</b>, matching this box's <b>10.4.0</b>. The older 4.20 line targets
-        Splunk 9.x and won't load here. ITE-W/ITSI is <b>heavy</b> (its own indexes, KV store,
-        saved searches, ML deps) and re-installs after every session reset. For a lighter demo
-        of the same idea, use the interim "Service Health" dashboard instead.</p>
+        <div style="padding:14px 4px 2px;">
+          <div style="font-size:20px;font-weight:700;color:#e6edf3;">Install ITSI in 3 steps</div>
+          <div style="color:#8b98a5;font-size:13px;margin-top:4px;">
+            IT Essentials Work (ITE-W) and ITSI are the <b>same app</b> (Splunkbase <b>5403</b>).
+            No license → runs free as ITE-W. Add an ITSI license → full ITSI. Use <b>v5.0.x</b>
+            for this box (Splunk 10.4).
+          </div>
+        </div>
       </html>
     </panel>
   </row>
 
+  <!-- Live status -->
   <row>
     <panel>
-      <title>Status — is ITE-W / ITSI installed?</title>
-      <table>
+      <title>App installed?</title>
+      <single>
         <search>
-          <query>| rest /services/apps/local | search title=itsi OR title=SA-ITOA OR label="*Service Intelligence*" OR label="*Essentials Work*" | eval Status="installed" | table title label version Status</query>
+          <query>| rest /services/apps/local | search title="itsi" | stats count</query>
           <earliest>-1m</earliest><latest>now</latest>
         </search>
         <option name="drilldown">none</option>
+        <option name="colorBy">value</option>
+        <option name="colorMode">block</option>
+        <option name="useColors">1</option>
+        <option name="rangeValues">[0]</option>
+        <option name="rangeColors">["0xd93f3c","0x53a051"]</option>
+        <option name="underLabel">1 = installed · 0 = not yet</option>
+      </single>
+    </panel>
+    <panel>
+      <title>Installed version &amp; family apps</title>
+      <table>
+        <search>
+          <query>| rest /services/apps/local
+| search title="itsi" OR title="SA-ITOA" OR title="SA-ITSI-*" OR title="DA-ITSI-*"
+| eval Version=if(version="" OR isnull(version),"—",version)
+| rename title as App, label as Name
+| table App Name Version
+| sort App</query>
+          <earliest>-1m</earliest><latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="count">6</option>
+      </table>
+    </panel>
+    <panel>
+      <title>Licenses loaded (ITSI license = full premium)</title>
+      <table>
+        <search>
+          <query>| rest /services/licenser/licenses
+| eval GB=round(quota/1024/1024/1024,1)
+| rename label as License, type as Type
+| table License Type GB
+| sort - GB</query>
+          <earliest>-1m</earliest><latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="count">5</option>
       </table>
     </panel>
   </row>
 
+  <!-- The 3 steps -->
   <row>
     <panel>
       <html>
-        <h3>It installs by EXTRACTION only</h3>
-        <p style="color:#f2b827;">Per Splunk's own docs, ITE-W / ITSI (Splunkbase app
-        <b>5403</b>) <b>does not support</b> installation via <b>Splunk Web</b> <i>or</i> the
-        <code>splunk install app</code> command. The <b>only supported method</b> is to
-        <b>extract the <code>.spl</code> into <code>$SPLUNK_HOME/etc/apps</code></b> (stop
-        Splunk → untar → start). The <code>.spl</code> is just a gzip tarball, so this is
-        exactly what our boot install does — it installs the same way as any other app here,
-        with no file-moving.</p>
-        <p style="color:#8b98a5;">(The Splunk-10 Web UI also has a hard 512&#160;MB upload
-        cap that <code>max_upload_size</code> can't lift — but even below that size, the UI
-        path is unsupported for this app regardless.)</p>
-
-        <h3>Install it (pick one — both extract into etc/apps at boot)</h3>
-        <p><b>A) Auto-fetch from a URL (any account) — recommended:</b> host your ITE-W 5.0.1
-        <code>.spl</code> where the lab can reach it, then run <code>apply.sh</code> — it
-        prompts for <b>Direct URL(s) of .spl/.tgz apps</b> (or set
-        <code>SPLUNK_INSTALL_URLS</code>), fetches it, and extracts it into
-        <code>etc/apps</code> before Splunk starts. Add <code>ITSI_LICENSE_URL</code> to also
-        stage the license and go straight to full ITSI (omit it to run as free ITE-W).
-        Re-installs on every reset; nothing is committed to the repo.</p>
-        <pre style="white-space:pre-wrap;background:#11151a;padding:12px;border-radius:6px;color:#cdd9e5;">sudo SPLUNK_INSTALL_URLS="https://your-host/it-essentials-work_501.spl" \
-     ITSI_LICENSE_URL="https://your-host/itsi.lic" \
-     bash /opt/dcloud-splunk/apply.sh</pre>
-
-        <p><b>B) Splunkbase auto-download (if entitled):</b> add the app id to the boot
-        install; the downloader extracts it into <code>etc/apps</code> the same way.</p>
-        <pre style="white-space:pre-wrap;background:#11151a;padding:12px;border-radius:6px;color:#cdd9e5;">SPLUNKBASE_APP_IDS="5403" sudo -E ./apply.sh</pre>
-        <p style="color:#8b98a5;">First Splunkbase download needs the app's terms accepted
-        once in a browser (app 5403), or the API returns HTTP&#160;403.</p>
-
-        <p><b>C) Manual, if the .spl is already on the box</b> (the documented steps):</p>
-        <pre style="white-space:pre-wrap;background:#11151a;padding:12px;border-radius:6px;color:#cdd9e5;">sudo -u splunk /opt/splunk/bin/splunk stop
-sudo -u splunk tar -xf /tmp/it-essentials-work_501.spl -C /opt/splunk/etc/apps
-sudo -u splunk /opt/splunk/bin/splunk start</pre>
-        <p style="color:#d93f3c;">Do <b>not</b> use <code>splunk install app</code> for this
-        app — it is explicitly unsupported and can leave a broken install.</p>
+        <div style="background:#11151a;border:1px solid #2a3138;border-radius:10px;padding:16px;min-height:210px;">
+          <div style="font-size:15px;font-weight:700;color:#65a637;">1 · License <span style="color:#8b98a5;font-weight:400;font-size:12px;">(optional)</span></div>
+          <p style="color:#cdd9e5;font-size:13px;line-height:1.55;margin:8px 0;">Skip to run free
+          ITE-W. For full ITSI, put your <code>.lic</code> on the server — easiest via Step 2's
+          <code>ITSI_LICENSE_URL</code>, or drop the file:</p>
+          <pre style="white-space:pre-wrap;background:#0b0e12;padding:10px;border-radius:6px;color:#cdd9e5;font-size:12px;">sudo install -o splunk -g splunk itsi.lic \
+  /opt/splunk/etc/licenses/enterprise/</pre>
+          <p style="color:#8b98a5;font-size:12px;margin:6px 0 0;">Or Splunk Web: <b>Settings ▸
+          Licensing ▸ Add license</b>.</p>
+        </div>
       </html>
     </panel>
     <panel>
       <html>
-        <h3>Prerequisites (handled for you)</h3>
-        <ul>
-          <li><b>Java 8-11 or 17</b> — required for anomaly detection + notable-event
-          management. <code>apply.sh</code> auto-installs <code>openjdk-17</code> when it
-          sees the <code>itsi</code> app (Ubuntu 24.04's default JRE is 21, which is
-          <i>not</i> supported, so 17 is pinned).</li>
-          <li><b>Default <code>admin</code> user</b> must exist (it does here) — deleting or
-          renaming it breaks the app.</li>
-          <li>Can't share a search head with <b>Enterprise Security</b> — it isn't installed
-          here. (ITE-W and ITSI are the <i>same</i> app, so there's no conflict between them.)</li>
-        </ul>
-        <h3>After install — free ITE-W vs full ITSI</h3>
-        <ol>
-          <li><b>License:</b> with <b>no</b> ITSI license it runs as free <b>ITE-W</b>. To
-          unlock full ITSI, pass <code>ITSI_LICENSE_URL</code> to <code>apply.sh</code> (it
-          stages the license into <code>etc/licenses/enterprise</code>), or add it later under
-          <b>Settings ▸ Licensing</b>. Premium features like glass tables show as locked until
-          a valid ITSI license is detected.</li>
-          <li><b>First run:</b> open the <b>IT Service Intelligence</b> (or <b>IT Essentials
-          Work</b>) app — it completes a one-time setup and creates its indexes (e.g.
-          <code>itsi_summary</code>) + KV store.</li>
-          <li><b>Point it at lab data:</b> create a couple of <b>Services</b> (e.g. "London
-          Hosts", "Berlin Hosts") with KPIs from our metrics/syslog
-          (<code>index=*_metrics</code>, <code>index=*_linux</code>) to get service analyzer
-          health scores — and glass tables once licensed.</li>
-        </ol>
-        <p style="color:#8b98a5;">RBAC note: ITSI has its own role model; the lab's
-        location roles won't automatically map to ITSI service access.</p>
+        <div style="background:#11151a;border:1px solid #2a3138;border-radius:10px;padding:16px;min-height:210px;">
+          <div style="font-size:15px;font-weight:700;color:#65a637;">2 · Install the app</div>
+          <p style="color:#cdd9e5;font-size:13px;line-height:1.55;margin:8px 0;">Host the 5.0.1
+          <code>.spl</code> at a URL, then run <code>apply.sh</code> — it extracts it into
+          <code>etc/apps</code>, installs Java, and restarts:</p>
+          <pre style="white-space:pre-wrap;background:#0b0e12;padding:10px;border-radius:6px;color:#cdd9e5;font-size:12px;">sudo SPLUNK_INSTALL_URLS="https://host/itew_501.spl" \
+     ITSI_LICENSE_URL="https://host/itsi.lic" \
+     bash /opt/dcloud-splunk/apply.sh</pre>
+          <p style="color:#8b98a5;font-size:12px;margin:6px 0 0;"><code>ITSI_LICENSE_URL</code> is
+          optional. Entitled account? Use <code>SPLUNKBASE_APP_IDS="5403"</code> instead.</p>
+        </div>
+      </html>
+    </panel>
+    <panel>
+      <html>
+        <div style="background:#11151a;border:1px solid #2a3138;border-radius:10px;padding:16px;min-height:210px;">
+          <div style="font-size:15px;font-weight:700;color:#65a637;">3 · Verify</div>
+          <p style="color:#cdd9e5;font-size:13px;line-height:1.55;margin:8px 0;">Step 2 restarts
+          for you. Then refresh this page — the tiles above should show
+          <b style="color:#53a051;">installed</b> — and open the app:</p>
+          <p style="margin:8px 0;"><a href="/app/itsi/home" style="text-decoration:none;background:#65a637;color:#fff;padding:9px 14px;border-radius:8px;font-weight:600;font-size:13px;">Open IT Service Intelligence →</a></p>
+          <p style="color:#8b98a5;font-size:12px;margin:6px 0 0;">Didn't restart? Run:
+          <code>sudo -u splunk /opt/splunk/bin/splunk restart</code></p>
+        </div>
       </html>
     </panel>
   </row>
@@ -114,25 +117,14 @@ sudo -u splunk /opt/splunk/bin/splunk start</pre>
   <row>
     <panel>
       <html>
-        <h3>Making it survive the session reset</h3>
-        <p>The VM wipes each session, so a manual install is lost. Both boot options
-        below re-install automatically on every reset — no file-moving:</p>
-        <ul>
-          <li><b>URL auto-fetch (any account)</b> — set
-          <code>SPLUNK_INSTALL_URLS="https://your-host/it-essentials-work_501.spl"</code> (or
-          answer the prompt) when running <code>apply.sh</code>, plus optional
-          <code>ITSI_LICENSE_URL</code> for premium. Works regardless of Splunkbase
-          entitlement.</li>
-          <li><b>Splunkbase auto-download</b> — if your splunk.com account is <b>entitled</b>,
-          add the Splunkbase app id (<b>5403</b>) to the boot install:
-          <code>SPLUNKBASE_APP_IDS="5403"</code> when running <code>apply.sh</code> (same flow
-          as the MCP Server). First download of any Splunkbase app needs its <b>license terms
-          accepted once in a browser</b> at splunkbase.splunk.com while logged in, or the API
-          returns HTTP&#160;403.</li>
-        </ul>
-        <p style="color:#8b98a5;">Version check: use ITE-W/ITSI <b>5.0.x</b> for Splunk
-        <b>10.4</b> — if the app won't load after restart, a Splunk/ITSI version mismatch is
-        the usual cause.</p>
+        <p style="color:#8b98a5;font-size:12px;line-height:1.6;">
+          <b>Get the package:</b> Splunkbase app <b>5403</b>, version <b>5.0.x</b> (supports Splunk
+          10.2–10.5). &#160;•&#160; <b>Install method:</b> extract the <code>.spl</code> into
+          <code>etc/apps</code> only — never Splunk Web upload or <code>splunk install app</code>.
+          &#160;•&#160; <b>Survives reset:</b> both env vars re-apply on every session boot.
+          &#160;•&#160; No license? It runs as free ITE-W and the interim <b>Service Health</b>
+          dashboard is the lighter demo.
+        </p>
       </html>
     </panel>
   </row>
