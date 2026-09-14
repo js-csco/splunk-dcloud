@@ -151,11 +151,34 @@ if [ -n "${SPLUNK_INSTALL_URLS:-}" ]; then
   chown -R "${SPLUNK_USER}:${SPLUNK_USER}" "${SPLUNK_HOME}/etc/apps" 2>/dev/null || true
 fi
 
-# --- ITSI prerequisite: Java --------------------------------------------------
-# ITSI (installed by extracting its .spl into etc/apps - the ONLY supported
-# method; NOT Splunk Web, NOT `splunk install app`) needs a JRE for anomaly
-# detection + notable-event management. ITSI supports Java 8-11 or 17, so pin
-# openjdk-17 (Ubuntu 24.04's default JRE is 21, which ITSI does not support).
+# --- ITSI / ITE Work license (optional) --------------------------------------
+# IT Essentials Work (Splunkbase app 5403) and ITSI are the SAME package: with
+# no ITSI license it runs as the free ITE-W; install a valid ITSI license and
+# the premium features (glass tables, ML/adaptive thresholding, episode/notable
+# management) unlock - same app, no reinstall. Provide the license as a URL and
+# it is fetched + staged into etc/licenses/enterprise before Splunk starts.
+# Kept out of the repo (licenses are account-specific). Leave unset to run as
+# free ITE-W. (Alternatively add it later via Settings > Licensing in Splunk Web.)
+if [ -n "${ITSI_LICENSE_URL:-}" ]; then
+  mkdir -p "${SPLUNK_HOME}/etc/licenses/enterprise"
+  _lic="${SPLUNK_HOME}/etc/licenses/enterprise/itsi.lic"
+  log "Fetching ITSI license ..."
+  if curl -fsSL --retry 3 -o "${_lic}" "${ITSI_LICENSE_URL}"; then
+    chown "${SPLUNK_USER}:${SPLUNK_USER}" "${_lic}" 2>/dev/null || true
+    log "  ITSI license staged (premium features enable after restart)."
+    CHANGED=1
+  else
+    warn "  ITSI license download failed - ITSI will run as free ITE-W."
+    rm -f "${_lic}"
+  fi
+fi
+
+# --- ITSI / ITE Work prerequisite: Java --------------------------------------
+# ITE Work / ITSI (installed by extracting the .spl into etc/apps - the ONLY
+# supported method; NOT Splunk Web, NOT `splunk install app`) needs a JRE for
+# anomaly detection + notable-event management. Both lay down the same `itsi`
+# app folder. It supports Java 8-11 or 17, so pin openjdk-17 (Ubuntu 24.04's
+# default JRE is 21, which is not supported).
 # Runs before the restart below so ITSI starts with Java on PATH.
 if [ -d "${SPLUNK_HOME}/etc/apps/itsi" ]; then
   if command -v java >/dev/null 2>&1 && java -version 2>&1 | grep -Eq '"(1\.8|9|1[01]|17)'; then

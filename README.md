@@ -206,37 +206,38 @@ curl -fsSL https://raw.githubusercontent.com/js-csco/splunk-dcloud/main/snmp/set
 curl -fsSL https://raw.githubusercontent.com/js-csco/splunk-dcloud/main/ubuntu/generate-activity.sh | bash
 ```
 
-**7. (optional) install ITSI (premium)** — ITSI (Splunkbase app **1841**) installs
-**only by extracting its `.spl` into `etc/apps`** (not Splunk Web, not `splunk install
-app`). Copy your `.spl` onto the Splunk box and extract it. Do this **on the Splunk box
-(198.18.1.124)** each session (`/tmp` is wiped on reset).
+**7. (optional) install ITSI / IT Essentials Work** — ITSI and **IT Essentials Work
+(ITE-W, Splunkbase app 5403)** are the **same package**: with no ITSI license it runs as
+the free **ITE-W** (entities, services, KPIs, Service Analyzer); add a valid **ITSI
+license** and the premium features (glass tables, ML/adaptive thresholding,
+episode/notable management) unlock — same app, no reinstall. **Use version 5.0.x** (5.0.1
+is current) — it supports Splunk **10.2–10.5**, matching this box's **10.4.0**. (The older
+4.20 line targets Splunk 9.x — don't use it here.)
 
-First get the file onto the box — either **SCP it** from a machine on the dCloud
-network (your laptop on the AnyConnect VPN, or the Ubuntu desktop `198.18.2.11`):
-
-```bash
-scp splunk-it-service-intelligence_501.spl <sshuser>@198.18.1.124:/tmp/
-```
-
-…or **pull it directly** on the box if it has outbound internet:
+It installs **only by extracting the `.spl` into `etc/apps`** (not Splunk Web, not `splunk
+install app`). The easiest lab path is to host the `.spl` at a URL and let `apply.sh` fetch
++ extract it server-side — no file copying, survives every reset:
 
 ```bash
-curl -fSL -o /tmp/splunk-it-service-intelligence_501.spl "https://your-host/splunk-it-service-intelligence_501.spl"
+sudo SPLUNK_INSTALL_URLS="https://your-host/it-essentials-work_501.spl" \
+     ITSI_LICENSE_URL="https://your-host/itsi.lic" \
+     bash /opt/dcloud-splunk/apply.sh
 ```
 
-Then extract and restart (the documented method):
+`ITSI_LICENSE_URL` is **optional** — omit it to run as free ITE-W; add it (or load the
+license later via *Settings → Licensing*) to unlock full ITSI. `apply.sh` auto-installs
+**OpenJDK 17** when it sees the `itsi` app (Ubuntu 24.04's default Java 21 is unsupported),
+and stages the license into `etc/licenses/enterprise` before starting Splunk.
 
-```bash
-sudo -u splunk /opt/splunk/bin/splunk stop
-sudo -u splunk tar -xf /tmp/splunk-it-service-intelligence_501.spl -C /opt/splunk/etc/apps
-sudo -u splunk /opt/splunk/bin/splunk start
-```
-
-> Re-run `apply.sh` afterwards (or it already ran) — it auto-installs **OpenJDK 17**
-> when it sees the `itsi` app (ITSI needs Java 8-11/17; Ubuntu 24.04's default is 21).
-> ITSI also needs its own run-time license. To avoid re-copying every session, host the
-> `.spl` at a URL and use `SPLUNK_INSTALL_URLS` instead (see the ITSI section below). The
-> **Lab Overview → ITSI Setup** dashboard has the full checklist.
+> Prefer not to host a URL? Extract manually on the Splunk box (198.18.1.124) each session
+> (`/tmp` is wiped on reset) — SCP the `.spl` over, then:
+> ```bash
+> sudo -u splunk /opt/splunk/bin/splunk stop
+> sudo -u splunk tar -xf /tmp/it-essentials-work_501.spl -C /opt/splunk/etc/apps
+> sudo -u splunk /opt/splunk/bin/splunk start
+> ```
+> Re-run `apply.sh` afterwards for the Java prerequisite. The **Lab Overview → ITSI Setup**
+> dashboard has the full checklist.
 
 Then open `http://198.18.1.124:8000` → **Lab Overview → Setup Status** (all
 green) and log in as `leo` / `ben` / `gary` (password `C1sco12345`).
@@ -657,16 +658,21 @@ sudo SPLUNK_INSTALL_URLS="https://your-host/itsi.spl https://your-host/other.tgz
   bash /opt/dcloud-splunk/apply.sh
 ```
 
-**ITSI note (important):** ITSI is **Splunkbase app 1841**, and per Splunk's docs it
-installs **only by extracting the `.spl` into `etc/apps`** — it does **not** support
-Splunk Web upload *or* `splunk install app`. Both boot paths above do exactly this
-extraction, so use them: `SPLUNK_INSTALL_URLS="https://your-host/itsi.spl"` (any
-account), or `SPLUNKBASE_APP_IDS="1841"` if your splunk.com account is entitled.
-(The Splunk-10 Web UI also has a hard 512 MB upload cap that `max_upload_size` can't
-lift, but that's moot — the UI path is unsupported for ITSI regardless.) `apply.sh`
-auto-installs **OpenJDK 17** when it detects the `itsi` app (ITSI needs Java 8-11/17;
-Ubuntu 24.04's default is 21, which ITSI doesn't support). ITSI also needs its own
-run-time license; the interim "Service Health" dashboard is the lighter demo option.
+**ITSI note (important):** ITSI and **IT Essentials Work (ITE-W, Splunkbase app 5403)**
+are the **same package** — one download. With **no ITSI license** it runs as the **free
+ITE-W**; install a valid **ITSI license** and the premium features unlock as full ITSI
+(same app, no reinstall). **Use the 5.0.x line** (supports Splunk 10.2–10.5; this box is
+**10.4.0**) — the 4.20 line targets Splunk 9.x. Per Splunk's docs it installs **only by
+extracting the `.spl` into `etc/apps`** — **not** Splunk Web upload, **not** `splunk
+install app`. Both boot paths above do exactly this extraction, so use them:
+`SPLUNK_INSTALL_URLS="https://your-host/it-essentials-work_501.spl"` (any account), or
+`SPLUNKBASE_APP_IDS="5403"` if your splunk.com account is entitled. (The Splunk-10 Web UI
+also has a hard 512 MB upload cap that `max_upload_size` can't lift, but that's moot — the
+UI path is unsupported for this app regardless.) `apply.sh` auto-installs **OpenJDK 17**
+when it detects the `itsi` app (needs Java 8-11/17; Ubuntu 24.04's default is 21), and, if
+you pass `ITSI_LICENSE_URL=...`, stages the ITSI license into `etc/licenses/enterprise`
+before start. No license? It runs as free ITE-W, and the interim "Service Health"
+dashboard is the lighter demo option.
 
 **Then, per session** (runtime state, so recreate each time): grant the app's MCP
 capability to your user/role (or just use `admin`), create a **bearer token**
