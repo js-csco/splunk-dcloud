@@ -2,6 +2,15 @@
 # ===========================================================================
 # seed_glass_table.py - create a native ITSI Glass Table (premium) via API.
 #
+# STATUS: EXPERIMENTAL - NOT the supported path. It creates the object fine, but
+# the GTv2 "definition" schema this emits does not render (blank canvas) on the
+# ITSI version tested, and matching it needs a reference definition exported from
+# a UI-built glass table. For a working, reset-proof visual, use the SimpleXML
+# dashboard  Correlation -> Service Glass Table  instead. Kept here only as a
+# starting point if someone later supplies a real GTv2 definition to mirror.
+#
+# ---------------------------------------------------------------------------
+#
 # ITSI 5.0 Glass Tables use a Dashboard-Studio-style "definition" posted to the
 # itoa_interface/glass_table endpoint. This builds one laid out as the lab's
 # location tree (Berlin / London / Location 1) with colour-coded single-value
