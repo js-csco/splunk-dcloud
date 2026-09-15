@@ -47,9 +47,18 @@ send_trap() { # <label> <STATE>
     run_root apt-get update -y >/dev/null 2>&1 && run_root apt-get install -y snmp >/dev/null 2>&1 || true; }
   command -v snmptrap >/dev/null 2>&1 || { echo "   (snmptrap not installed - skipping trap)"; return 0; }
   local msg="dCloud ${1} container is ${2}"
-  # NET-SNMP example notification OID; the string varbind carries the message.
-  if snmptrap -v2c -c "${SNMP_COMMUNITY}" "${SNMP_TRAP_TARGET}:162" '' \
-       1.3.6.1.4.1.8072.2.3.0.1 1.3.6.1.4.1.8072.2.3.2.1 s "${msg}" 2>/dev/null; then
+  # Use linkDown (…5.3) for DOWN, linkUp (…5.4) for UP as the notification type,
+  # and carry the details in standard DisplayString OIDs so SC4SNMP decodes them
+  # into readable fields:
+  #   sysName.0     (1.3.6.1.2.1.1.5.0) -> the affected component
+  #   sysDescr.0    (1.3.6.1.2.1.1.1.0) -> the human message
+  #   sysLocation.0 (1.3.6.1.2.1.1.6.0) -> where it lives
+  local trapoid="1.3.6.1.6.3.1.1.5.3"           # linkDown
+  [ "${2}" = "UP" ] && trapoid="1.3.6.1.6.3.1.1.5.4"   # linkUp
+  if snmptrap -v2c -c "${SNMP_COMMUNITY}" "${SNMP_TRAP_TARGET}:162" '' "${trapoid}" \
+       1.3.6.1.2.1.1.5.0 s "${1}" \
+       1.3.6.1.2.1.1.1.0 s "${msg}" \
+       1.3.6.1.2.1.1.6.0 s "Berlin / Directory App" 2>/dev/null; then
     echo "   -> SNMP trap PUSHED to ${SNMP_TRAP_TARGET}:162  (\"${msg}\")"
   else
     echo "   (trap send failed - is SC4SNMP up on ${SNMP_TRAP_TARGET}? traps use UDP 162)"
