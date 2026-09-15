@@ -243,9 +243,11 @@ and stages the license into `etc/licenses/enterprise` before starting Splunk.
 > (London/Berlin infrastructure, Web service) and KPIs — built from data already flowing in
 > the lab — with the one-time seeder:
 > ```bash
-> sudo -u splunk /opt/splunk/bin/python3 \
+> sudo -u splunk /opt/splunk/bin/splunk cmd python3 \
 >   /opt/dcloud-splunk/itsi/seed_itsi_demo.py --user admin --password C1sco12345 --verbose
 > ```
+> (Use `splunk cmd python3`, not `/opt/splunk/bin/python3` directly — the latter picks up the
+> system OpenSSL and fails to import `ssl`.)
 > Best-effort: ITSI's REST schema shifts between versions, so `--verbose` prints any rejection
 > to tune `itsi/seed_itsi_demo.py`. KPIs take a few scheduled runs to show values.
 

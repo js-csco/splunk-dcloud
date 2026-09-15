@@ -141,7 +141,7 @@
           <p style="color:#cdd9e5;font-size:12px;line-height:1.55;margin:6px 0;">ITE-W installs
           <b>empty</b>. This seeds demo Entities, Services (London / Berlin infra, Web service) and
           KPIs from data already flowing in the lab. Run <b>once, after</b> the app is installed:</p>
-          <pre style="white-space:pre-wrap;background:#0b0e12;padding:10px;border-radius:6px;color:#cdd9e5;font-size:12px;">sudo -u splunk /opt/splunk/bin/python3 \
+          <pre style="white-space:pre-wrap;background:#0b0e12;padding:10px;border-radius:6px;color:#cdd9e5;font-size:12px;">sudo -u splunk /opt/splunk/bin/splunk cmd python3 \
   /opt/dcloud-splunk/itsi/seed_itsi_demo.py \
   --user admin --password C1sco12345 --verbose</pre>
           <p style="color:#8b98a5;font-size:12px;margin:6px 0 0;">KPIs take a few minutes of

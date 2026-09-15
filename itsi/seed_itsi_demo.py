@@ -16,9 +16,14 @@
 #                  (CPU %, Memory %, HTTP request volume).
 #
 # RUN IT ONCE, AFTER ITE-W IS INSTALLED AND SPLUNK HAS RESTARTED:
-#   sudo -u splunk /opt/splunk/bin/python3 \
+#   sudo -u splunk /opt/splunk/bin/splunk cmd python3 \
 #     /opt/dcloud-splunk/itsi/seed_itsi_demo.py --user admin --password C1sco12345
 # (or from anywhere with network to the box: --host https://198.18.1.124:8089)
+#
+# NOTE: use `splunk cmd python3`, NOT `/opt/splunk/bin/python3` directly - the
+# latter picks up the system OpenSSL and fails to import ssl. `splunk cmd` sets
+# Splunk's LD_LIBRARY_PATH so the bundled Python's ssl loads. (System /usr/bin/
+# python3 also works, since this script only uses the standard library.)
 #
 # CAVEAT: ITSI's REST schema shifts between versions. This targets the 4.x/5.x
 # itoa_interface API. If the server rejects an object, run with --verbose to see
