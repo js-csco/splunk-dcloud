@@ -83,25 +83,26 @@ SERVICES = [
     # ---- app tiers (carry KPIs; depend on the hypervisor they run on) ------
     {"title": "Web Service (Berlin)", "desc": "The Berlin web application container.",
      "rule": ("role", "webserver"), "depends_on": ["Proxmox Hypervisor"], "kpis": [
-        # Reachability %: the container's OWN forwarder runs collect_host_metrics
-        # every 60s, so linux:metrics from webapp-berlin is a HEARTBEAT that ticks
-        # regardless of whether anyone is using the app - idle != down. Container
-        # (or its forwarder) stops -> heartbeat stops -> up=0 (RED) within ~2 min.
-        # stats count always returns a row, so genuine no-data reads down, not gap.
-        ("Reachability",        "index=berlin_metrics sourcetype=linux:metrics host=webapp-berlin | stats count as c | eval up=if(c>0,100,0)", "up", "max", "%", 50, 50),
+        # Reachability %: an ACTIVE TCP probe of the web port (8080), run FROM the
+        # Splunk server every 60s (see infra_monitoring/bin/probe_ports.sh). It
+        # emits a PRESENT open=1/0 on every tick - so a down container reads open=0
+        # (RED), not a data gap that ITSI paints amber; an idle-but-up app reads
+        # open=1 (GREEN); and a crashed app on a still-running container is caught
+        # too (port stops answering). latest(open) = the most recent probe result.
+        ("Reachability",        "index=berlin_web sourcetype=port:probe host=webapp-berlin | stats count as c latest(open) as o | eval up=if(c>0,o*100,0)", "up", "max", "%", 50, 50),
         ("Response Latency",    "index=berlin_web sourcetype=webapp:probe",              "latency_ms", "avg", "ms", 500, 1500),
         ("HTTP Request Volume", "index=berlin_web sourcetype=webapp:access",             "count", "count", "req",    20000, 80000),
         ("HTTP Errors (5xx)",   "index=berlin_web sourcetype=webapp:access status>=500", "count", "count", "errors", 5,     25),
      ]},
     {"title": "Database Service (Berlin)", "desc": "The Berlin PostgreSQL container.",
      "rule": ("role", "database"), "depends_on": ["Proxmox Hypervisor"], "kpis": [
-        # Reachability %: the DB container's OWN forwarder runs collect_host_metrics
-        # every 60s, so linux:metrics from db-berlin is a HEARTBEAT independent of
-        # DB traffic - an idle-but-healthy DB stays GREEN (this is the fix for
-        # "reachability low just because nothing is happening": we no longer count
-        # DB log events, we watch the 60s heartbeat). Container/forwarder down ->
-        # heartbeat stops -> up=0 (RED) within ~2 min.
-        ("Reachability", "index=berlin_metrics sourcetype=linux:metrics host=db-berlin | stats count as c | eval up=if(c>0,100,0)", "up", "max", "%", 50, 50),
+        # Reachability %: an ACTIVE TCP probe of the Postgres port (5432), run FROM
+        # the Splunk server every 60s (probe_ports.sh). Emits a PRESENT open=1/0 on
+        # every tick: DB container/process down -> open=0 (decisive RED, not an
+        # amber gap); idle-but-healthy DB -> open=1 (GREEN, the fix for "low just
+        # because nothing is happening"); Postgres crashed on a live container is
+        # caught too. This is a real service check, not an event-volume proxy.
+        ("Reachability", "index=berlin_web sourcetype=port:probe host=db-berlin | stats count as c latest(open) as o | eval up=if(c>0,o*100,0)", "up", "max", "%", 50, 50),
         ("DB Errors",       "index=berlin_db sourcetype=postgres:log (ERROR OR FATAL)", "count", "count", "errors", 1, 10),
         ("DB Connections",  "index=berlin_db sourcetype=postgres:log \"connection authorized\"", "count", "count", "conns", 5000, 20000),
         ("DB Log Volume",   "index=berlin_db sourcetype=postgres:log", "count", "count", "events", 20000, 80000),
