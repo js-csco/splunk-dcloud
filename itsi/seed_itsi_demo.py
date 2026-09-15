@@ -42,32 +42,57 @@ SEC_GRP = "default_itsi_security_group"   # ITSI's built-in "Global" team
 APP_NS = "servicesNS/nobody/itsi"         # ITSI objects live in the itsi app
 
 # --- The demo model --------------------------------------------------------
-# Hosts to register as ITSI entities. (host, site, description)
+# Entities to register. (host, site, role, description)
 ENTITIES = [
-    ("desktop-london",     "london", "Linux desktop client (London)"),
-    ("ubuntu-london",      "london", "Ubuntu server (London)"),
-    ("proxmox-berlin",     "berlin", "Proxmox hypervisor (Berlin)"),
-    ("webapp-berlin",      "berlin", "Web-app container (Berlin)"),
-    ("db-berlin",          "berlin", "PostgreSQL container (Berlin)"),
-    ("ubuntu-berlin",      "berlin", "Ubuntu server (Berlin)"),
-    ("splunk",             "loc1",   "Splunk server (Location 1)"),
+    ("desktop-london",  "london", "client",     "Linux desktop client (London)"),
+    ("ubuntu-london",   "london", "server",     "Ubuntu server (London)"),
+    ("cat8kv-london",   "london", "router",     "Cisco Catalyst 8000v router (London)"),
+    ("proxmox-berlin",  "berlin", "hypervisor", "Proxmox hypervisor (Berlin)"),
+    ("webapp-berlin",   "berlin", "webserver",  "Web-app container (Berlin)"),
+    ("db-berlin",       "berlin", "database",   "PostgreSQL container (Berlin)"),
+    ("ubuntu-berlin",   "berlin", "server",     "Ubuntu server (Berlin)"),
+    ("cat8kv-berlin",   "berlin", "router",     "Cisco Catalyst 8000v router (Berlin)"),
+    ("splunk",          "loc1",   "splunk",     "Splunk server (Location 1)"),
 ]
 
-# Services: (title, description, site the entity rule matches, [kpi specs])
-# Each KPI spec: (title, base_search, threshold_field, aggregate, unit, medium, critical)
-SERVICES = [
-    ("London Infrastructure", "Health of the London site hosts.", "london", [
+# KPI spec: (title, base_search, threshold_field, aggregate, unit, medium, critical)
+#   medium/critical are ascending thresholds, tuned so normal lab activity reads
+#   green and a spike trips warning/critical.
+#
+# LEAF services: (title, description, rule_field, rule_value, [kpi specs])
+#   rule_field is an entity info field ("site" or "role"); the service auto-attaches
+#   every entity whose that field matches rule_value.
+LEAF_SERVICES = [
+    ("Splunk Core (loc1)", "The Splunk server itself (Location 1).", "role", "splunk", [
+        ("CPU Utilization",       "index=loc1_metrics sourcetype=linux:metrics", "cpu_pct",      "avg",   "%",      70, 90),
+        ("Memory Utilization",    "index=loc1_metrics sourcetype=linux:metrics", "mem_used_pct", "avg",   "%",      70, 90),
+        ("Internal Event Volume", "index=_internal",                             "count",        "count", "events", 800000, 2000000),
+    ]),
+    ("London Infrastructure", "Health of the London site hosts.", "site", "london", [
         ("CPU Utilization",    "index=london_metrics sourcetype=linux:metrics", "cpu_pct",      "avg", "%", 70, 90),
         ("Memory Utilization", "index=london_metrics sourcetype=linux:metrics", "mem_used_pct", "avg", "%", 70, 90),
     ]),
-    ("Berlin Infrastructure", "Health of the Berlin site hosts.", "berlin", [
+    ("Berlin Infrastructure", "Health of the Berlin site hosts.", "site", "berlin", [
         ("CPU Utilization",    "index=berlin_metrics sourcetype=linux:metrics", "cpu_pct",      "avg", "%", 70, 90),
         ("Memory Utilization", "index=berlin_metrics sourcetype=linux:metrics", "mem_used_pct", "avg", "%", 70, 90),
     ]),
-    ("Web Service (Berlin)", "The Berlin web application service.", "berlin", [
-        ("HTTP Request Volume", "index=berlin_web sourcetype=webapp:access", "count", "count", "req", 0, 0),
+    ("Hypervisor (Proxmox)", "The Berlin Proxmox hypervisor.", "role", "hypervisor", [
+        ("Proxmox Event Volume", "index=berlin_proxmox", "count", "count", "events", 50000, 200000),
+    ]),
+    ("Web Service (Berlin)", "The Berlin web application.", "role", "webserver", [
+        ("HTTP Request Volume", "index=berlin_web sourcetype=webapp:access",             "count", "count", "req",    20000, 80000),
+        ("HTTP Errors (5xx)",   "index=berlin_web sourcetype=webapp:access status>=500", "count", "count", "errors", 5,     25),
+    ]),
+    ("Database Service (Berlin)", "The Berlin PostgreSQL database.", "role", "database", [
+        ("DB Log Volume", "index=berlin_db sourcetype=postgres:log", "count", "count", "events", 20000, 80000),
+    ]),
+    ("Network & Routers", "The Cisco Catalyst routers (London + Berlin).", "role", "router", [
+        ("Router Poll Volume", "index=london_network OR index=berlin_network", "count", "count", "events", 100000, 500000),
     ]),
 ]
+
+# Parent service - rolls up every leaf service into one health tree.
+PARENT_SERVICE = ("Global IT Operations", "Top-level rollup of every lab service.")
 
 # ITSI severity palette (value/label/colors) used to build thresholds.
 SEV = {
@@ -139,15 +164,16 @@ def _b64(s):
     return base64.b64encode(s.encode()).decode()
 
 
-def entity_payload(host, site, desc):
+def entity_payload(host, site, role, desc):
     # ITSI entity: identifier/informational fields must ALSO be present as
-    # top-level list keys (host, site).
+    # top-level list keys (host, site, role).
     return {
         "description": desc,
         "identifier": {"fields": ["host"], "values": [host]},
-        "informational": {"fields": ["site"], "values": [site]},
+        "informational": {"fields": ["site", "role"], "values": [site, role]},
         "host": [host],
         "site": [site],
+        "role": [role],
         "entity_type_ids": [],
     }
 
@@ -160,12 +186,13 @@ def thresholds(field, medium, critical):
             sv, sc, scl = SEV[label]
             levels.append({"dynamicParam": "", "severityColor": sc, "severityColorLight": scl,
                            "severityLabel": label, "severityValue": sv, "thresholdValue": val})
+    gmax = max(100, (critical or 100) * 1.2)
     return {
         "baseSeverityColor": n_c, "baseSeverityColorLight": n_cl,
         "baseSeverityLabel": "normal", "baseSeverityValue": n_v,
-        "gaugeMax": max(100, (critical or 100) * 1.2), "gaugeMin": 0,
+        "gaugeMax": gmax, "gaugeMin": 0,
         "isMaxStatic": False, "isMinStatic": True,
-        "metricField": field, "renderBoundaryMax": 100, "renderBoundaryMin": 0,
+        "metricField": field, "renderBoundaryMax": gmax, "renderBoundaryMin": 0,
         "search": "", "thresholdLevels": levels,
     }
 
@@ -191,6 +218,10 @@ def kpi_payload(title, base_search, field, agg, unit, medium, critical):
         "alert_period": "5",
         "alert_lag": "30",
         "search_alert_earliest": "5",
+        # Backfill so KPI values (and health colours) appear immediately instead
+        # of only after the scheduled searches have run for a while.
+        "backfill_enabled": True,
+        "backfill_earliest_time": "-24h",
         "time_variate_thresholds": False,
         "adaptive_thresholds_is_enabled": False,
         "adaptive_thresholding_training_window": "-7d",
@@ -202,16 +233,31 @@ def kpi_payload(title, base_search, field, agg, unit, medium, critical):
     }
 
 
-def service_payload(desc, site, kpis):
-    return {
+def service_payload(desc, rule_field, rule_value, kpis, depends_on=None):
+    svc = {
         "description": desc,
         "enabled": 1,
         "entity_rules": [{
             "rule_condition": "AND",
-            "rule_items": [{"field": "site", "field_type": "info",
-                            "rule_type": "matches", "value": site}],
+            "rule_items": [{"field": rule_field, "field_type": "info",
+                            "rule_type": "matches", "value": rule_value}],
         }],
         "kpis": kpis,
+    }
+    if depends_on:
+        svc["services_depends_on"] = depends_on
+    return svc
+
+
+def parent_payload(desc, depends_on):
+    # A rollup service: no entities of its own, health derived from the health
+    # scores of the services it depends on.
+    return {
+        "description": desc,
+        "enabled": 1,
+        "entity_rules": [],
+        "kpis": [],
+        "services_depends_on": depends_on,
     }
 
 
@@ -226,11 +272,13 @@ def main():
     args = ap.parse_args()
 
     if args.dry_run:
-        print("DRY RUN - would create %d entities and %d services:" % (len(ENTITIES), len(SERVICES)))
-        for h, s, d in ENTITIES:
-            print("  entity  %-16s site=%s" % (h, s))
-        for t, d, s, kpis in SERVICES:
-            print("  service %-24s site=%s  KPIs: %s" % (t, s, ", ".join(k[0] for k in kpis)))
+        print("DRY RUN - would create %d entities, %d leaf services + 1 rollup:"
+              % (len(ENTITIES), len(LEAF_SERVICES)))
+        for h, s, role, d in ENTITIES:
+            print("  entity  %-16s site=%-7s role=%s" % (h, s, role))
+        for t, d, rf, rv, kpis in LEAF_SERVICES:
+            print("  service %-26s %s=%-10s KPIs: %s" % (t, rf, rv, ", ".join(k[0] for k in kpis)))
+        print("  service %-26s depends on all %d leaf services" % (PARENT_SERVICE[0], len(LEAF_SERVICES)))
         return 0
 
     itsi = ITSI(args.host, args.user, args.password, verbose=args.verbose)
@@ -243,13 +291,23 @@ def main():
         return 1
 
     print("Seeding ITSI entities ...")
-    for host, site, desc in ENTITIES:
-        itsi.upsert("entity", host, entity_payload(host, site, desc))
+    for host, site, role, desc in ENTITIES:
+        itsi.upsert("entity", host, entity_payload(host, site, role, desc))
 
-    print("Seeding ITSI services + KPIs ...")
-    for title, desc, site, kpis in SERVICES:
+    print("Seeding ITSI leaf services + KPIs ...")
+    leaf_keys = []
+    for title, desc, rf, rv, kpis in LEAF_SERVICES:
         kpi_objs = [kpi_payload(*k) for k in kpis]
-        itsi.upsert("service", title, service_payload(desc, site, kpi_objs))
+        key = itsi.upsert("service", title, service_payload(desc, rf, rv, kpi_objs))
+        if key:
+            leaf_keys.append(key)
+
+    print("Seeding rollup service ...")
+    if leaf_keys:
+        deps = [{"serviceid": k, "kpis_depending_on": ["SHKPI-%s" % k]} for k in leaf_keys]
+        itsi.upsert("service", PARENT_SERVICE[0], parent_payload(PARENT_SERVICE[1], deps))
+    else:
+        sys.stderr.write("  skipped rollup - no leaf services were created.\n")
 
     print("\nDone. Open the IT Service Intelligence app -> Service Analyzer. KPIs need a few "
           "minutes of scheduled runs before they show a value.")
