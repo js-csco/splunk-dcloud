@@ -543,6 +543,32 @@ sudo /opt/splunkforwarder/bin/splunk stop
 sudo /opt/splunkforwarder/bin/splunk start
 ```
 
+### ITSI Episodes (premium) — incident rollup → Webex
+
+The premium "episode" idea: instead of one alert per broken KPI, group the related
+alerts into **one incident** and notify once. Two ways in this lab:
+
+**Config-as-code (works now):** the alert **"dcloud - Incident: services degraded →
+Webex episode"** (`alerts/default/savedsearches.conf`, disabled by default) rolls all
+degraded Berlin components (web/DB reachability, host CPU/disk) into a single summary
+and posts **one** Webex message (`$result.message$` carries the summary). Enable it in
+*Settings → Searches*, then run `demo-chaos.sh break-web` — one grouped ping, not five.
+
+**Native ITSI Notable Event Management (build in the UI — reliable, and a great live
+demo):**
+1. **Configure → Correlation Searches → Create** — search
+   `index=itsi_summary kpi=ServiceHealthScore alert_level>=5`, set the notable
+   **title/severity** from the service, schedule every 5 min. This writes Notable Events.
+2. **Configure → Notable Event Aggregation Policies → Create** — split by `service`,
+   break episodes after N minutes of quiet; under **Action Rules** add *"When a new
+   episode is created → run **Webex message***. That groups the notables into an
+   **Episode** and fires Webex once per incident.
+3. Watch it in **Episode Review** — run `demo-chaos.sh break-web` and a "Web Service"
+   episode appears, gathering the KPI alerts, with a Webex notification.
+
+(API-seeding NEM objects is version-fragile, so the UI is the supported path for the
+native version; the config-as-code alert above covers the outcome without it.)
+
 ## Asset Configuration (asset inventory + enrichment)
 
 The **Infrastructure Monitoring** app has an **Asset Configuration** view — describe
