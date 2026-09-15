@@ -150,6 +150,39 @@ sudo chmod 600 /opt/splunk/var/lib/dcloud/webex.env</pre>
 
   <row>
     <panel>
+      <title>5 — Run the live demo (break something → Webex)</title>
+      <html>
+        <div style="background:#11151a;border:1px solid #2a3138;border-radius:10px;padding:16px;">
+          <p style="color:#cdd9e5;font-size:13px;line-height:1.55;margin:0 0 8px;">The Webex
+          message is sent by the <b>Alerts app</b> (these saved searches) — <b>not</b> by ITSI.
+          You trigger it by causing a real condition; ITSI is where you <i>watch</i> the impact.</p>
+          <p style="color:#e6edf3;font-size:13px;font-weight:600;margin:8px 0 4px;">① Arm the alert (once)</p>
+          <p style="color:#cdd9e5;font-size:12px;margin:0 0 8px;">In <b>Settings ▸ Searches, reports,
+          and alerts</b> enable <b>"dcloud - Incident: services degraded → Webex episode"</b>
+          (grouped, one message) and/or <b>"dcloud - Service unavailable → Webex"</b>.</p>
+          <p style="color:#e6edf3;font-size:13px;font-weight:600;margin:8px 0 4px;">② Break something — on the Proxmox host</p>
+          <pre style="white-space:pre-wrap;background:#0b0e12;padding:10px;border-radius:6px;color:#cdd9e5;font-size:12px;">bash /opt/dcloud-splunk/ubuntu/demo-chaos.sh break-web
+#   (or break-db / break-all)</pre>
+          <p style="color:#e6edf3;font-size:13px;font-weight:600;margin:8px 0 4px;">③ Watch (within ~1 scheduled cycle)</p>
+          <ul style="color:#cdd9e5;font-size:12px;line-height:1.5;margin:0 0 8px;">
+            <li><b>Webex</b> message lands in your space; the send-attempts panel above turns green.</li>
+            <li><b>Correlation ▸ Service Glass Table</b>: Web Service → Global turn red.</li>
+            <li><b>ITSI ▸ Service Analyzer</b>: Web Service → Proxmox Hypervisor → Berlin → Global cascade.</li>
+          </ul>
+          <p style="color:#e6edf3;font-size:13px;font-weight:600;margin:8px 0 4px;">④ Recover</p>
+          <pre style="white-space:pre-wrap;background:#0b0e12;padding:10px;border-radius:6px;color:#cdd9e5;font-size:12px;">bash /opt/dcloud-splunk/ubuntu/demo-chaos.sh recover</pre>
+          <p style="color:#8b98a5;font-size:12px;margin:6px 0 0;">Scheduled alerts run every 5 min.
+          To fire faster during a live demo, temporarily set the alert's cron to
+          <code>* * * * *</code> (every minute). Prefer real ITSI Episodes (Episode Review +
+          aggregation policy)? Build the Correlation Search + Notable Event Aggregation Policy in
+          the ITSI UI — see the README "ITSI Episodes" section — and add the Webex action there.</p>
+        </div>
+      </html>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
       <title>Delete the Webex connection</title>
       <html>
         <div style="background:#2a1416;border-left:4px solid #d93f3c;border-radius:8px;padding:14px 16px;">
