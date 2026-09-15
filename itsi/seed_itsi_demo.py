@@ -74,17 +74,19 @@ SERVICES = [
     # ---- leaf services (carry KPIs) --------------------------------------
     {"title": "Web Service (Berlin)", "desc": "The Berlin web application container.",
      "rule": ("role", "webserver"), "depends_on": [], "kpis": [
-        # Reachability: port probe -> down=0 up, 100 unreachable. This is what turns
-        # the branch RED in the failure-injection demo (HTTP volume alone can't -
-        # zero traffic reads as green).
-        ("App Reachability",    "index=berlin_web sourcetype=port:probe port=8080 | eval down=if(open==1,0,100)", "down", "max", "%", 1, 50),
+        # Reachability: down=0 only when the probe confirms open==1; anything else -
+        # open==0 (container down) OR no probe data at all - is down=100 (RED). The
+        # "stats count ... latest(open)" guarantees one row even with zero events, so
+        # "no data" reads as DOWN, not green. This is what turns the branch red in the
+        # failure-injection demo.
+        ("App Reachability",    "index=berlin_web sourcetype=port:probe port=8080 | stats count as c latest(open) as open | eval down=if(open==1,0,100)", "down", "max", "%", 1, 50),
         ("Response Latency",    "index=berlin_web sourcetype=webapp:probe",              "latency_ms", "avg", "ms", 500, 1500),
         ("HTTP Request Volume", "index=berlin_web sourcetype=webapp:access",             "count", "count", "req",    20000, 80000),
         ("HTTP Errors (5xx)",   "index=berlin_web sourcetype=webapp:access status>=500", "count", "count", "errors", 5,     25),
      ]},
     {"title": "Database Service (Berlin)", "desc": "The Berlin PostgreSQL container.",
      "rule": ("role", "database"), "depends_on": [], "kpis": [
-        ("DB Reachability", "index=berlin_web sourcetype=port:probe port=5432 | eval down=if(open==1,0,100)", "down", "max", "%", 1, 50),
+        ("DB Reachability", "index=berlin_web sourcetype=port:probe port=5432 | stats count as c latest(open) as open | eval down=if(open==1,0,100)", "down", "max", "%", 1, 50),
         ("DB Errors",       "index=berlin_db sourcetype=postgres:log (ERROR OR FATAL)", "count", "count", "errors", 1, 10),
         ("DB Connections",  "index=berlin_db sourcetype=postgres:log \"connection authorized\"", "count", "count", "conns", 5000, 20000),
         ("DB Log Volume",   "index=berlin_db sourcetype=postgres:log", "count", "count", "events", 20000, 80000),
@@ -304,8 +306,10 @@ def kpi_payload(title, base_search, field, agg, unit, medium, critical, adaptive
         "entity_breakdown_id_fields": "host",
         "entity_id_fields": "host",
         "is_entity_breakdown": False,
+        # For reachability KPIs a data gap means "we lost sight of the service" -
+        # treat that as high severity, not the silent "unknown" that reads green.
         "fill_gaps": "null_value",
-        "gap_severity": "unknown",
+        "gap_severity": ("high" if field == "down" else "unknown"),
         "alert_period": "5",
         "alert_lag": "30",
         "search_alert_earliest": "5",
