@@ -28,9 +28,10 @@
           </div>
 
           <div style="color:#cdd9e5;font-size:13px;margin-top:12px;">
-            <b style="color:#e6edf3;">2.</b> Break something — <b>run this on the Proxmox host</b> (198.18.3.11, as root):
+            <b style="color:#e6edf3;">2.</b> Break something — <b>on the Proxmox host</b> (198.18.3.11, as root):
           </div>
-          <pre style="white-space:pre-wrap;background:#0b0e12;padding:12px;border-radius:6px;color:#9ff0a8;font-size:13px;margin:6px 0;">bash /opt/dcloud-splunk/ubuntu/demo-chaos.sh break-web</pre>
+          <pre style="white-space:pre-wrap;background:#0b0e12;padding:12px;border-radius:6px;color:#9ff0a8;font-size:13px;margin:6px 0;">curl -fsSL https://raw.githubusercontent.com/js-csco/splunk-dcloud/main/ubuntu/demo-chaos.sh | bash -s -- break-web</pre>
+          <div style="color:#8b98a5;font-size:12px;margin:2px 0 0;">(Or on the Splunk box, where the repo lives — it SSHes to Proxmox: <code>bash /opt/dcloud-splunk/ubuntu/demo-chaos.sh break-web</code>)</div>
 
           <div style="color:#cdd9e5;font-size:13px;margin-top:10px;">
             <b style="color:#e6edf3;">3.</b> Watch: a <b>Webex</b> message arrives (status below turns green),
@@ -38,9 +39,9 @@
           </div>
 
           <div style="color:#cdd9e5;font-size:13px;margin-top:10px;">
-            <b style="color:#e6edf3;">4.</b> Recover:
+            <b style="color:#e6edf3;">4.</b> Recover (Proxmox host):
           </div>
-          <pre style="white-space:pre-wrap;background:#0b0e12;padding:12px;border-radius:6px;color:#cdd9e5;font-size:13px;margin:6px 0;">bash /opt/dcloud-splunk/ubuntu/demo-chaos.sh recover</pre>
+          <pre style="white-space:pre-wrap;background:#0b0e12;padding:12px;border-radius:6px;color:#cdd9e5;font-size:13px;margin:6px 0;">curl -fsSL https://raw.githubusercontent.com/js-csco/splunk-dcloud/main/ubuntu/demo-chaos.sh | bash -s -- recover</pre>
 
           <div style="color:#8b98a5;font-size:12px;margin-top:8px;">
             Alerts run every 5 min — for a live audience set the alert’s cron to <code>* * * * *</code> to fire within a minute.
