@@ -71,9 +71,16 @@ ENTITIES = [
 # Services are created in list order: every child appears BEFORE the parent that
 # depends on it, so dependency keys resolve.
 SERVICES = [
-    # ---- leaf services (carry KPIs) --------------------------------------
+    # ---- shared infrastructure (created first: the app tiers depend on it) --
+    # Both containers RUN ON Proxmox, so Web and DB each depend on the
+    # hypervisor. Proxmox down -> both tiers degrade -> Directory App -> Berlin.
+    {"title": "Proxmox Hypervisor", "desc": "Berlin Proxmox hypervisor - hosts the app containers.",
+     "rule": ("role", "hypervisor"), "depends_on": [], "kpis": [
+        ("Proxmox Event Volume", "index=berlin_proxmox", "count", "count", "events", 50000, 200000),
+     ]},
+    # ---- app tiers (carry KPIs; depend on the hypervisor they run on) ------
     {"title": "Web Service (Berlin)", "desc": "The Berlin web application container.",
-     "rule": ("role", "webserver"), "depends_on": [], "kpis": [
+     "rule": ("role", "webserver"), "depends_on": ["Proxmox Hypervisor"], "kpis": [
         # Reachability: down=0 only when the probe confirms open==1; anything else -
         # open==0 (container down) OR no probe data at all - is down=100 (RED). The
         # "stats count ... latest(open)" guarantees one row even with zero events, so
@@ -85,7 +92,7 @@ SERVICES = [
         ("HTTP Errors (5xx)",   "index=berlin_web sourcetype=webapp:access status>=500", "count", "count", "errors", 5,     25),
      ]},
     {"title": "Database Service (Berlin)", "desc": "The Berlin PostgreSQL container.",
-     "rule": ("role", "database"), "depends_on": [], "kpis": [
+     "rule": ("role", "database"), "depends_on": ["Proxmox Hypervisor"], "kpis": [
         ("DB Reachability", "index=berlin_web sourcetype=port:probe port=5432 | stats count as c latest(open) as open | eval down=if(open==1,0,100)", "down", "max", "%", 1, 50),
         ("DB Errors",       "index=berlin_db sourcetype=postgres:log (ERROR OR FATAL)", "count", "count", "errors", 1, 10),
         ("DB Connections",  "index=berlin_db sourcetype=postgres:log \"connection authorized\"", "count", "count", "conns", 5000, 20000),
@@ -123,22 +130,17 @@ SERVICES = [
         ("Internal Event Volume", "index=_internal",                             "count",         "count", "events", 800000, 2000000),
      ]},
     # ---- mid-level branches ----------------------------------------------
-    # The Directory App is the SERVICE the business cares about; it runs ON TOP
-    # of Proxmox, so it summarises the Web + DB tiers (not the hypervisor).
+    # The Directory App is the SERVICE the business cares about; it summarises the
+    # Web + DB tiers (which in turn depend on the Proxmox hypervisor below them).
     {"title": "Directory App", "desc": "The employee directory service (web tier + database tier).",
      "rule": None, "depends_on": ["Web Service (Berlin)", "Database Service (Berlin)"], "kpis": []},
-    # Proxmox is infrastructure - a sibling of the app, not its parent.
-    {"title": "Proxmox Hypervisor", "desc": "Berlin Proxmox hypervisor (infrastructure).",
-     "rule": ("role", "hypervisor"), "depends_on": [], "kpis": [
-        ("Proxmox Event Volume", "index=berlin_proxmox", "count", "count", "events", 50000, 200000),
-     ]},
     {"title": "Berlin Infrastructure", "desc": "Berlin site hosts and network.",
      "rule": None, "depends_on": ["Ubuntu Berlin", "Router Berlin"], "kpis": []},
     {"title": "London Infrastructure", "desc": "London site hosts and network.",
      "rule": None, "depends_on": ["Ubuntu London", "Router London"], "kpis": []},
     # ---- location branches -----------------------------------------------
     {"title": "Berlin", "desc": "Berlin location.",
-     "rule": None, "depends_on": ["Directory App", "Proxmox Hypervisor", "Berlin Infrastructure"], "kpis": []},
+     "rule": None, "depends_on": ["Directory App", "Berlin Infrastructure"], "kpis": []},
     {"title": "London", "desc": "London location.",
      "rule": None, "depends_on": ["London Infrastructure"], "kpis": []},
     {"title": "Location 1", "desc": "Location 1 (the Splunk core site).",
