@@ -81,18 +81,18 @@ SERVICES = [
     # ---- app tiers (carry KPIs; depend on the hypervisor they run on) ------
     {"title": "Web Service (Berlin)", "desc": "The Berlin web application container.",
      "rule": ("role", "webserver"), "depends_on": ["Proxmox Hypervisor"], "kpis": [
-        # Reachability %: up=100 only when the probe confirms open==1; open==0
-        # (container down) OR no probe data at all -> up=0 (RED). Reads naturally:
-        # 100% reachable = green, 0% = red. "stats count ... latest(open)"
-        # guarantees one row so "no data" is 0, not a silent green.
-        ("Reachability",        "index=berlin_web sourcetype=port:probe port=8080 | stats count as c latest(open) as open | eval up=if(open==1,100,0)", "up", "min", "%", 50, 50),
+        # Reachability %: the container's OWN forwarder ships host metrics every
+        # 60s, so "recent data from webapp-berlin" is a truthful liveness signal
+        # (up=100 green) that doesn't depend on the external port probe. Stop the
+        # container -> the UF stops -> no metrics -> up=0 (RED) within a few min.
+        ("Reachability",        "index=berlin_metrics sourcetype=linux:metrics host=webapp-berlin | stats count as c | eval up=if(c>0,100,0)", "up", "max", "%", 50, 50),
         ("Response Latency",    "index=berlin_web sourcetype=webapp:probe",              "latency_ms", "avg", "ms", 500, 1500),
         ("HTTP Request Volume", "index=berlin_web sourcetype=webapp:access",             "count", "count", "req",    20000, 80000),
         ("HTTP Errors (5xx)",   "index=berlin_web sourcetype=webapp:access status>=500", "count", "count", "errors", 5,     25),
      ]},
     {"title": "Database Service (Berlin)", "desc": "The Berlin PostgreSQL container.",
      "rule": ("role", "database"), "depends_on": ["Proxmox Hypervisor"], "kpis": [
-        ("Reachability", "index=berlin_web sourcetype=port:probe port=5432 | stats count as c latest(open) as open | eval up=if(open==1,100,0)", "up", "min", "%", 50, 50),
+        ("Reachability", "index=berlin_metrics sourcetype=linux:metrics host=db-berlin | stats count as c | eval up=if(c>0,100,0)", "up", "max", "%", 50, 50),
         ("DB Errors",       "index=berlin_db sourcetype=postgres:log (ERROR OR FATAL)", "count", "count", "errors", 1, 10),
         ("DB Connections",  "index=berlin_db sourcetype=postgres:log \"connection authorized\"", "count", "count", "conns", 5000, 20000),
         ("DB Log Volume",   "index=berlin_db sourcetype=postgres:log", "count", "count", "events", 20000, 80000),

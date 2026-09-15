@@ -23,9 +23,9 @@
       <title>Global IT Operations</title>
       <single>
         <search>
-          <query>index=berlin_web sourcetype=port:probe port=8080 earliest=-15m | stats count as c latest(open) as webopen
-| appendcols [ search index=berlin_web sourcetype=port:probe port=5432 earliest=-15m | stats count as c2 latest(open) as dbopen ]
-| eval v=if(webopen==1 AND dbopen==1,0,100) | fields v</query>
+          <query>index=berlin_metrics sourcetype=linux:metrics host=webapp-berlin earliest=-15m | stats count as wc
+| appendcols [ search index=berlin_metrics sourcetype=linux:metrics host=db-berlin earliest=-15m | stats count as dc ]
+| eval v=if(wc&gt;0 AND dc&gt;0,0,100) | fields v</query>
           <earliest>-15m</earliest><latest>now</latest>
         </search>
         <option name="drilldown">none</option>
@@ -64,8 +64,8 @@
       <title>Web Service</title>
       <single>
         <search>
-          <query>index=berlin_web sourcetype=port:probe port=8080 earliest=-15m | stats count as c latest(open) as open
-| eval v=if(open==1,0,100) | fields v</query>
+          <query>index=berlin_metrics sourcetype=linux:metrics host=webapp-berlin earliest=-15m | stats count as c
+| eval v=if(c&gt;0,0,100) | fields v</query>
           <earliest>-15m</earliest><latest>now</latest>
         </search>
         <option name="drilldown">none</option>
@@ -79,8 +79,8 @@
       <title>Database Service</title>
       <single>
         <search>
-          <query>index=berlin_web sourcetype=port:probe port=5432 earliest=-15m | stats count as c latest(open) as open
-| eval v=if(open==1,0,100) | fields v</query>
+          <query>index=berlin_metrics sourcetype=linux:metrics host=db-berlin earliest=-15m | stats count as c
+| eval v=if(c&gt;0,0,100) | fields v</query>
           <earliest>-15m</earliest><latest>now</latest>
         </search>
         <option name="drilldown">none</option>
