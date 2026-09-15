@@ -166,18 +166,16 @@ def main():
 
     itsi = ITSI(args.host, args.user, args.password, verbose=args.verbose)
     definition = build_definition()
+    # Payload matches the maintained splunk.itsi Ansible module: the "owner fields"
+    # the API requires are _owner and _user (both "nobody"), plus gt_version "beta"
+    # for the modern (GTv2) glass table, and acl.sharing for visibility.
     payload = {
         "title": GT_TITLE,
-        "identifying_name": GT_TITLE.lower(),
         "description": definition["description"],
-        "sec_grp": SEC_GRP,
-        "owner": args.owner,
-        # glass_table needs a full ACL block (the "owner fields" the API checks for);
-        # shared globally so every role sees it.
-        "acl": {
-            "owner": args.owner, "app": "itsi", "sharing": "global",
-            "perms": {"read": ["*"], "write": ["*"]},
-        },
+        "gt_version": "beta",
+        "_owner": args.owner,
+        "_user": args.owner,
+        "acl": {"sharing": "global"},
         "definition": json.dumps(definition) if args.string_definition else definition,
     }
 
