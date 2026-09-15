@@ -349,9 +349,12 @@ def kpi_payload(title, base_search, field, agg, unit, medium, critical, adaptive
         # treat that as high severity, not the silent "unknown" that reads green.
         "fill_gaps": "null_value",
         "gap_severity": ("high" if field == "up" else "unknown"),
-        "alert_period": "5",
+        # Run every 1 min over a 2-min window so the service tree reacts to a
+        # kill in ~1-2 min (ITSI is scheduled-search based - this is its floor;
+        # the instant signal is the SNMP trap -> Webex, not the tree colour).
+        "alert_period": "1",
         "alert_lag": "30",
-        "search_alert_earliest": "5",
+        "search_alert_earliest": "2",
         # Backfill so KPI values (and health colours) appear immediately instead
         # of only after the scheduled searches have run for a while.
         "backfill_enabled": True,
