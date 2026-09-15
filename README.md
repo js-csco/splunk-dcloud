@@ -183,18 +183,27 @@ curl http://198.18.3.50:8080/
 > green.
 
 **5c. (optional) SNMP via SC4SNMP (Berlin)** — real-time SNMP into Splunk the supported
-way, on the dedicated VM `ubuntu-berlin-snmp` (198.18.3.52). Two commands:
+way, on the dedicated VM `ubuntu-berlin-snmp` (198.18.3.52). SC4SNMP **polls** a fleet
+(hypervisor, both routers, a Linux host) and **receives traps**. Enable SNMP on each
+device (community `dcloud`), then stand up SC4SNMP:
 
 ```bash
-# 1) On the Proxmox host (as root, no sudo) — give SC4SNMP a device to poll by
-#    enabling its SNMP agent (community 'dcloud'):
-curl -fsSL https://raw.githubusercontent.com/js-csco/splunk-dcloud/main/snmp/enable-proxmox-snmpd.sh | bash
+# 1) Linux hosts — enable snmpd (run on each: Proxmox host, ubuntu-desktop-london, …):
+curl -fsSL https://raw.githubusercontent.com/js-csco/splunk-dcloud/main/snmp/enable-snmpd.sh | sudo bash
 
-# 2) On ubuntu-berlin-snmp (198.18.3.52) — stand up the SC4SNMP Docker stack.
-#    -E preserves any overrides (e.g. SC4SNMP_REF=vX.Y.Z); HEC token/index
-#    default to the lab values apply.sh already set on Splunk:
+# 2) Routers — apply the SNMP lines already in routers/{berlin,london}-cat8kv.txt
+#    (snmp-server community dcloud RO + trap host 198.18.3.52). Paste over console/SSH.
+
+# 3) On ubuntu-berlin-snmp (198.18.3.52) — stand up the SC4SNMP Docker stack.
+#    Polls 198.18.3.11 (Proxmox), 198.18.3.32 + 198.18.2.32 (routers), 198.18.2.11
+#    (desktop). -E preserves overrides (e.g. SC4SNMP_REF=vX.Y.Z):
 curl -fsSL https://raw.githubusercontent.com/js-csco/splunk-dcloud/main/snmp/setup-sc4snmp.sh | sudo -E bash
 ```
+
+> The polled device list is `inventory.csv` in the SC4SNMP `docker_compose` dir
+> (seeded from `setup-sc4snmp.sh`; add/remove rows and it re-reads). `enable-snmpd.sh`
+> works on any Debian/Ubuntu host; `snmp/enable-proxmox-snmpd.sh` remains as the
+> Proxmox-only shorthand.
 
 > Watch it in **Get Data In → SNMP — Splunk Connect (SC4SNMP)** (index `berlin_snmp`,
 > RBAC-scoped to Berlin). Full detail, traps, and version-pinning notes are in the

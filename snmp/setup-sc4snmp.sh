@@ -72,12 +72,23 @@ setenv INVENTORY_FILE_ABSOLUTE_PATH        "${CD}/inventory.csv"
 setenv COREFILE_ABS_PATH                   "${CD}/Corefile"
 
 # 4) config files ----------------------------------------------------------
-# 4a) inventory - poll the Proxmox host (v2c, our community). Add rows for more
-#     devices later. Columns are the SC4SNMP inventory schema.
+# 4a) inventory - the SNMP fleet: hypervisor, routers, a Linux host. smart_profiles
+#     't' lets SC4SNMP auto-apply built-in profiles (system/interfaces/host
+#     resources) so useful metrics flow without hand-writing profiles. Each device
+#     must have SNMP enabled with community '${COMMUNITY}' (snmp/enable-snmpd.sh on
+#     Linux hosts; snmp-server config on the routers). Override the whole list via
+#     SNMP_INVENTORY, or edit inventory.csv afterwards.
 run_root tee inventory.csv >/dev/null <<CSV
 address,port,version,community,secret,security_engine,walk_interval,profiles,smart_profiles,delete
-${PROXMOX},161,2c,${COMMUNITY},,,60,,,
+${PROXMOX},161,2c,${COMMUNITY},,,300,,t,
+198.18.3.32,161,2c,${COMMUNITY},,,300,,t,
+198.18.2.32,161,2c,${COMMUNITY},,,300,,t,
+198.18.2.11,161,2c,${COMMUNITY},,,300,,t,
 CSV
+# optional full override (multi-line CSV body without the header row)
+if [ -n "${SNMP_INVENTORY:-}" ]; then
+  { echo "address,port,version,community,secret,security_engine,walk_interval,profiles,smart_profiles,delete"; printf '%s\n' "${SNMP_INVENTORY}"; } | run_root tee inventory.csv >/dev/null
+fi
 
 # 4b) traps config - accept SNMPv2c traps using our community (this is what the
 #     demo-chaos traps use). Known-good, simple schema.

@@ -36,6 +36,14 @@ service timestamps log datetime msec
 logging host 198.18.1.124
 logging trap informational
 !
+! SNMP: let SC4SNMP poll this router (RO) and receive its traps
+snmp-server community dcloud RO
+snmp-server location London - dCloud lab
+snmp-server contact dcloud-lab
+snmp-server host 198.18.3.52 version 2c dcloud
+snmp-server enable traps snmp linkdown linkup coldstart warmstart
+snmp-server enable traps config
+!
 end
 crypto key generate rsa modulus 2048
 write memory
