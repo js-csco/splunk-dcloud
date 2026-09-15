@@ -262,7 +262,31 @@ def thresholds(field, medium, critical):
     }
 
 
-def kpi_payload(title, base_search, field, agg, unit, medium, critical):
+def adaptive_thresholds(field):
+    # ITSI ML/adaptive thresholding: severities are expressed in standard
+    # deviations from the learned mean (dynamicParam = # of stdev) rather than
+    # absolute values. High side only (spikes): +2 stdev warn, +3 stdev crit.
+    n_v, n_c, n_cl = SEV["normal"]
+    levels = []
+    for label, stdev in (("medium", 2), ("critical", 3)):
+        sv, sc, scl = SEV[label]
+        levels.append({"dynamicParam": stdev, "severityColor": sc, "severityColorLight": scl,
+                       "severityLabel": label, "severityValue": sv, "thresholdValue": stdev})
+    return {
+        "baseSeverityColor": n_c, "baseSeverityColorLight": n_cl,
+        "baseSeverityLabel": "normal", "baseSeverityValue": n_v,
+        "gaugeMax": 100, "gaugeMin": 0,
+        "isMaxStatic": False, "isMinStatic": False,
+        "metricField": field, "renderBoundaryMax": 100, "renderBoundaryMin": 0,
+        "search": "", "thresholdLevels": levels,
+    }
+
+
+def kpi_payload(title, base_search, field, agg, unit, medium, critical, adaptive=False):
+    # Adaptive (ML) thresholding only makes sense on continuous averaged metrics
+    # (CPU/mem/disk/latency), not on event counts.
+    use_adaptive = adaptive and agg == "avg"
+    thr = adaptive_thresholds(field) if use_adaptive else thresholds(field, medium, critical)
     return {
         "_key": str(uuid.uuid4()),
         "title": title,
@@ -289,14 +313,14 @@ def kpi_payload(title, base_search, field, agg, unit, medium, critical):
         # of only after the scheduled searches have run for a while.
         "backfill_enabled": True,
         "backfill_earliest_time": "-24h",
-        "time_variate_thresholds": False,
-        "adaptive_thresholds_is_enabled": False,
+        "time_variate_thresholds": use_adaptive,
+        "adaptive_thresholds_is_enabled": use_adaptive,
         "adaptive_thresholding_training_window": "-7d",
         "kpi_threshold_template_id": "",
         "kpi_base_search": "",
         "source": "service_kpi",
-        "aggregate_thresholds": thresholds(field, medium, critical),
-        "entity_thresholds": thresholds(field, medium, critical),
+        "aggregate_thresholds": thr,
+        "entity_thresholds": thr,
     }
 
 
@@ -333,6 +357,9 @@ def main():
     ap.add_argument("--password", default=os.environ.get("SPLUNK_ADMIN_PASSWORD", "C1sco12345"))
     ap.add_argument("--verbose", action="store_true", help="print server error bodies")
     ap.add_argument("--dry-run", action="store_true", help="print what would be created, call nothing")
+    ap.add_argument("--adaptive", action="store_true",
+                    help="enable ITSI adaptive/ML thresholding on CPU/mem/disk/latency KPIs "
+                         "(premium; needs an ITSI license). Static thresholds otherwise.")
     args = ap.parse_args()
 
     if args.dry_run:
@@ -367,7 +394,7 @@ def main():
             sys.stderr.write("  WARN %s: unresolved dependencies %s (order?) - creating without them.\n"
                              % (svc["title"], missing))
         dep_keys = [keys[d] for d in svc["depends_on"] if d in keys]
-        kpi_objs = [kpi_payload(*k) for k in svc["kpis"]]
+        kpi_objs = [kpi_payload(*k, adaptive=args.adaptive) for k in svc["kpis"]]
         key = itsi.upsert("service", svc["title"],
                           service_payload(svc["desc"], svc["rule"], kpi_objs, dep_keys))
         if key:
