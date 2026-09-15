@@ -32,7 +32,29 @@ WEB_VMID="${WEB_VMID:-200}"
 DB_VMID="${DB_VMID:-201}"
 ACTION="${1:-status}"
 
+# SNMP trap: PUSH the event the instant it happens (vs waiting for the poll/
+# heartbeat to notice). Sent to the SC4SNMP trap receiver -> index berlin_snmp
+# -> the "SNMP trap received -> Webex" alert fires. Set SEND_TRAP=0 to disable.
+SEND_TRAP="${SEND_TRAP:-1}"
+SNMP_TRAP_TARGET="${SNMP_TRAP_TARGET:-198.18.3.52}"   # ubuntu-berlin-snmp (SC4SNMP)
+SNMP_COMMUNITY="${SNMP_COMMUNITY:-dcloud}"
+
 run_root() { if [ "$(id -u)" = "0" ]; then "$@"; else sudo "$@"; fi; }
+
+send_trap() { # <label> <STATE>
+  [ "${SEND_TRAP}" = "1" ] || return 0
+  command -v snmptrap >/dev/null 2>&1 || { export DEBIAN_FRONTEND=noninteractive; \
+    run_root apt-get update -y >/dev/null 2>&1 && run_root apt-get install -y snmp >/dev/null 2>&1 || true; }
+  command -v snmptrap >/dev/null 2>&1 || { echo "   (snmptrap not installed - skipping trap)"; return 0; }
+  local msg="dCloud ${1} container is ${2}"
+  # NET-SNMP example notification OID; the string varbind carries the message.
+  if snmptrap -v2c -c "${SNMP_COMMUNITY}" "${SNMP_TRAP_TARGET}:162" '' \
+       1.3.6.1.4.1.8072.2.3.0.1 1.3.6.1.4.1.8072.2.3.2.1 s "${msg}" 2>/dev/null; then
+    echo "   -> SNMP trap PUSHED to ${SNMP_TRAP_TARGET}:162  (\"${msg}\")"
+  else
+    echo "   (trap send failed - is SC4SNMP up on ${SNMP_TRAP_TARGET}? traps use UDP 162)"
+  fi
+}
 
 # Run pct locally on the Proxmox host, or over SSH from elsewhere.
 if command -v pct >/dev/null 2>&1; then
@@ -64,6 +86,7 @@ break_ct() { # <vmid> <label>
   if ct_exists "$1"; then
     echo "== CHAOS: stopping ${2} container (VMID ${1}) =="
     remote "pct stop ${1}" || true
+    send_trap "$2" "DOWN"
   else
     missing_note "$1" "stop"
   fi
@@ -71,6 +94,7 @@ break_ct() { # <vmid> <label>
 start_ct() { # <vmid> <label>
   if ct_exists "$1"; then
     remote "pct start ${1}" || true
+    send_trap "$2" "UP"
   else
     missing_note "$1" "start"
   fi
@@ -105,10 +129,12 @@ echo "Current container status:"
 show_status
 cat <<'EOF'
 
-Watch the effect in Splunk (allow ~2-5 min for KPIs/probes to catch up):
-  * ITSI  -> Service Analyzer: "Web Service (Berlin)" / "Database Service (Berlin)"
-            and the "Global IT Operations" rollup turn red.
-  * Splunk -> Correlation app -> Root Cause Analysis: pinpoints the down layer.
-  * Alerts -> enable "dcloud - Service unavailable -> Webex" to get a Webex ping.
-Recover with:  demo-chaos.sh recover
+Watch the effect in Splunk:
+  * INSTANT (push): the SNMP trap is in index=berlin_snmp within seconds; the
+    "dcloud - SNMP trap received -> Webex" alert fires. This is the real-time signal.
+  * ~2-5 min (poll): ITSI Service Analyzer turns "Web/Database Service" + the
+    "Global IT Operations" rollup red as the heartbeat gap is detected.
+  * Correlation -> Root Cause Analysis pinpoints the down layer.
+Recover with:  demo-chaos.sh recover     (sends an "UP" trap too)
+Note: the trap needs SC4SNMP running on ubuntu-berlin-snmp (snmp/setup-sc4snmp.sh).
 EOF
