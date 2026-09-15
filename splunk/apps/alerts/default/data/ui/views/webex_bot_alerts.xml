@@ -142,4 +142,28 @@ sudo chmod 600 /opt/splunk/var/lib/dcloud/webex.env</pre>
       </html>
     </panel>
   </row>
+
+  <row>
+    <panel>
+      <title>Delete the Webex connection</title>
+      <html>
+        <div style="background:#2a1416;border-left:4px solid #d93f3c;border-radius:8px;padding:14px 16px;">
+          <p style="color:#cdd9e5;font-size:13px;line-height:1.55;margin:0 0 8px;">Nothing about
+          your Webex is stored in the repo — the credential lives <b>only</b> in
+          <code>webex.env</code> on this box. To hand the lab to someone else (so they add
+          <b>their own</b> bot/room), or to disconnect Webex entirely, remove that file:</p>
+          <pre style="white-space:pre-wrap;background:#0b0e12;padding:10px;border-radius:6px;color:#cdd9e5;font-size:12px;">sudo rm -f /opt/splunk/var/lib/dcloud/webex.env</pre>
+          <p style="color:#cdd9e5;font-size:13px;line-height:1.55;margin:8px 0 0;">The alert action
+          keeps working but simply <b>no-ops</b> (the send-attempts panel above shows
+          <span style="color:#f2b827;">"no credential set"</span>) until a new
+          <code>webex.env</code> is added. Optionally also turn the alerts off in
+          <b>Settings ▸ Searches, reports, and alerts</b> (disable the two "→ Webex" alerts).</p>
+          <p style="color:#8b98a5;font-size:12px;margin:8px 0 0;">To revoke it on Webex's side too,
+          delete or regenerate the bot at <b>developer.webex.com ▸ My Webex Apps</b>. And remember:
+          if <code>apply.sh</code> is started with <code>WEBEX_*</code> env vars (or the dCloud
+          startup command sets them), the file is re-created next run — clear those to keep it gone.</p>
+        </div>
+      </html>
+    </panel>
+  </row>
 </dashboard>
