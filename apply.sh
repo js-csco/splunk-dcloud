@@ -125,13 +125,12 @@ fi
 # Guaranteed no-file-move path that needs no Splunkbase entitlement/terms: host
 # the package at a URL the lab can reach (your own file host, a temporary signed
 # link, an internal server) and it is fetched + extracted server-side, before
-# Splunk starts. Nothing is committed to the repo. Space-separated in
-# SPLUNK_INSTALL_URLS, or entered interactively. .spl and .tgz are both gzip
+# Splunk starts. Nothing is committed to the repo. .spl and .tgz are both gzip
 # tarballs, so extraction handles either.
-if [ -z "${SPLUNK_INSTALL_URLS:-}" ] && [ -r /dev/tty ]; then
-  printf 'Direct URL(s) of .spl/.tgz apps to install (ITSI/others; space-separated; blank to skip): ' > /dev/tty
-  IFS= read -r SPLUNK_INSTALL_URLS < /dev/tty || true
-fi
+#
+# ENV-ONLY (no prompt), so apply.sh runs unattended. To install packages, set
+# SPLUNK_INSTALL_URLS (space-separated) when running apply.sh, e.g.:
+#   sudo SPLUNK_INSTALL_URLS="https://host/itew_501.spl" bash apply.sh
 if [ -n "${SPLUNK_INSTALL_URLS:-}" ]; then
   for _u in ${SPLUNK_INSTALL_URLS}; do
     _tmp="$(mktemp /tmp/appdl.XXXXXX.tgz)"
