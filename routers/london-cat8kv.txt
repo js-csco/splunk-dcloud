@@ -36,7 +36,10 @@ service timestamps log datetime msec
 logging host 198.18.1.124
 logging trap informational
 !
-! SNMP: let SC4SNMP poll this router (RO) and receive its traps
+! SNMP: let SC4SNMP poll this router (RO) and receive its traps.
+! Modern IOS-XE ships in "secure mode" which blocks SNMP v1/v2c; allow it for
+! the lab. (Secure alternative: configure SNMPv3 instead and skip this line.)
+system mode insecure
 snmp-server community dcloud RO
 snmp-server location London - dCloud lab
 snmp-server contact dcloud-lab
