@@ -1,205 +1,138 @@
 <dashboard version="1.1" theme="dark">
   <label>Webex Bot Alerts</label>
-  <description>Bring your own Webex bot: create a bot token + space, wire it into the lab, and send Splunk alerts to Webex.</description>
+  <description>Send Splunk / ITSI alerts to your Webex space, and run the live break-it demo.</description>
 
   <row>
     <panel>
       <html>
-        <h2>Send Splunk alerts to Webex — bring your own bot</h2>
-        <p>This lab ships a custom <b>"Webex message"</b> alert action. It has no standing
-        connection to Webex — when an alert fires, Splunk runs a small script that makes a
-        single outbound HTTPS call to Webex using <b>your</b> credential. Everyone brings their
-        own bot, so nothing sensitive is committed to the repo. Three steps: <b>1)</b> create a
-        bot, <b>2)</b> create a space and get its room ID, <b>3)</b> wire the credential into
-        the lab. Then enable an alert and watch messages land in your space.</p>
-      </html>
-    </panel>
-  </row>
-
-  <row>
-    <panel>
-      <title>1 — Create a Webex bot (get the token)</title>
-      <html>
-        <ol style="line-height:1.7;">
-          <li>Go to <a href="https://developer.webex.com/my-apps/new/bot" target="_blank" rel="noopener">developer.webex.com/my-apps/new/bot</a> and sign in with your Webex account.</li>
-          <li>Fill in a <b>Bot name</b>, a unique <b>Bot username</b> (e.g. <code>dcloud-splunk-bot</code> → becomes <code>dcloud-splunk-bot@webex.bot</code>), pick an icon, add a description.</li>
-          <li>Click <b>Add Bot</b>.</li>
-          <li>Copy the <b>Bot access token</b> shown on the next screen — <b style="color:#f2b827;">this is shown only once</b>. This is your <code>WEBEX_BOT_TOKEN</code>.</li>
-        </ol>
-        <p style="color:#f2b827;font-size:12px;"><b>⚠ Use the Bot ACCESS TOKEN, not the Bot ID.</b>
-        The token is a long (~108-char) string. The <b>Bot ID</b> (a base64 value that decodes to
-        <code>…/APPLICATION/…</code>) is <i>not</i> a credential and returns HTTP 401. Missed
-        copying the token at creation? Open the bot under <b>My Webex Apps</b> and
-        <b>Regenerate</b> it.</p>
-        <p style="color:#8b98a5;font-size:12px;">Bot tokens are long-lived (~100 years), unlike
-        the 12-hour personal developer token — which is why a bot is the right choice for an
-        unattended alert action. If you lose the token, open the bot under <b>My Webex Apps</b>
-        and regenerate it.</p>
-      </html>
-    </panel>
-    <panel>
-      <title>2 — Create a space and get its room ID</title>
-      <html>
-        <ol style="line-height:1.7;">
-          <li>In the <b>Webex app</b>, create a space, e.g. <b>"dCloud Alerts"</b>.</li>
-          <li><b style="color:#f2b827;">Add your bot to the space</b> by its
-          <code>…@webex.bot</code> username. A bot can only post to spaces it belongs to — this
-          is the step people forget.</li>
-          <li>Get the space's ID: open the interactive <b>List Rooms</b> docs at
-          <a href="https://developer.webex.com/docs/api/v1/rooms/list-rooms" target="_blank" rel="noopener">developer.webex.com/docs/api/v1/rooms/list-rooms</a>,
-          paste your <b>bot token</b> as the bearer, run <code>GET /v1/rooms</code>, find your
-          space by title, and copy its <code>id</code>. This is your <code>WEBEX_ROOM_ID</code>.</li>
-        </ol>
-        <p style="color:#8b98a5;font-size:12px;">Prefer zero setup? A Webex <b>Incoming Webhook</b>
-        gives you a single URL and needs no room ID — set <code>WEBEX_WEBHOOK_URL</code> instead
-        of the token+room. Create one from a space: <b>Apps ▸ Incoming Webhooks ▸ Add</b>.</p>
-      </html>
-    </panel>
-  </row>
-
-  <row>
-    <panel>
-      <title>3 — Wire the credential into the lab</title>
-      <html>
-        <p>The credential lives <b>out of the repo</b> in
-        <code>$SPLUNK_HOME/var/lib/dcloud/webex.env</code>. The easy path: pass it to
-        <code>apply.sh</code> as env vars at session start and it writes the file for you.</p>
-        <p><b>Option A — bot token + room ID:</b></p>
-        <pre style="white-space:pre-wrap;background:#11151a;padding:12px;border-radius:6px;color:#cdd9e5;">sudo WEBEX_BOT_TOKEN='&lt;your bot token&gt;' \
-     WEBEX_ROOM_ID='&lt;your room id&gt;' \
-     bash /opt/dcloud-splunk/apply.sh</pre>
-        <p><b>Option B — incoming webhook (one value):</b></p>
-        <pre style="white-space:pre-wrap;background:#11151a;padding:12px;border-radius:6px;color:#cdd9e5;">sudo WEBEX_WEBHOOK_URL='https://webexapis.com/v1/webhooks/incoming/XXXX' \
-     bash /opt/dcloud-splunk/apply.sh</pre>
-        <p><b>Or write the file directly</b> (no re-run of apply.sh needed — the action reads it
-        on each fire):</p>
-        <pre style="white-space:pre-wrap;background:#11151a;padding:12px;border-radius:6px;color:#cdd9e5;">sudo install -d -m700 -o splunk -g splunk /opt/splunk/var/lib/dcloud
-sudo -u splunk tee /opt/splunk/var/lib/dcloud/webex.env &gt;/dev/null &lt;&lt;'EOF'
-WEBEX_BOT_TOKEN=&lt;your bot token&gt;
-WEBEX_ROOM_ID=&lt;your room id&gt;
-EOF
-sudo chmod 600 /opt/splunk/var/lib/dcloud/webex.env</pre>
-        <p style="color:#8b98a5;font-size:12px;">The file is chmod 600 and owned by the splunk
-        user. It is never committed and is wiped on session reset (re-run apply.sh with the env
-        vars, or the dCloud startup command, to recreate it).</p>
-      </html>
-    </panel>
-  </row>
-
-  <row>
-    <panel>
-      <title>Is a credential wired up? (recent send attempts)</title>
-      <table>
-        <search>
-          <query>index=_internal sourcetype=splunkd "webex_notify:"
-| rex field=_raw "webex_notify:\s+(?&lt;detail&gt;.*)$"
-| eval Result=case(like(detail,"sent%"),"● sent", like(detail,"no Webex credential%"),"● no credential set", 1==1,"● error")
-| table _time Result detail
-| sort - _time</query>
-          <earliest>-24h</earliest><latest>now</latest>
-        </search>
-        <option name="drilldown">none</option>
-        <option name="count">10</option>
-        <format type="color" field="Result">
-          <colorPalette type="map">{"● sent":#53a051,"● no credential set":#f2b827,"● error":#d93f3c}</colorPalette>
-        </format>
-      </table>
-    </panel>
-    <panel>
-      <title>Demo alerts using the Webex action</title>
-      <table>
-        <search>
-          <query>| rest /servicesNS/-/alerts/saved/searches
-| search action.webex_notify=1
-| eval Enabled=if(disabled=0 AND is_scheduled=1,"● enabled","○ disabled")
-| rename title as Alert, cron_schedule as Schedule
-| table Alert Enabled Schedule action.webex_notify.param.message
-| rename action.webex_notify.param.message as "Message sent"</query>
-          <earliest>-1m</earliest><latest>now</latest>
-        </search>
-        <option name="drilldown">none</option>
-        <format type="color" field="Enabled">
-          <colorPalette type="map">{"● enabled":#53a051,"○ disabled":#8b98a5}</colorPalette>
-        </format>
-      </table>
-    </panel>
-  </row>
-
-  <row>
-    <panel>
-      <title>4 — Test it</title>
-      <html>
-        <ol style="line-height:1.7;">
-          <li>Go to <b>Settings ▸ Searches, reports, and alerts</b> (in the Search &amp; Reporting
-          app), find <b>"dcloud - SNMP trap received → Webex"</b> or <b>"dcloud - Service
-          unavailable → Webex"</b>, and <b>enable</b> it (they ship disabled).</li>
-          <li>Or attach the action to any search: <b>Save As ▸ Alert ▸ Add Actions ▸ Webex
-          message</b>, set the message, and run it.</li>
-          <li>Fire it (open the alert and click <b>Run</b>, or wait for its schedule). A message
-          appears in your Webex space, and the <b>send-attempts</b> panel above turns green
-          (<code>sent (HTTP 200)</code>).</li>
-        </ol>
-        <p style="color:#f2b827;font-size:12px;"><b>Troubleshooting:</b> yellow "no credential
-        set" → <code>webex.env</code> is missing or empty (step 3). Red "error" → usually the
-        bot isn't a member of the space (step 2), a bad token, or the room ID is wrong; the
-        detail column shows the HTTP status from Webex. The lab must have outbound HTTPS to
-        <code>webexapis.com</code>.</p>
-      </html>
-    </panel>
-  </row>
-
-  <row>
-    <panel>
-      <title>5 — Run the live demo (break something → Webex)</title>
-      <html>
-        <div style="background:#11151a;border:1px solid #2a3138;border-radius:10px;padding:16px;">
-          <p style="color:#cdd9e5;font-size:13px;line-height:1.55;margin:0 0 8px;">The Webex
-          message is sent by the <b>Alerts app</b> (these saved searches) — <b>not</b> by ITSI.
-          You trigger it by causing a real condition; ITSI is where you <i>watch</i> the impact.</p>
-          <p style="color:#e6edf3;font-size:13px;font-weight:600;margin:8px 0 4px;">① Arm the alert (once)</p>
-          <p style="color:#cdd9e5;font-size:12px;margin:0 0 8px;">In <b>Settings ▸ Searches, reports,
-          and alerts</b> enable <b>"dcloud - Incident: services degraded → Webex episode"</b>
-          (grouped, one message) and/or <b>"dcloud - Service unavailable → Webex"</b>.</p>
-          <p style="color:#e6edf3;font-size:13px;font-weight:600;margin:8px 0 4px;">② Break something — on the Proxmox host</p>
-          <pre style="white-space:pre-wrap;background:#0b0e12;padding:10px;border-radius:6px;color:#cdd9e5;font-size:12px;">bash /opt/dcloud-splunk/ubuntu/demo-chaos.sh break-web
-#   (or break-db / break-all)</pre>
-          <p style="color:#e6edf3;font-size:13px;font-weight:600;margin:8px 0 4px;">③ Watch (within ~1 scheduled cycle)</p>
-          <ul style="color:#cdd9e5;font-size:12px;line-height:1.5;margin:0 0 8px;">
-            <li><b>Webex</b> message lands in your space; the send-attempts panel above turns green.</li>
-            <li><b>Correlation ▸ Service Glass Table</b>: Web Service → Global turn red.</li>
-            <li><b>ITSI ▸ Service Analyzer</b>: Web Service → Proxmox Hypervisor → Berlin → Global cascade.</li>
-          </ul>
-          <p style="color:#e6edf3;font-size:13px;font-weight:600;margin:8px 0 4px;">④ Recover</p>
-          <pre style="white-space:pre-wrap;background:#0b0e12;padding:10px;border-radius:6px;color:#cdd9e5;font-size:12px;">bash /opt/dcloud-splunk/ubuntu/demo-chaos.sh recover</pre>
-          <p style="color:#8b98a5;font-size:12px;margin:6px 0 0;">Scheduled alerts run every 5 min.
-          To fire faster during a live demo, temporarily set the alert's cron to
-          <code>* * * * *</code> (every minute). Prefer real ITSI Episodes (Episode Review +
-          aggregation policy)? Build the Correlation Search + Notable Event Aggregation Policy in
-          the ITSI UI — see the README "ITSI Episodes" section — and add the Webex action there.</p>
+        <div style="padding:6px 4px;">
+          <div style="font-size:18px;font-weight:700;color:#e6edf3;">Webex Alerts</div>
+          <div style="font-size:13px;color:#8b98a5;margin-top:2px;">
+            The Webex message is sent by the <b>Alerts app</b> (not ITSI). Set up a bot once,
+            then trigger it by breaking something in the lab.
+          </div>
         </div>
       </html>
     </panel>
   </row>
 
+  <!-- ============ RUN THE DEMO (the main thing) ============ -->
   <row>
     <panel>
-      <title>Delete the Webex connection</title>
+      <title>▶ Run the demo</title>
       <html>
-        <div style="background:#2a1416;border-left:4px solid #d93f3c;border-radius:8px;padding:14px 16px;">
-          <p style="color:#cdd9e5;font-size:13px;line-height:1.55;margin:0 0 8px;">Nothing about
-          your Webex is stored in the repo — the credential lives <b>only</b> in
-          <code>webex.env</code> on this box. To hand the lab to someone else (so they add
-          <b>their own</b> bot/room), or to disconnect Webex entirely, remove that file:</p>
-          <pre style="white-space:pre-wrap;background:#0b0e12;padding:10px;border-radius:6px;color:#cdd9e5;font-size:12px;">sudo rm -f /opt/splunk/var/lib/dcloud/webex.env</pre>
-          <p style="color:#cdd9e5;font-size:13px;line-height:1.55;margin:8px 0 0;">The alert action
-          keeps working but simply <b>no-ops</b> (the send-attempts panel above shows
-          <span style="color:#f2b827;">"no credential set"</span>) until a new
-          <code>webex.env</code> is added. Optionally also turn the alerts off in
-          <b>Settings ▸ Searches, reports, and alerts</b> (disable the two "→ Webex" alerts).</p>
-          <p style="color:#8b98a5;font-size:12px;margin:8px 0 0;">To revoke it on Webex's side too,
-          delete or regenerate the bot at <b>developer.webex.com ▸ My Webex Apps</b>. And remember:
-          if <code>apply.sh</code> is started with <code>WEBEX_*</code> env vars (or the dCloud
-          startup command sets them), the file is re-created next run — clear those to keep it gone.</p>
+        <div style="background:#0f1a12;border-left:4px solid #53a051;border-radius:8px;padding:16px 18px;">
+          <div style="color:#cdd9e5;font-size:13px;">
+            <b style="color:#e6edf3;">1.</b> Enable the alert once — <b>Settings ▸ Searches, reports, and alerts</b> →
+            turn on <b>“dcloud - Incident: services degraded → Webex episode”</b>.
+          </div>
+
+          <div style="color:#cdd9e5;font-size:13px;margin-top:12px;">
+            <b style="color:#e6edf3;">2.</b> Break something — <b>run this on the Proxmox host</b> (198.18.3.11, as root):
+          </div>
+          <pre style="white-space:pre-wrap;background:#0b0e12;padding:12px;border-radius:6px;color:#9ff0a8;font-size:13px;margin:6px 0;">bash /opt/dcloud-splunk/ubuntu/demo-chaos.sh break-web</pre>
+
+          <div style="color:#cdd9e5;font-size:13px;margin-top:10px;">
+            <b style="color:#e6edf3;">3.</b> Watch: a <b>Webex</b> message arrives (status below turns green),
+            <b>Correlation ▸ Service Glass Table</b> goes red, and <b>ITSI ▸ Service Analyzer</b> cascades.
+          </div>
+
+          <div style="color:#cdd9e5;font-size:13px;margin-top:10px;">
+            <b style="color:#e6edf3;">4.</b> Recover:
+          </div>
+          <pre style="white-space:pre-wrap;background:#0b0e12;padding:12px;border-radius:6px;color:#cdd9e5;font-size:13px;margin:6px 0;">bash /opt/dcloud-splunk/ubuntu/demo-chaos.sh recover</pre>
+
+          <div style="color:#8b98a5;font-size:12px;margin-top:8px;">
+            Alerts run every 5 min — for a live audience set the alert’s cron to <code>* * * * *</code> to fire within a minute.
+          </div>
+        </div>
+      </html>
+    </panel>
+  </row>
+
+  <!-- ============ LIVE STATUS ============ -->
+  <row>
+    <panel>
+      <title>Did Webex send? (last 24h)</title>
+      <table>
+        <search>
+          <query>index=_internal sourcetype=splunkd "webex_notify:"
+| rex field=_raw "webex_notify:\s+(?&lt;detail&gt;.*)$"
+| eval Result=case(like(detail,"sent%"),"● sent", like(detail,"no Webex credential%"),"● no credential", 1==1,"● error")
+| table _time Result detail | sort - _time</query>
+          <earliest>-24h</earliest><latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="count">6</option>
+        <format type="color" field="Result"><colorPalette type="map">{"● sent":#53a051,"● no credential":#f2b827,"● error":#d93f3c}</colorPalette></format>
+      </table>
+    </panel>
+    <panel>
+      <title>Webex alerts (enabled?)</title>
+      <table>
+        <search>
+          <query>| rest /servicesNS/-/alerts/saved/searches | search action.webex_notify=1
+| eval Enabled=if(disabled=0 AND is_scheduled=1,"● on","○ off")
+| rename title as Alert | table Alert Enabled | sort Alert</query>
+          <earliest>-1m</earliest><latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <format type="color" field="Enabled"><colorPalette type="map">{"● on":#53a051,"○ off":#8b98a5}</colorPalette></format>
+      </table>
+    </panel>
+  </row>
+
+  <!-- ============ ONE-TIME SETUP ============ -->
+  <row>
+    <panel>
+      <title>Set up your Webex bot (one-time)</title>
+      <html>
+        <div style="color:#cdd9e5;font-size:13px;line-height:1.6;">
+          <b>1. Bot token</b> — at
+          <a href="https://developer.webex.com/my-apps/new/bot" target="_blank" rel="noopener">developer.webex.com</a>
+          create a bot and copy its <b>Bot Access Token</b> (the long ~108-char one —
+          <span style="color:#f2b827;">not</span> the Bot ID).<br/>
+          <b>2. Room</b> — create a Webex space, <b>add your bot to it</b>, then get the space
+          <code>id</code> from
+          <a href="https://developer.webex.com/docs/api/v1/rooms/list-rooms" target="_blank" rel="noopener">List Rooms</a>
+          (authenticated with the bot token).<br/>
+          <b>3. Save it on the Splunk box</b> (out-of-repo; read on every alert):
+        </div>
+        <pre style="white-space:pre-wrap;background:#0b0e12;padding:12px;border-radius:6px;color:#cdd9e5;font-size:12px;margin:8px 0 0;">sudo install -d -m750 -o splunk -g splunk /opt/splunk/var/lib/dcloud
+sudo -u splunk tee /opt/splunk/var/lib/dcloud/webex.env &gt;/dev/null &lt;&lt;'EOF'
+WEBEX_BOT_TOKEN=&lt;bot access token&gt;
+WEBEX_ROOM_ID=&lt;room id&gt;
+EOF
+sudo chmod 600 /opt/splunk/var/lib/dcloud/webex.env</pre>
+        <div style="color:#8b98a5;font-size:12px;margin-top:6px;">
+          Simpler option: an incoming webhook — put <code>WEBEX_WEBHOOK_URL=…</code> in that file
+          instead. Test without waiting for an alert:
+        </div>
+        <pre style="white-space:pre-wrap;background:#0b0e12;padding:12px;border-radius:6px;color:#cdd9e5;font-size:12px;margin:6px 0 0;">echo '{"search_name":"test","configuration":{"message":"✅ Webex wired up"}}' \
+| sudo -u splunk /opt/splunk/bin/splunk cmd python3 \
+    /opt/splunk/etc/apps/alerts/bin/webex_notify.py --execute</pre>
+      </html>
+    </panel>
+  </row>
+
+  <!-- ============ TROUBLESHOOT / RESET ============ -->
+  <row>
+    <panel>
+      <title>Troubleshoot &amp; reset</title>
+      <html>
+        <div style="color:#cdd9e5;font-size:12px;line-height:1.6;">
+          <b>Status meanings</b> (table above): <span style="color:#f2b827;">no credential</span> →
+          <code>webex.env</code> missing/empty · <span style="color:#d93f3c;">error</span> →
+          bot not in the space, bad token, or wrong room id (the detail column shows the HTTP code
+          from Webex). Needs outbound HTTPS to <code>webexapis.com</code>.<br/><br/>
+          <b>Hand the lab to someone else / disconnect</b> — nothing about your Webex is in the
+          repo; remove the credential and the action simply no-ops until a new one is added:
+        </div>
+        <pre style="white-space:pre-wrap;background:#0b0e12;padding:10px;border-radius:6px;color:#cdd9e5;font-size:12px;margin:8px 0 0;">sudo rm -f /opt/splunk/var/lib/dcloud/webex.env</pre>
+        <div style="color:#8b98a5;font-size:12px;margin-top:6px;">
+          For real ITSI <b>Episodes</b> (Episode Review + aggregation policy that sends Webex),
+          build a Correlation Search + Notable Event Aggregation Policy in the ITSI UI — see the
+          README “ITSI Episodes” section.
         </div>
       </html>
     </panel>
