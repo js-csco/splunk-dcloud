@@ -62,12 +62,55 @@ setenv SPLUNK_HEC_INDEX_EVENTS "${HEC_INDEX}"
 setenv SPLUNK_HEC_INDEX_METRICS "${HEC_INDEX}"
 setenv SC4SNMP_VERSION "${SC4SNMP_VERSION:-latest}"
 
-# 4) inventory - poll the Proxmox host (v2c, our community). Add more rows for
-#    other devices later. Columns are the SC4SNMP inventory schema.
+# The docker-compose mounts several config files by ABSOLUTE path; if any of
+# these vars is empty the compose fails with "empty section between colons".
+# Point them all at files we create in this docker_compose dir.
+setenv SCHEDULER_CONFIG_FILE_ABSOLUTE_PATH "${CD}/scheduler-config.yaml"
+setenv TRAPS_CONFIG_FILE_ABSOLUTE_PATH     "${CD}/traps-config.yaml"
+setenv DISCOVERY_CONFIG_FILE_ABSOLUTE_PATH "${CD}/discovery-config.yaml"
+setenv INVENTORY_FILE_ABSOLUTE_PATH        "${CD}/inventory.csv"
+setenv COREFILE_ABS_PATH                   "${CD}/Corefile"
+
+# 4) config files ----------------------------------------------------------
+# 4a) inventory - poll the Proxmox host (v2c, our community). Add rows for more
+#     devices later. Columns are the SC4SNMP inventory schema.
 run_root tee inventory.csv >/dev/null <<CSV
 address,port,version,community,secret,security_engine,walk_interval,profiles,smart_profiles,delete
 ${PROXMOX},161,2c,${COMMUNITY},,,60,,,
 CSV
+
+# 4b) traps config - accept SNMPv2c traps using our community (this is what the
+#     demo-chaos traps use). Known-good, simple schema.
+run_root tee traps-config.yaml >/dev/null <<YAML
+communities:
+  2c:
+    - ${COMMUNITY}
+    - public
+usernameSecrets: []
+YAML
+
+# 4c) scheduler + discovery configs - minimal valid docs (defaults). Polling
+#     tuning can be added later; the trap path does not depend on these.
+run_root tee scheduler-config.yaml >/dev/null <<'YAML'
+# Minimal SC4SNMP scheduler/poller config - defaults are fine for the lab.
+poller: {}
+scheduler: {}
+worker: {}
+YAML
+run_root tee discovery-config.yaml >/dev/null <<'YAML'
+# Minimal discovery config (defaults).
+YAML
+
+# 4d) Corefile ships in the repo; if the pinned ref lacks it, create a simple one.
+[ -f Corefile ] || run_root tee Corefile >/dev/null <<'COREDNS'
+.:53 {
+    log
+    errors
+    auto
+    reload
+    forward . 8.8.8.8 1.1.1.1
+}
+COREDNS
 
 # 5) start the stack
 run_root docker compose --env-file .env up -d
