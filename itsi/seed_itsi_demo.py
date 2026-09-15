@@ -328,10 +328,25 @@ def kpi_payload(title, base_search, field, agg, unit, medium, critical, adaptive
         thr = adaptive_thresholds(field)
     else:
         thr = thresholds(field, medium, critical)
+    # Importance drives the service health score:
+    #   11 = GATING - the container-heartbeat Reachability. Down => service red,
+    #        regardless of the other KPIs (a dead service has 0 traffic, which the
+    #        volume KPIs would otherwise read as "green").
+    #    2 = informational - volume/count KPIs (visible, but must not dilute health).
+    #    5 = normal - latency, error counts, CPU/mem/disk, SNMP reachability
+    #        (SNMP not gating: SC4SNMP may be down without the service being down).
+    tl = title.lower()
+    if field == "up":
+        importance = 5 if "snmp" in tl else 11
+    elif "volume" in tl or "connections" in tl:
+        importance = 2
+    else:
+        importance = 5
     return {
         "_key": str(uuid.uuid4()),
         "title": title,
         "urgency": 5,
+        "importance": importance,
         "search_type": "adhoc",
         "base_search": base_search,
         "threshold_field": field,
