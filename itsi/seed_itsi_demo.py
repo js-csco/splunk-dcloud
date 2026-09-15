@@ -80,11 +80,16 @@ LEAF_SERVICES = [
         ("Proxmox Event Volume", "index=berlin_proxmox", "count", "count", "events", 50000, 200000),
     ]),
     ("Web Service (Berlin)", "The Berlin web application.", "role", "webserver", [
+        # Reachability: port probe -> down=0 when up, 100 when unreachable. This is
+        # what turns the service RED in the failure-injection demo (HTTP volume
+        # alone can't - zero traffic reads as green).
+        ("App Reachability",    "index=berlin_web sourcetype=port:probe port=8080 | eval down=if(open==1,0,100)", "down", "max", "%", 1, 50),
         ("HTTP Request Volume", "index=berlin_web sourcetype=webapp:access",             "count", "count", "req",    20000, 80000),
         ("HTTP Errors (5xx)",   "index=berlin_web sourcetype=webapp:access status>=500", "count", "count", "errors", 5,     25),
     ]),
     ("Database Service (Berlin)", "The Berlin PostgreSQL database.", "role", "database", [
-        ("DB Log Volume", "index=berlin_db sourcetype=postgres:log", "count", "count", "events", 20000, 80000),
+        ("DB Reachability", "index=berlin_web sourcetype=port:probe port=5432 | eval down=if(open==1,0,100)", "down", "max", "%", 1, 50),
+        ("DB Log Volume",   "index=berlin_db sourcetype=postgres:log", "count", "count", "events", 20000, 80000),
     ]),
     ("Network & Routers", "The Cisco Catalyst routers (London + Berlin).", "role", "router", [
         ("Router Poll Volume", "index=london_network OR index=berlin_network", "count", "count", "events", 100000, 500000),

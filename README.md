@@ -624,6 +624,23 @@ Then open **Correlation → Client → Hypervisor → App** (as **gary** — see
 sees the whole chain; Leo sees only the client side, Ben only the Berlin side —
 cross-domain correlation is a global-analyst capability.
 
+### Live failure-injection demo (`ubuntu/demo-chaos.sh`)
+
+The best live moment: **break something and watch Splunk + ITSI catch it.** Run on the
+Proxmox host (as root, no sudo) — or on ubuntu-berlin with sudo:
+
+```bash
+# stop the web-app (or: break-db / break-all)
+curl -fsSL https://raw.githubusercontent.com/js-csco/splunk-dcloud/main/ubuntu/demo-chaos.sh | bash -s -- break-web
+# ... show the effect, then bring it back:
+curl -fsSL https://raw.githubusercontent.com/js-csco/splunk-dcloud/main/ubuntu/demo-chaos.sh | bash -s -- recover
+```
+
+Within a few minutes: the ITSI **Web / Database Service** (and the **Global IT Operations**
+rollup) go **red** via the *App/DB Reachability* KPI; **Correlation → Root Cause Analysis**
+pinpoints the down layer; and if you've enabled **Alerts → "dcloud - Service unavailable →
+Webex"**, a Webex message fires. `recover` turns it all green again.
+
 **Notes:**
 - The "locations" are subnets in one physical site — no NAT, full routing between
   them — so the client IP appears verbatim in the web-app access log and `src_ip`
