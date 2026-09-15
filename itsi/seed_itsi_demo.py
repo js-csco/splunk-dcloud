@@ -81,19 +81,18 @@ SERVICES = [
     # ---- app tiers (carry KPIs; depend on the hypervisor they run on) ------
     {"title": "Web Service (Berlin)", "desc": "The Berlin web application container.",
      "rule": ("role", "webserver"), "depends_on": ["Proxmox Hypervisor"], "kpis": [
-        # Reachability: down=0 only when the probe confirms open==1; anything else -
-        # open==0 (container down) OR no probe data at all - is down=100 (RED). The
-        # "stats count ... latest(open)" guarantees one row even with zero events, so
-        # "no data" reads as DOWN, not green. This is what turns the branch red in the
-        # failure-injection demo.
-        ("App Reachability",    "index=berlin_web sourcetype=port:probe port=8080 | stats count as c latest(open) as open | eval down=if(open==1,0,100)", "down", "max", "%", 1, 50),
+        # Reachability %: up=100 only when the probe confirms open==1; open==0
+        # (container down) OR no probe data at all -> up=0 (RED). Reads naturally:
+        # 100% reachable = green, 0% = red. "stats count ... latest(open)"
+        # guarantees one row so "no data" is 0, not a silent green.
+        ("Reachability",        "index=berlin_web sourcetype=port:probe port=8080 | stats count as c latest(open) as open | eval up=if(open==1,100,0)", "up", "min", "%", 50, 50),
         ("Response Latency",    "index=berlin_web sourcetype=webapp:probe",              "latency_ms", "avg", "ms", 500, 1500),
         ("HTTP Request Volume", "index=berlin_web sourcetype=webapp:access",             "count", "count", "req",    20000, 80000),
         ("HTTP Errors (5xx)",   "index=berlin_web sourcetype=webapp:access status>=500", "count", "count", "errors", 5,     25),
      ]},
     {"title": "Database Service (Berlin)", "desc": "The Berlin PostgreSQL container.",
      "rule": ("role", "database"), "depends_on": ["Proxmox Hypervisor"], "kpis": [
-        ("DB Reachability", "index=berlin_web sourcetype=port:probe port=5432 | stats count as c latest(open) as open | eval down=if(open==1,0,100)", "down", "max", "%", 1, 50),
+        ("Reachability", "index=berlin_web sourcetype=port:probe port=5432 | stats count as c latest(open) as open | eval up=if(open==1,100,0)", "up", "min", "%", 50, 50),
         ("DB Errors",       "index=berlin_db sourcetype=postgres:log (ERROR OR FATAL)", "count", "count", "errors", 1, 10),
         ("DB Connections",  "index=berlin_db sourcetype=postgres:log \"connection authorized\"", "count", "count", "conns", 5000, 20000),
         ("DB Log Volume",   "index=berlin_db sourcetype=postgres:log", "count", "count", "events", 20000, 80000),
@@ -108,7 +107,7 @@ SERVICES = [
      "rule": ("host", "cat8kv-berlin"), "depends_on": [], "kpis": [
         # Reachability: count SSH-failure strings in the poll output (0 = reachable
         # -> green; a down/unreachable router makes every poll error -> red).
-        ("Reachability", "index=berlin_network (\"Connection timed out\" OR \"Connection refused\" OR \"No route to host\" OR \"Unable to negotiate\" OR \"Permission denied\" OR \"Could not resolve\")", "count", "count", "errors", 1, 3),
+        ("Poll Errors", "index=berlin_network (\"Connection timed out\" OR \"Connection refused\" OR \"No route to host\" OR \"Unable to negotiate\" OR \"Permission denied\" OR \"Could not resolve\")", "count", "count", "errors", 1, 3),
         ("Poll Volume",  "index=berlin_network", "count", "count", "events", 50000, 200000),
      ]},
     {"title": "Ubuntu London", "desc": "Ubuntu server host (London).",
@@ -119,7 +118,7 @@ SERVICES = [
      ]},
     {"title": "Router London", "desc": "Cisco Catalyst 8000v router (London).",
      "rule": ("host", "cat8kv-london"), "depends_on": [], "kpis": [
-        ("Reachability", "index=london_network (\"Connection timed out\" OR \"Connection refused\" OR \"No route to host\" OR \"Unable to negotiate\" OR \"Permission denied\" OR \"Could not resolve\")", "count", "count", "errors", 1, 3),
+        ("Poll Errors", "index=london_network (\"Connection timed out\" OR \"Connection refused\" OR \"No route to host\" OR \"Unable to negotiate\" OR \"Permission denied\" OR \"Could not resolve\")", "count", "count", "errors", 1, 3),
         ("Poll Volume",  "index=london_network", "count", "count", "events", 50000, 200000),
      ]},
     {"title": "Splunk Core", "desc": "The Splunk server itself (Location 1).",
@@ -271,6 +270,26 @@ def thresholds(field, medium, critical):
     }
 
 
+def up_thresholds(field):
+    # "Higher is better" metric (e.g. reachability %): 100 = green, 0 = red.
+    # Base severity (values BELOW the first level) is critical; at/above 50 is
+    # normal. So 100 -> green, 0 -> red, matching human intuition for "reachable".
+    c_v, c_c, c_cl = SEV["critical"]
+    n_v, n_c, n_cl = SEV["normal"]
+    return {
+        "baseSeverityColor": c_c, "baseSeverityColorLight": c_cl,
+        "baseSeverityLabel": "critical", "baseSeverityValue": c_v,
+        "gaugeMax": 100, "gaugeMin": 0,
+        "isMaxStatic": True, "isMinStatic": True,
+        "metricField": field, "renderBoundaryMax": 100, "renderBoundaryMin": 0,
+        "search": "",
+        "thresholdLevels": [
+            {"dynamicParam": "", "severityColor": n_c, "severityColorLight": n_cl,
+             "severityLabel": "normal", "severityValue": n_v, "thresholdValue": 50},
+        ],
+    }
+
+
 def adaptive_thresholds(field):
     # ITSI ML/adaptive thresholding: severities are expressed in standard
     # deviations from the learned mean (dynamicParam = # of stdev) rather than
@@ -295,7 +314,12 @@ def kpi_payload(title, base_search, field, agg, unit, medium, critical, adaptive
     # Adaptive (ML) thresholding only makes sense on continuous averaged metrics
     # (CPU/mem/disk/latency), not on event counts.
     use_adaptive = adaptive and agg == "avg"
-    thr = adaptive_thresholds(field) if use_adaptive else thresholds(field, medium, critical)
+    if field == "up":                       # reachability %: higher is better
+        thr = up_thresholds(field)
+    elif use_adaptive:
+        thr = adaptive_thresholds(field)
+    else:
+        thr = thresholds(field, medium, critical)
     return {
         "_key": str(uuid.uuid4()),
         "title": title,
@@ -316,7 +340,7 @@ def kpi_payload(title, base_search, field, agg, unit, medium, critical, adaptive
         # For reachability KPIs a data gap means "we lost sight of the service" -
         # treat that as high severity, not the silent "unknown" that reads green.
         "fill_gaps": "null_value",
-        "gap_severity": ("high" if field == "down" else "unknown"),
+        "gap_severity": ("high" if field == "up" else "unknown"),
         "alert_period": "5",
         "alert_lag": "30",
         "search_alert_earliest": "5",
