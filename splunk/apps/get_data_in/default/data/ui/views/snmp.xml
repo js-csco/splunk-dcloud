@@ -1,117 +1,148 @@
 <dashboard version="1.1" theme="dark">
   <label>SNMP — Splunk Connect (SC4SNMP)</label>
-  <description>Real-time SNMP into Splunk via Splunk Connect for SNMP — polled metrics (GET) and pushed traps — from Proxmox and the Berlin services.</description>
+  <description>SNMP fleet at a glance: which devices are polled, live poll activity, and pushed traps (decoded into device / event / message).</description>
 
   <fieldset submitButton="false" autoRun="true">
     <input type="time" token="tr">
-      <label>Time range (charts)</label>
-      <default><earliest>-60m</earliest><latest>now</latest></default>
+      <label>Time range</label>
+      <default><earliest>-4h</earliest><latest>now</latest></default>
     </input>
   </fieldset>
 
+  <!-- KPI row -->
   <row>
     <panel>
-      <html>
-        <h2>SNMP via Splunk Connect for SNMP (SC4SNMP)</h2>
-        <p>SNMP has two modes: <b>GET/polling</b> (the collector asks a device on
-        UDP&#160;161 every N seconds) and <b>traps</b> (the device <i>pushes</i> an alert
-        to the collector on UDP&#160;162 the moment something happens — the real-time bit).
-        <b>SC4SNMP</b> (the supported Splunk tool) runs as a small Docker Compose stack on
-        <code>ubuntu-berlin-snmp</code> (198.18.3.52) and ships both to Splunk over HEC.</p>
-        <p style="color:#8b98a5;">Regional + RBAC: Berlin devices land in <code>berlin_snmp</code>
-        (London in <code>london_snmp</code> when routers are added), so the same per-location
-        wall applies — Ben sees Berlin SNMP, Leo London, Gary both.</p>
-      </html>
-    </panel>
-  </row>
-
-  <row>
-    <panel>
-      <title>SNMP feed — status (last 15 min)</title>
-      <table>
-        <search>
-          <query>| tstats count as c where index=berlin_snmp OR index=london_snmp
-| eval Status=if(c&gt;0,"ACTIVE","NO DATA")
-| table Status c | rename c as Events</query>
-          <earliest>-15m</earliest><latest>now</latest>
-        </search>
-        <option name="drilldown">none</option>
-        <option name="count">1</option>
-        <format type="color" field="Status"><colorPalette type="map">{"ACTIVE":#53a051,"NO DATA":#d93f3c}</colorPalette></format>
-      </table>
-    </panel>
-    <panel>
-      <title>Devices reporting (last 60 min)</title>
+      <title>Devices polled</title>
       <single>
         <search>
-          <query>index=berlin_snmp OR index=london_snmp | stats dc(host) as hosts</query>
+          <query>index=berlin_snmp OR index=london_snmp (sourcetype=sc4snmp:event OR sourcetype=sc4snmp:metric)
+| eval ip=replace(host,":.*","") | stats dc(ip)</query>
           <earliest>-60m</earliest><latest>now</latest>
         </search>
         <option name="drilldown">none</option>
-        <option name="colorBy">value</option>
-        <option name="rangeColors">["0x53a051","0x53a051"]</option>
+        <option name="colorBy">value</option><option name="rangeColors">["0x53a051","0x53a051"]</option>
+        <option name="underLabel">reporting in last 60m</option>
+      </single>
+    </panel>
+    <panel>
+      <title>Poll data points</title>
+      <single>
+        <search>
+          <query>index=berlin_snmp OR index=london_snmp (sourcetype=sc4snmp:event OR sourcetype=sc4snmp:metric)</query>
+          <earliest>$tr.earliest$</earliest><latest>$tr.latest$</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="colorBy">value</option><option name="rangeColors">["0x006d9c","0x006d9c"]</option>
+        <option name="underLabel">GET/poll (UDP 161)</option>
+      </single>
+    </panel>
+    <panel>
+      <title>Traps received</title>
+      <single>
+        <search>
+          <query>index=berlin_snmp OR index=london_snmp sourcetype=sc4snmp:traps</query>
+          <earliest>$tr.earliest$</earliest><latest>$tr.latest$</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="colorBy">value</option><option name="rangeColors">["0xf2b827","0xf2b827"]</option>
+        <option name="underLabel">pushed events (UDP 162)</option>
+      </single>
+    </panel>
+    <panel>
+      <title>Feed</title>
+      <single>
+        <search>
+          <query>| tstats count as c where index=berlin_snmp OR index=london_snmp
+| eval v=if(c&gt;0,1,0) | fields v</query>
+          <earliest>-15m</earliest><latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="colorBy">value</option><option name="colorMode">block</option><option name="useColors">1</option>
+        <option name="rangeValues">[1]</option>
+        <option name="rangeColors">["0xd93f3c","0x53a051"]</option>
+        <option name="underLabel">1 = data in last 15m</option>
       </single>
     </panel>
   </row>
 
+  <!-- Fleet -->
   <row>
     <panel>
-      <title>SNMP events over time (by sourcetype)</title>
+      <title>SNMP fleet — polled devices</title>
+      <table>
+        <search>
+          <query>index=berlin_snmp OR index=london_snmp (sourcetype=sc4snmp:event OR sourcetype=sc4snmp:metric)
+| eval ip=replace(host,":.*","")
+| eval Device=case(ip=="198.18.3.11","proxmox-berlin", ip=="198.18.3.32","cat8kv-berlin", ip=="198.18.2.32","cat8kv-london", ip=="198.18.2.11","desktop-london", ip=="198.18.3.52","ubuntu-berlin-snmp", 1==1,ip)
+| stats count as "Poll points" latest(_time) as last by Device ip
+| eval "Last seen"=strftime(last,"%F %T"), mins=round((now()-last)/60,1)
+| eval Status=if(mins&lt;15,"● polling","○ stale")
+| rename ip as IP | table Device IP "Poll points" "Last seen" Status | sort Device</query>
+          <earliest>$tr.earliest$</earliest><latest>$tr.latest$</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <format type="color" field="Status"><colorPalette type="map">{"● polling":#53a051,"○ stale":#f2b827}</colorPalette></format>
+      </table>
+    </panel>
+  </row>
+
+  <!-- Traps (the demo panel) -->
+  <row>
+    <panel>
+      <title>Recent SNMP traps (decoded)</title>
+      <table>
+        <search>
+          <query>index=berlin_snmp OR index=london_snmp sourcetype=sc4snmp:traps
+| rex field=_raw "snmpTrapOID[^}]*?\"value\":\s*\"(?&lt;Trap&gt;[^\"]+)\""
+| rex field=_raw "sysDescr[^}]*?\"value\":\s*\"(?&lt;Message&gt;[^\"]+)\""
+| rex field=_raw "sysName[^}]*?\"value\":\s*\"(?&lt;TrapName&gt;[^\"]+)\""
+| eval ip=replace(host,":.*","")
+| eval Device=case(ip=="198.18.3.11","proxmox-berlin", ip=="198.18.3.32","cat8kv-berlin", ip=="198.18.2.32","cat8kv-london", ip=="198.18.2.11","desktop-london", ip=="198.18.3.52","ubuntu-berlin-snmp", 1==1,ip)
+| eval Trap=coalesce(Trap,"(trap)"), Message=coalesce(Message,TrapName,"-")
+| eval State=case(match(Trap,"(?i)linkDown|coldStart|DOWN"),"● down", match(Trap,"(?i)linkUp|warmStart|UP"),"● up", 1==1,"○ info")
+| eval Event=replace(Trap,".*::","")
+| table _time Device Event Message State
+| sort - _time</query>
+          <earliest>$tr.earliest$</earliest><latest>$tr.latest$</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="count">15</option>
+        <format type="color" field="State"><colorPalette type="map">{"● down":#d93f3c,"● up":#53a051,"○ info":#8b98a5}</colorPalette></format>
+      </table>
+    </panel>
+  </row>
+
+  <!-- Timeline -->
+  <row>
+    <panel>
+      <title>Poll vs trap activity over time</title>
       <chart>
         <search>
-          <query>index=berlin_snmp OR index=london_snmp | timechart span=1m count by sourcetype</query>
+          <query>index=berlin_snmp OR index=london_snmp
+| eval kind=if(sourcetype=="sc4snmp:traps","traps (push)","poll (GET)")
+| timechart span=5m count by kind</query>
           <earliest>$tr.earliest$</earliest><latest>$tr.latest$</latest>
         </search>
         <option name="charting.chart">column</option>
         <option name="charting.chart.stackMode">stacked</option>
         <option name="charting.legend.placement">bottom</option>
+        <option name="charting.fieldColors">{"traps (push)":0xf2b827,"poll (GET)":0x006d9c}</option>
+        <option name="charting.drilldown">none</option>
       </chart>
     </panel>
   </row>
 
   <row>
     <panel>
-      <title>What's arriving (by host / sourcetype)</title>
-      <table>
-        <search>
-          <query>index=berlin_snmp OR index=london_snmp
-| stats count as Events, latest(_time) as last by host sourcetype
-| eval "Last seen"=strftime(last,"%F %T") | rename host as Host, sourcetype as Sourcetype
-| table Host Sourcetype Events "Last seen" | sort - Events</query>
-          <earliest>$tr.earliest$</earliest><latest>$tr.latest$</latest>
-        </search>
-        <option name="drilldown">none</option>
-      </table>
-    </panel>
-    <panel>
-      <title>Recent SNMP events / traps</title>
-      <event>
-        <search>
-          <query>index=berlin_snmp OR index=london_snmp | sort - _time | head 20</query>
-          <earliest>$tr.earliest$</earliest><latest>$tr.latest$</latest>
-        </search>
-        <option name="list.drilldown">none</option>
-        <option name="maxLines">10</option>
-      </event>
-    </panel>
-  </row>
-
-  <row>
-    <panel>
-      <title>How it works &amp; setup</title>
       <html>
-        <ol>
-          <li><b>Collector:</b> SC4SNMP (Docker Compose) on <b>ubuntu-berlin-snmp</b> —
-          <code>snmp/setup-sc4snmp.sh</code>. It polls devices and listens for traps, then
-          ships to Splunk HEC (enabled by <code>apply.sh</code>, index <code>berlin_snmp</code>).</li>
-          <li><b>Poll a device:</b> enable its SNMP agent — e.g. Proxmox via
-          <code>snmp/enable-proxmox-snmpd.sh</code> (community <code>dcloud</code>) — and add it
-          to the SC4SNMP inventory.</li>
-          <li><b>Traps (real-time):</b> point a device's trap sink at
-          <code>198.18.3.52:162</code>; the trap shows here within a second or two.</li>
-        </ol>
-        <p style="color:#8b98a5;">Runs independently of Proxmox (its own VM), so switching
-        Proxmox off in a demo doesn't take the SNMP collector down with it.</p>
+        <p style="color:#8b98a5;font-size:12px;line-height:1.6;">
+          <b>Two modes:</b> <span style="color:#006d9c;">poll (GET)</span> — SC4SNMP asks each
+          device on UDP 161 every ~5 min (system, interfaces, CPU/mem). <span style="color:#f2b827;">
+          traps (push)</span> — a device sends an event to UDP 162 the instant it happens
+          (linkDown/Up, restart) — the real-time signal. Fleet: Proxmox, both Catalyst routers,
+          and a Linux host (edit <code>inventory.csv</code> to add more). Regional/RBAC:
+          Berlin → <code>berlin_snmp</code>, London → <code>london_snmp</code>.
+        </p>
       </html>
     </panel>
   </row>
