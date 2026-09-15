@@ -77,6 +77,8 @@ SERVICES = [
     {"title": "Proxmox Hypervisor", "desc": "Berlin Proxmox hypervisor - hosts the app containers.",
      "rule": ("role", "hypervisor"), "depends_on": [], "kpis": [
         ("Proxmox Event Volume", "index=berlin_proxmox", "count", "count", "events", 50000, 200000),
+        # SNMP: is SC4SNMP getting poll data from the hypervisor's SNMP agent?
+        ("SNMP Reachability", "index=berlin_snmp host=198.18.3.11* (sourcetype=sc4snmp:event OR sourcetype=sc4snmp:metric) | stats count as c | eval up=if(c>0,100,0)", "up", "max", "%", 50, 50),
      ]},
     # ---- app tiers (carry KPIs; depend on the hypervisor they run on) ------
     {"title": "Web Service (Berlin)", "desc": "The Berlin web application container.",
@@ -105,10 +107,13 @@ SERVICES = [
      ]},
     {"title": "Router Berlin", "desc": "Cisco Catalyst 8000v router (Berlin).",
      "rule": ("host", "cat8kv-berlin"), "depends_on": [], "kpis": [
-        # Reachability: count SSH-failure strings in the poll output (0 = reachable
-        # -> green; a down/unreachable router makes every poll error -> red).
+        # SSH poll health (the scripted input).
         ("Poll Errors", "index=berlin_network (\"Connection timed out\" OR \"Connection refused\" OR \"No route to host\" OR \"Unable to negotiate\" OR \"Permission denied\" OR \"Could not resolve\")", "count", "count", "errors", 1, 3),
         ("Poll Volume",  "index=berlin_network", "count", "count", "events", 50000, 200000),
+        # SNMP: poll reachability (up% from SC4SNMP GET data) + link-down traps.
+        # A linkDown/coldStart trap makes this RED -> cascades up the tree.
+        ("SNMP Reachability", "index=berlin_snmp host=198.18.3.32* (sourcetype=sc4snmp:event OR sourcetype=sc4snmp:metric) | stats count as c | eval up=if(c>0,100,0)", "up", "max", "%", 50, 50),
+        ("Link-Down Traps",   "index=berlin_snmp sourcetype=sc4snmp:traps host=198.18.3.32* (linkDown OR coldStart)", "count", "count", "traps", 1, 1),
      ]},
     {"title": "Ubuntu London", "desc": "Ubuntu server host (London).",
      "rule": ("host", "ubuntu-london"), "depends_on": [], "kpis": [
@@ -120,6 +125,9 @@ SERVICES = [
      "rule": ("host", "cat8kv-london"), "depends_on": [], "kpis": [
         ("Poll Errors", "index=london_network (\"Connection timed out\" OR \"Connection refused\" OR \"No route to host\" OR \"Unable to negotiate\" OR \"Permission denied\" OR \"Could not resolve\")", "count", "count", "errors", 1, 3),
         ("Poll Volume",  "index=london_network", "count", "count", "events", 50000, 200000),
+        # SNMP (SC4SNMP ships all devices to berlin_snmp today; London router IP).
+        ("SNMP Reachability", "index=berlin_snmp host=198.18.2.32* (sourcetype=sc4snmp:event OR sourcetype=sc4snmp:metric) | stats count as c | eval up=if(c>0,100,0)", "up", "max", "%", 50, 50),
+        ("Link-Down Traps",   "index=berlin_snmp sourcetype=sc4snmp:traps host=198.18.2.32* (linkDown OR coldStart)", "count", "count", "traps", 1, 1),
      ]},
     {"title": "Splunk Core", "desc": "The Splunk server itself (Location 1).",
      "rule": ("role", "splunk"), "depends_on": [], "kpis": [
