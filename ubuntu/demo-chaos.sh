@@ -47,29 +47,54 @@ else
   remote() { "${SSH[@]}" "$@"; }
 fi
 
+ct_exists() { remote "pct config ${1}" >/dev/null 2>&1; }
+
+# Warn clearly if a container isn't there (it was never created, or got wiped) -
+# stopping/starting a missing VMID is otherwise a confusing silent no-op.
+missing_note() {
+  cat >&2 <<EOF
+!! Container VMID ${1} does not exist on this Proxmox node.
+   Nothing to ${2}. (Re)create the lab containers first, on the Proxmox host:
+     curl -fsSL https://raw.githubusercontent.com/js-csco/splunk-dcloud/main/ubuntu/create-webapp-container.sh | bash
+     curl -fsSL https://raw.githubusercontent.com/js-csco/splunk-dcloud/main/ubuntu/create-db-container.sh | bash
+EOF
+}
+
+break_ct() { # <vmid> <label>
+  if ct_exists "$1"; then
+    echo "== CHAOS: stopping ${2} container (VMID ${1}) =="
+    remote "pct stop ${1}" || true
+  else
+    missing_note "$1" "stop"
+  fi
+}
+start_ct() { # <vmid> <label>
+  if ct_exists "$1"; then
+    remote "pct start ${1}" || true
+  else
+    missing_note "$1" "start"
+  fi
+}
+
 show_status() {
   for pair in "web-app:${WEB_VMID}" "database:${DB_VMID}"; do
     name="${pair%%:*}"; vmid="${pair##*:}"
-    st="$(remote "pct status ${vmid}" 2>/dev/null | awk '{print $2}')"
+    if ct_exists "${vmid}"; then
+      st="$(remote "pct status ${vmid}" 2>/dev/null | awk '{print $2}')"
+    else
+      st="NOT CREATED"
+    fi
     printf '  %-9s (VMID %s): %s\n' "${name}" "${vmid}" "${st:-unknown}"
   done
 }
 
 case "${ACTION}" in
-  break-web)
-    echo "== CHAOS: stopping web-app container (VMID ${WEB_VMID}) =="
-    remote "pct stop ${WEB_VMID}" || true ;;
-  break-db)
-    echo "== CHAOS: stopping database container (VMID ${DB_VMID}) =="
-    remote "pct stop ${DB_VMID}" || true ;;
-  break-all)
-    echo "== CHAOS: stopping web-app + database containers =="
-    remote "pct stop ${WEB_VMID}" || true
-    remote "pct stop ${DB_VMID}"  || true ;;
+  break-web)  break_ct "${WEB_VMID}" "web-app" ;;
+  break-db)   break_ct "${DB_VMID}"  "database" ;;
+  break-all)  break_ct "${WEB_VMID}" "web-app"; break_ct "${DB_VMID}" "database" ;;
   recover)
     echo "== RECOVER: starting web-app + database containers =="
-    remote "pct start ${WEB_VMID}" || true
-    remote "pct start ${DB_VMID}"  || true ;;
+    start_ct "${WEB_VMID}" "web-app"; start_ct "${DB_VMID}" "database" ;;
   status) : ;;
   *)
     echo "Usage: demo-chaos.sh <break-web|break-db|break-all|recover|status>" >&2
