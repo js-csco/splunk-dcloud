@@ -83,25 +83,25 @@ SERVICES = [
     # ---- app tiers (carry KPIs; depend on the hypervisor they run on) ------
     {"title": "Web Service (Berlin)", "desc": "The Berlin web application container.",
      "rule": ("role", "webserver"), "depends_on": ["Proxmox Hypervisor"], "kpis": [
-        # Reachability %: an ACTIVE synthetic probe (check_webapp.sh on the
-        # ubuntu-berlin UF) hits http://198.18.3.50:8080/healthz every 60s and
-        # emits reachable=1/0 on EVERY tick - so it is true whether or not the
-        # app is busy. /healthz also returns 503 when the DB is down, so this one
-        # signal covers "web up AND its DB dependency up". Container down ->
-        # reachable=0 -> up=0 (RED). No probe data at all -> up=0 too.
-        ("Reachability",        "index=berlin_web sourcetype=webapp:probe | stats count as c latest(reachable) as r | eval up=if(c>0,r*100,0)", "up", "max", "%", 50, 50),
+        # Reachability %: the container's OWN forwarder runs collect_host_metrics
+        # every 60s, so linux:metrics from webapp-berlin is a HEARTBEAT that ticks
+        # regardless of whether anyone is using the app - idle != down. Container
+        # (or its forwarder) stops -> heartbeat stops -> up=0 (RED) within ~2 min.
+        # stats count always returns a row, so genuine no-data reads down, not gap.
+        ("Reachability",        "index=berlin_metrics sourcetype=linux:metrics host=webapp-berlin | stats count as c | eval up=if(c>0,100,0)", "up", "max", "%", 50, 50),
         ("Response Latency",    "index=berlin_web sourcetype=webapp:probe",              "latency_ms", "avg", "ms", 500, 1500),
         ("HTTP Request Volume", "index=berlin_web sourcetype=webapp:access",             "count", "count", "req",    20000, 80000),
         ("HTTP Errors (5xx)",   "index=berlin_web sourcetype=webapp:access status>=500", "count", "count", "errors", 5,     25),
      ]},
     {"title": "Database Service (Berlin)", "desc": "The Berlin PostgreSQL container.",
      "rule": ("role", "database"), "depends_on": ["Proxmox Hypervisor"], "kpis": [
-        # Reachability %: an ACTIVE TCP probe (check_ports.sh on the ubuntu-berlin
-        # UF) opens 198.18.3.51:5432 every 60s and emits open=1/0 on EVERY tick -
-        # so an idle-but-healthy DB reads open=1 (GREEN), not red. This is the fix
-        # for "reachability low just because nothing is happening": we test the
-        # port, not event volume. Container down -> open=0 -> up=0 (RED).
-        ("Reachability", "index=berlin_web sourcetype=port:probe port=5432 | stats count as c latest(open) as o | eval up=if(c>0,o*100,0)", "up", "max", "%", 50, 50),
+        # Reachability %: the DB container's OWN forwarder runs collect_host_metrics
+        # every 60s, so linux:metrics from db-berlin is a HEARTBEAT independent of
+        # DB traffic - an idle-but-healthy DB stays GREEN (this is the fix for
+        # "reachability low just because nothing is happening": we no longer count
+        # DB log events, we watch the 60s heartbeat). Container/forwarder down ->
+        # heartbeat stops -> up=0 (RED) within ~2 min.
+        ("Reachability", "index=berlin_metrics sourcetype=linux:metrics host=db-berlin | stats count as c | eval up=if(c>0,100,0)", "up", "max", "%", 50, 50),
         ("DB Errors",       "index=berlin_db sourcetype=postgres:log (ERROR OR FATAL)", "count", "count", "errors", 1, 10),
         ("DB Connections",  "index=berlin_db sourcetype=postgres:log \"connection authorized\"", "count", "count", "conns", 5000, 20000),
         ("DB Log Volume",   "index=berlin_db sourcetype=postgres:log", "count", "count", "events", 20000, 80000),
