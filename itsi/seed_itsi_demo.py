@@ -55,49 +55,89 @@ ENTITIES = [
     ("splunk",          "loc1",   "splunk",     "Splunk server (Location 1)"),
 ]
 
-# KPI spec: (title, base_search, threshold_field, aggregate, unit, medium, critical)
-#   medium/critical are ascending thresholds, tuned so normal lab activity reads
-#   green and a spike trips warning/critical.
+# --- The service tree ------------------------------------------------------
+# Each service is a dict:
+#   title       - unique service name
+#   desc        - description
+#   rule        - (field, value) entity rule for the entity inventory view, or None
+#   kpis        - list of KPI specs (may be empty for pure branch/rollup nodes)
+#   depends_on  - list of child service TITLES whose health rolls up into this one
 #
-# LEAF services: (title, description, rule_field, rule_value, [kpi specs])
-#   rule_field is an entity info field ("site" or "role"); the service auto-attaches
-#   every entity whose that field matches rule_value.
-LEAF_SERVICES = [
-    ("Splunk Core (loc1)", "The Splunk server itself (Location 1).", "role", "splunk", [
-        ("CPU Utilization",       "index=loc1_metrics sourcetype=linux:metrics", "cpu_pct",      "avg",   "%",      70, 90),
-        ("Memory Utilization",    "index=loc1_metrics sourcetype=linux:metrics", "mem_used_pct", "avg",   "%",      70, 90),
-        ("Internal Event Volume", "index=_internal",                             "count",        "count", "events", 800000, 2000000),
-    ]),
-    ("London Infrastructure", "Health of the London site hosts.", "site", "london", [
-        ("CPU Utilization",    "index=london_metrics sourcetype=linux:metrics", "cpu_pct",      "avg", "%", 70, 90),
-        ("Memory Utilization", "index=london_metrics sourcetype=linux:metrics", "mem_used_pct", "avg", "%", 70, 90),
-    ]),
-    ("Berlin Infrastructure", "Health of the Berlin site hosts.", "site", "berlin", [
-        ("CPU Utilization",    "index=berlin_metrics sourcetype=linux:metrics", "cpu_pct",      "avg", "%", 70, 90),
-        ("Memory Utilization", "index=berlin_metrics sourcetype=linux:metrics", "mem_used_pct", "avg", "%", 70, 90),
-    ]),
-    ("Hypervisor (Proxmox)", "The Berlin Proxmox hypervisor.", "role", "hypervisor", [
-        ("Proxmox Event Volume", "index=berlin_proxmox", "count", "count", "events", 50000, 200000),
-    ]),
-    ("Web Service (Berlin)", "The Berlin web application.", "role", "webserver", [
-        # Reachability: port probe -> down=0 when up, 100 when unreachable. This is
-        # what turns the service RED in the failure-injection demo (HTTP volume
-        # alone can't - zero traffic reads as green).
+# KPI spec: (title, base_search, threshold_field, aggregate, unit, medium, critical)
+#   The base_search is fully scoped (index + host filters), so KPI values do not
+#   depend on entity-rule matching. medium/critical are ascending thresholds tuned
+#   so normal lab activity reads green.
+#
+# Services are created in list order: every child appears BEFORE the parent that
+# depends on it, so dependency keys resolve.
+SERVICES = [
+    # ---- leaf services (carry KPIs) --------------------------------------
+    {"title": "Web Service (Berlin)", "desc": "The Berlin web application container.",
+     "rule": ("role", "webserver"), "depends_on": [], "kpis": [
+        # Reachability: port probe -> down=0 up, 100 unreachable. This is what turns
+        # the branch RED in the failure-injection demo (HTTP volume alone can't -
+        # zero traffic reads as green).
         ("App Reachability",    "index=berlin_web sourcetype=port:probe port=8080 | eval down=if(open==1,0,100)", "down", "max", "%", 1, 50),
         ("HTTP Request Volume", "index=berlin_web sourcetype=webapp:access",             "count", "count", "req",    20000, 80000),
         ("HTTP Errors (5xx)",   "index=berlin_web sourcetype=webapp:access status>=500", "count", "count", "errors", 5,     25),
-    ]),
-    ("Database Service (Berlin)", "The Berlin PostgreSQL database.", "role", "database", [
+     ]},
+    {"title": "Database Service (Berlin)", "desc": "The Berlin PostgreSQL container.",
+     "rule": ("role", "database"), "depends_on": [], "kpis": [
         ("DB Reachability", "index=berlin_web sourcetype=port:probe port=5432 | eval down=if(open==1,0,100)", "down", "max", "%", 1, 50),
         ("DB Log Volume",   "index=berlin_db sourcetype=postgres:log", "count", "count", "events", 20000, 80000),
-    ]),
-    ("Network & Routers", "The Cisco Catalyst routers (London + Berlin).", "role", "router", [
-        ("Router Poll Volume", "index=london_network OR index=berlin_network", "count", "count", "events", 100000, 500000),
-    ]),
+     ]},
+    {"title": "Ubuntu Berlin", "desc": "Ubuntu server host (Berlin).",
+     "rule": ("host", "ubuntu-berlin"), "depends_on": [], "kpis": [
+        ("CPU Utilization",    "index=berlin_metrics sourcetype=linux:metrics host=ubuntu-berlin", "cpu_pct",      "avg", "%", 70, 90),
+        ("Memory Utilization", "index=berlin_metrics sourcetype=linux:metrics host=ubuntu-berlin", "mem_used_pct", "avg", "%", 70, 90),
+     ]},
+    {"title": "Router Berlin", "desc": "Cisco Catalyst 8000v router (Berlin).",
+     "rule": ("host", "cat8kv-berlin"), "depends_on": [], "kpis": [
+        ("Poll Volume", "index=berlin_network", "count", "count", "events", 50000, 200000),
+     ]},
+    {"title": "Ubuntu London", "desc": "Ubuntu server host (London).",
+     "rule": ("host", "ubuntu-london"), "depends_on": [], "kpis": [
+        ("CPU Utilization",    "index=london_metrics sourcetype=linux:metrics host=ubuntu-london", "cpu_pct",      "avg", "%", 70, 90),
+        ("Memory Utilization", "index=london_metrics sourcetype=linux:metrics host=ubuntu-london", "mem_used_pct", "avg", "%", 70, 90),
+     ]},
+    {"title": "Router London", "desc": "Cisco Catalyst 8000v router (London).",
+     "rule": ("host", "cat8kv-london"), "depends_on": [], "kpis": [
+        ("Poll Volume", "index=london_network", "count", "count", "events", 50000, 200000),
+     ]},
+    {"title": "Splunk Core", "desc": "The Splunk server itself (Location 1).",
+     "rule": ("role", "splunk"), "depends_on": [], "kpis": [
+        ("CPU Utilization",       "index=loc1_metrics sourcetype=linux:metrics", "cpu_pct",      "avg",   "%",      70, 90),
+        ("Memory Utilization",    "index=loc1_metrics sourcetype=linux:metrics", "mem_used_pct", "avg",   "%",      70, 90),
+        ("Internal Event Volume", "index=_internal",                             "count",        "count", "events", 800000, 2000000),
+     ]},
+    # ---- mid-level branches ----------------------------------------------
+    {"title": "Proxmox Hypervisor", "desc": "Berlin Proxmox host + the containers it runs.",
+     "rule": ("role", "hypervisor"), "depends_on": ["Web Service (Berlin)", "Database Service (Berlin)"], "kpis": [
+        ("Proxmox Event Volume", "index=berlin_proxmox", "count", "count", "events", 50000, 200000),
+     ]},
+    {"title": "Berlin Infrastructure", "desc": "Berlin site hosts and network.",
+     "rule": None, "depends_on": ["Ubuntu Berlin", "Router Berlin"], "kpis": []},
+    {"title": "London Infrastructure", "desc": "London site hosts and network.",
+     "rule": None, "depends_on": ["Ubuntu London", "Router London"], "kpis": []},
+    # ---- location branches -----------------------------------------------
+    {"title": "Berlin", "desc": "Berlin location.",
+     "rule": None, "depends_on": ["Proxmox Hypervisor", "Berlin Infrastructure"], "kpis": []},
+    {"title": "London", "desc": "London location.",
+     "rule": None, "depends_on": ["London Infrastructure"], "kpis": []},
+    {"title": "Location 1", "desc": "Location 1 (the Splunk core site).",
+     "rule": None, "depends_on": ["Splunk Core"], "kpis": []},
+    # ---- top of the tree -------------------------------------------------
+    {"title": "Global IT Operations", "desc": "Top-level rollup of all locations.",
+     "rule": None, "depends_on": ["Berlin", "London", "Location 1"], "kpis": []},
 ]
 
-# Parent service - rolls up every leaf service into one health tree.
-PARENT_SERVICE = ("Global IT Operations", "Top-level rollup of every lab service.")
+# Services from earlier seeder versions that the tree renames/replaces - pruned
+# on each run so re-seeding doesn't leave orphans in Service Analyzer.
+DEPRECATED_SERVICES = [
+    "Hypervisor (Proxmox)",   # -> "Proxmox Hypervisor"
+    "Network & Routers",      # -> per-router services
+    "Splunk Core (loc1)",     # -> "Splunk Core"
+]
 
 # ITSI severity palette (value/label/colors) used to build thresholds.
 SEV = {
@@ -143,6 +183,16 @@ class ITSI:
         if code == 200 and isinstance(res, list) and res:
             return res[0].get("_key")
         return None
+
+    def delete(self, obj, title):
+        key = self.find(obj, title)
+        if not key:
+            return False
+        code, _ = self._call("DELETE", "%s/itoa_interface/%s/%s" % (APP_NS, obj, key))
+        ok = code in (200, 204)
+        print("  %-9s %-8s %s %s" % ("deleted" if ok else "FAILED", obj, title,
+                                     "" if ok else ("(HTTP %s)" % code)))
+        return ok
 
     def upsert(self, obj, title, payload):
         key = self.find(obj, title)
@@ -214,7 +264,9 @@ def kpi_payload(title, base_search, field, agg, unit, medium, critical):
         "search_aggregate": agg,
         "entity_statop": agg,
         "aggregate_statop": agg,
-        "is_service_entity_filter": True,
+        # KPIs are self-scoped (index/host baked into base_search), so don't gate
+        # them on the service's entity membership - more reliable across the tree.
+        "is_service_entity_filter": False,
         "entity_breakdown_id_fields": "host",
         "entity_id_fields": "host",
         "is_entity_breakdown": False,
@@ -238,32 +290,29 @@ def kpi_payload(title, base_search, field, agg, unit, medium, critical):
     }
 
 
-def service_payload(desc, rule_field, rule_value, kpis, depends_on=None):
+def service_payload(desc, rule, kpis, depends_on_keys):
+    # rule is (field, value) or None; field "host" matches the entity identifier
+    # (alias), "site"/"role" match informational fields. depends_on_keys is a list
+    # of child service _keys whose health scores roll up into this service.
     svc = {
         "description": desc,
         "enabled": 1,
-        "entity_rules": [{
-            "rule_condition": "AND",
-            "rule_items": [{"field": rule_field, "field_type": "info",
-                            "rule_type": "matches", "value": rule_value}],
-        }],
+        "entity_rules": [],
         "kpis": kpis,
     }
-    if depends_on:
-        svc["services_depends_on"] = depends_on
+    if rule:
+        field, value = rule
+        field_type = "alias" if field == "host" else "info"
+        svc["entity_rules"] = [{
+            "rule_condition": "AND",
+            "rule_items": [{"field": field, "field_type": field_type,
+                            "rule_type": "matches", "value": value}],
+        }]
+    if depends_on_keys:
+        svc["services_depends_on"] = [
+            {"serviceid": k, "kpis_depending_on": ["SHKPI-%s" % k]} for k in depends_on_keys
+        ]
     return svc
-
-
-def parent_payload(desc, depends_on):
-    # A rollup service: no entities of its own, health derived from the health
-    # scores of the services it depends on.
-    return {
-        "description": desc,
-        "enabled": 1,
-        "entity_rules": [],
-        "kpis": [],
-        "services_depends_on": depends_on,
-    }
 
 
 def main():
@@ -277,13 +326,14 @@ def main():
     args = ap.parse_args()
 
     if args.dry_run:
-        print("DRY RUN - would create %d entities, %d leaf services + 1 rollup:"
-              % (len(ENTITIES), len(LEAF_SERVICES)))
+        print("DRY RUN - would create %d entities and %d services (tree):"
+              % (len(ENTITIES), len(SERVICES)))
         for h, s, role, d in ENTITIES:
             print("  entity  %-16s site=%-7s role=%s" % (h, s, role))
-        for t, d, rf, rv, kpis in LEAF_SERVICES:
-            print("  service %-26s %s=%-10s KPIs: %s" % (t, rf, rv, ", ".join(k[0] for k in kpis)))
-        print("  service %-26s depends on all %d leaf services" % (PARENT_SERVICE[0], len(LEAF_SERVICES)))
+        for svc in SERVICES:
+            kpis = ", ".join(k[0] for k in svc["kpis"]) or "-"
+            deps = ", ".join(svc["depends_on"]) or "-"
+            print("  service %-24s KPIs: %-42s depends: %s" % (svc["title"], kpis, deps))
         return 0
 
     itsi = ITSI(args.host, args.user, args.password, verbose=args.verbose)
@@ -299,23 +349,30 @@ def main():
     for host, site, role, desc in ENTITIES:
         itsi.upsert("entity", host, entity_payload(host, site, role, desc))
 
-    print("Seeding ITSI leaf services + KPIs ...")
-    leaf_keys = []
-    for title, desc, rf, rv, kpis in LEAF_SERVICES:
-        kpi_objs = [kpi_payload(*k) for k in kpis]
-        key = itsi.upsert("service", title, service_payload(desc, rf, rv, kpi_objs))
+    print("Seeding ITSI service tree ...")
+    keys = {}   # title -> _key, filled as we go (children first)
+    for svc in SERVICES:
+        missing = [d for d in svc["depends_on"] if d not in keys]
+        if missing:
+            sys.stderr.write("  WARN %s: unresolved dependencies %s (order?) - creating without them.\n"
+                             % (svc["title"], missing))
+        dep_keys = [keys[d] for d in svc["depends_on"] if d in keys]
+        kpi_objs = [kpi_payload(*k) for k in svc["kpis"]]
+        key = itsi.upsert("service", svc["title"],
+                          service_payload(svc["desc"], svc["rule"], kpi_objs, dep_keys))
         if key:
-            leaf_keys.append(key)
+            keys[svc["title"]] = key
 
-    print("Seeding rollup service ...")
-    if leaf_keys:
-        deps = [{"serviceid": k, "kpis_depending_on": ["SHKPI-%s" % k]} for k in leaf_keys]
-        itsi.upsert("service", PARENT_SERVICE[0], parent_payload(PARENT_SERVICE[1], deps))
-    else:
-        sys.stderr.write("  skipped rollup - no leaf services were created.\n")
+    # Prune services from older seeder versions (renamed/replaced by the tree)
+    # so Service Analyzer doesn't keep the orphans. Done last, after the new tree
+    # (with rewritten dependencies) no longer references them.
+    print("Pruning deprecated services ...")
+    for title in DEPRECATED_SERVICES:
+        itsi.delete("service", title)
 
-    print("\nDone. Open the IT Service Intelligence app -> Service Analyzer. KPIs need a few "
-          "minutes of scheduled runs before they show a value.")
+    print("\nDone. Open IT Service Intelligence -> Service Analyzer -> Tree view to see the "
+          "location hierarchy. KPIs need a few minutes of scheduled runs (backfill seeds recent "
+          "values) before health colours settle.")
     return 0
 
 
