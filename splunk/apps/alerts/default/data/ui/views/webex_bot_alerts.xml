@@ -26,6 +26,11 @@
           <li>Click <b>Add Bot</b>.</li>
           <li>Copy the <b>Bot access token</b> shown on the next screen — <b style="color:#f2b827;">this is shown only once</b>. This is your <code>WEBEX_BOT_TOKEN</code>.</li>
         </ol>
+        <p style="color:#f2b827;font-size:12px;"><b>⚠ Use the Bot ACCESS TOKEN, not the Bot ID.</b>
+        The token is a long (~108-char) string. The <b>Bot ID</b> (a base64 value that decodes to
+        <code>…/APPLICATION/…</code>) is <i>not</i> a credential and returns HTTP 401. Missed
+        copying the token at creation? Open the bot under <b>My Webex Apps</b> and
+        <b>Regenerate</b> it.</p>
         <p style="color:#8b98a5;font-size:12px;">Bot tokens are long-lived (~100 years), unlike
         the 12-hour personal developer token — which is why a bot is the right choice for an
         unattended alert action. If you lose the token, open the bot under <b>My Webex Apps</b>
