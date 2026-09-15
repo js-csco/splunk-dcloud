@@ -68,8 +68,10 @@ Restart=always
 WantedBy=multi-user.target
 EOF
 systemctl daemon-reload
-systemctl enable --now webapp.service
-echo "web-app started on :${PORT} (systemctl status webapp)"
+systemctl enable webapp.service >/dev/null 2>&1 || true
+# restart (not just start) so re-provisioning picks up a new app.py
+systemctl restart webapp.service
+echo "web-app (re)started on :${PORT} (systemctl status webapp)"
 
 # --- 2) Universal Forwarder ------------------------------------------------
 if [ ! -x "${UF_HOME}/bin/splunk" ]; then
