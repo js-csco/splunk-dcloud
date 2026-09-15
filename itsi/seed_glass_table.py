@@ -168,9 +168,16 @@ def main():
     definition = build_definition()
     payload = {
         "title": GT_TITLE,
+        "identifying_name": GT_TITLE.lower(),
         "description": definition["description"],
         "sec_grp": SEC_GRP,
         "owner": args.owner,
+        # glass_table needs a full ACL block (the "owner fields" the API checks for);
+        # shared globally so every role sees it.
+        "acl": {
+            "owner": args.owner, "app": "itsi", "sharing": "global",
+            "perms": {"read": ["*"], "write": ["*"]},
+        },
         "definition": json.dumps(definition) if args.string_definition else definition,
     }
 
