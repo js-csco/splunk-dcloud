@@ -78,37 +78,47 @@ SERVICES = [
         # the branch RED in the failure-injection demo (HTTP volume alone can't -
         # zero traffic reads as green).
         ("App Reachability",    "index=berlin_web sourcetype=port:probe port=8080 | eval down=if(open==1,0,100)", "down", "max", "%", 1, 50),
+        ("Response Latency",    "index=berlin_web sourcetype=webapp:probe",              "latency_ms", "avg", "ms", 500, 1500),
         ("HTTP Request Volume", "index=berlin_web sourcetype=webapp:access",             "count", "count", "req",    20000, 80000),
         ("HTTP Errors (5xx)",   "index=berlin_web sourcetype=webapp:access status>=500", "count", "count", "errors", 5,     25),
      ]},
     {"title": "Database Service (Berlin)", "desc": "The Berlin PostgreSQL container.",
      "rule": ("role", "database"), "depends_on": [], "kpis": [
         ("DB Reachability", "index=berlin_web sourcetype=port:probe port=5432 | eval down=if(open==1,0,100)", "down", "max", "%", 1, 50),
+        ("DB Errors",       "index=berlin_db sourcetype=postgres:log (ERROR OR FATAL)", "count", "count", "errors", 1, 10),
+        ("DB Connections",  "index=berlin_db sourcetype=postgres:log \"connection authorized\"", "count", "count", "conns", 5000, 20000),
         ("DB Log Volume",   "index=berlin_db sourcetype=postgres:log", "count", "count", "events", 20000, 80000),
      ]},
     {"title": "Ubuntu Berlin", "desc": "Ubuntu server host (Berlin).",
      "rule": ("host", "ubuntu-berlin"), "depends_on": [], "kpis": [
-        ("CPU Utilization",    "index=berlin_metrics sourcetype=linux:metrics host=ubuntu-berlin", "cpu_pct",      "avg", "%", 70, 90),
-        ("Memory Utilization", "index=berlin_metrics sourcetype=linux:metrics host=ubuntu-berlin", "mem_used_pct", "avg", "%", 70, 90),
+        ("CPU Utilization",    "index=berlin_metrics sourcetype=linux:metrics host=ubuntu-berlin", "cpu_pct",       "avg", "%", 70, 90),
+        ("Memory Utilization", "index=berlin_metrics sourcetype=linux:metrics host=ubuntu-berlin", "mem_used_pct",  "avg", "%", 70, 90),
+        ("Disk Usage",         "index=berlin_metrics sourcetype=linux:metrics host=ubuntu-berlin", "disk_used_pct", "avg", "%", 80, 90),
      ]},
     {"title": "Router Berlin", "desc": "Cisco Catalyst 8000v router (Berlin).",
      "rule": ("host", "cat8kv-berlin"), "depends_on": [], "kpis": [
-        ("Poll Volume", "index=berlin_network", "count", "count", "events", 50000, 200000),
+        # Reachability: count SSH-failure strings in the poll output (0 = reachable
+        # -> green; a down/unreachable router makes every poll error -> red).
+        ("Reachability", "index=berlin_network (\"Connection timed out\" OR \"Connection refused\" OR \"No route to host\" OR \"Unable to negotiate\" OR \"Permission denied\" OR \"Could not resolve\")", "count", "count", "errors", 1, 3),
+        ("Poll Volume",  "index=berlin_network", "count", "count", "events", 50000, 200000),
      ]},
     {"title": "Ubuntu London", "desc": "Ubuntu server host (London).",
      "rule": ("host", "ubuntu-london"), "depends_on": [], "kpis": [
-        ("CPU Utilization",    "index=london_metrics sourcetype=linux:metrics host=ubuntu-london", "cpu_pct",      "avg", "%", 70, 90),
-        ("Memory Utilization", "index=london_metrics sourcetype=linux:metrics host=ubuntu-london", "mem_used_pct", "avg", "%", 70, 90),
+        ("CPU Utilization",    "index=london_metrics sourcetype=linux:metrics host=ubuntu-london", "cpu_pct",       "avg", "%", 70, 90),
+        ("Memory Utilization", "index=london_metrics sourcetype=linux:metrics host=ubuntu-london", "mem_used_pct",  "avg", "%", 70, 90),
+        ("Disk Usage",         "index=london_metrics sourcetype=linux:metrics host=ubuntu-london", "disk_used_pct", "avg", "%", 80, 90),
      ]},
     {"title": "Router London", "desc": "Cisco Catalyst 8000v router (London).",
      "rule": ("host", "cat8kv-london"), "depends_on": [], "kpis": [
-        ("Poll Volume", "index=london_network", "count", "count", "events", 50000, 200000),
+        ("Reachability", "index=london_network (\"Connection timed out\" OR \"Connection refused\" OR \"No route to host\" OR \"Unable to negotiate\" OR \"Permission denied\" OR \"Could not resolve\")", "count", "count", "errors", 1, 3),
+        ("Poll Volume",  "index=london_network", "count", "count", "events", 50000, 200000),
      ]},
     {"title": "Splunk Core", "desc": "The Splunk server itself (Location 1).",
      "rule": ("role", "splunk"), "depends_on": [], "kpis": [
-        ("CPU Utilization",       "index=loc1_metrics sourcetype=linux:metrics", "cpu_pct",      "avg",   "%",      70, 90),
-        ("Memory Utilization",    "index=loc1_metrics sourcetype=linux:metrics", "mem_used_pct", "avg",   "%",      70, 90),
-        ("Internal Event Volume", "index=_internal",                             "count",        "count", "events", 800000, 2000000),
+        ("CPU Utilization",       "index=loc1_metrics sourcetype=linux:metrics", "cpu_pct",       "avg",   "%",      70, 90),
+        ("Memory Utilization",    "index=loc1_metrics sourcetype=linux:metrics", "mem_used_pct",  "avg",   "%",      70, 90),
+        ("Disk Usage",            "index=loc1_metrics sourcetype=linux:metrics", "disk_used_pct", "avg",   "%",      80, 90),
+        ("Internal Event Volume", "index=_internal",                             "count",         "count", "events", 800000, 2000000),
      ]},
     # ---- mid-level branches ----------------------------------------------
     {"title": "Proxmox Hypervisor", "desc": "Berlin Proxmox host + the containers it runs.",
