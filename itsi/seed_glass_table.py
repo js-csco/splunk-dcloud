@@ -157,6 +157,8 @@ def main():
     ap.add_argument("--user", default=os.environ.get("SPLUNK_ADMIN_USER", "admin"))
     ap.add_argument("--password", default=os.environ.get("SPLUNK_ADMIN_PASSWORD", "C1sco12345"))
     ap.add_argument("--verbose", action="store_true")
+    ap.add_argument("--owner", default="nobody",
+                    help="owner field required by the glass_table object (default: nobody).")
     ap.add_argument("--string-definition", action="store_true",
                     help="send 'definition' as a JSON string instead of an object (try this if "
                          "the object form is rejected)")
@@ -168,6 +170,7 @@ def main():
         "title": GT_TITLE,
         "description": definition["description"],
         "sec_grp": SEC_GRP,
+        "owner": args.owner,
         "definition": json.dumps(definition) if args.string_definition else definition,
     }
 
