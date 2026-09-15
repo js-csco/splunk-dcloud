@@ -1,0 +1,194 @@
+<dashboard version="1.1" theme="dark">
+  <label>Service Glass Table</label>
+  <description>Service health wall, laid out as the location tree (Berlin / London / Location 1). ITE-W-friendly stand-in for a licensed ITSI glass table — live-colored from the same signals as the ITSI KPIs.</description>
+
+  <row>
+    <panel>
+      <html>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 4px;">
+          <div style="font-size:18px;font-weight:700;color:#e6edf3;">Service Health — Glass Table</div>
+          <div style="font-size:12px;color:#8b98a5;">
+            <span style="color:#53a051;">●</span> healthy &#160;
+            <span style="color:#f8be34;">●</span> warning &#160;
+            <span style="color:#d93f3c;">●</span> critical &#160; · reflects the last 15 min
+          </div>
+        </div>
+      </html>
+    </panel>
+  </row>
+
+  <!-- Top of tree -->
+  <row>
+    <panel>
+      <title>Global IT Operations</title>
+      <single>
+        <search>
+          <query>index=berlin_web sourcetype=port:probe port=8080 earliest=-15m | stats latest(open) as webopen
+| appendcols [ search index=berlin_web sourcetype=port:probe port=5432 earliest=-15m | stats latest(open) as dbopen ]
+| eval v=if(webopen==1 AND dbopen==1,0,100) | fields v</query>
+          <earliest>-15m</earliest><latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="colorBy">value</option>
+        <option name="colorMode">block</option>
+        <option name="useColors">1</option>
+        <option name="rangeValues">[50]</option>
+        <option name="rangeColors">["0x53a051","0xd93f3c"]</option>
+        <option name="underLabel">0 = all services available</option>
+      </single>
+    </panel>
+  </row>
+
+  <!-- Berlin branch -->
+  <row>
+    <panel>
+      <html><div style="font-size:14px;font-weight:700;color:#4a90d9;padding:4px 2px;">Berlin</div></html>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>Proxmox Hypervisor</title>
+      <single>
+        <search>
+          <query>index=berlin_proxmox earliest=-15m | stats count as c | eval v=if(c=0,50,0) | fields v</query>
+          <earliest>-15m</earliest><latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="colorBy">value</option><option name="colorMode">block</option><option name="useColors">1</option>
+        <option name="rangeValues">[1,80]</option>
+        <option name="rangeColors">["0x53a051","0xf8be34","0xd93f3c"]</option>
+        <option name="underLabel">poll freshness</option>
+      </single>
+    </panel>
+    <panel>
+      <title>Web Service</title>
+      <single>
+        <search>
+          <query>index=berlin_web sourcetype=port:probe port=8080 earliest=-15m | stats latest(open) as open
+| eval v=case(open==1,0,open==0,100,1==1,0) | fields v</query>
+          <earliest>-15m</earliest><latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="colorBy">value</option><option name="colorMode">block</option><option name="useColors">1</option>
+        <option name="rangeValues">[50]</option>
+        <option name="rangeColors">["0x53a051","0xd93f3c"]</option>
+        <option name="underLabel">0 = reachable :8080</option>
+      </single>
+    </panel>
+    <panel>
+      <title>Database Service</title>
+      <single>
+        <search>
+          <query>index=berlin_web sourcetype=port:probe port=5432 earliest=-15m | stats latest(open) as open
+| eval v=case(open==1,0,open==0,100,1==1,0) | fields v</query>
+          <earliest>-15m</earliest><latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="colorBy">value</option><option name="colorMode">block</option><option name="useColors">1</option>
+        <option name="rangeValues">[50]</option>
+        <option name="rangeColors">["0x53a051","0xd93f3c"]</option>
+        <option name="underLabel">0 = reachable :5432</option>
+      </single>
+    </panel>
+    <panel>
+      <title>Ubuntu Berlin</title>
+      <single>
+        <search>
+          <query>index=berlin_metrics sourcetype=linux:metrics host=ubuntu-berlin earliest=-15m | stats latest(cpu_pct) as v | fields v</query>
+          <earliest>-15m</earliest><latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="colorBy">value</option><option name="colorMode">block</option><option name="useColors">1</option>
+        <option name="rangeValues">[70,90]</option>
+        <option name="rangeColors">["0x53a051","0xf8be34","0xd93f3c"]</option>
+        <option name="unit">%</option><option name="underLabel">CPU</option>
+      </single>
+    </panel>
+    <panel>
+      <title>Router Berlin</title>
+      <single>
+        <search>
+          <query>index=berlin_network ("Connection timed out" OR "Connection refused" OR "No route to host" OR "Unable to negotiate" OR "Permission denied") earliest=-15m
+| stats count as c | eval v=if(c=0,0,100) | fields v</query>
+          <earliest>-15m</earliest><latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="colorBy">value</option><option name="colorMode">block</option><option name="useColors">1</option>
+        <option name="rangeValues">[50]</option>
+        <option name="rangeColors">["0x53a051","0xd93f3c"]</option>
+        <option name="underLabel">0 = reachable</option>
+      </single>
+    </panel>
+  </row>
+
+  <!-- London branch -->
+  <row>
+    <panel>
+      <html><div style="font-size:14px;font-weight:700;color:#4a90d9;padding:4px 2px;">London</div></html>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>Ubuntu London</title>
+      <single>
+        <search>
+          <query>index=london_metrics sourcetype=linux:metrics host=ubuntu-london earliest=-15m | stats latest(cpu_pct) as v | fields v</query>
+          <earliest>-15m</earliest><latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="colorBy">value</option><option name="colorMode">block</option><option name="useColors">1</option>
+        <option name="rangeValues">[70,90]</option>
+        <option name="rangeColors">["0x53a051","0xf8be34","0xd93f3c"]</option>
+        <option name="unit">%</option><option name="underLabel">CPU</option>
+      </single>
+    </panel>
+    <panel>
+      <title>Router London</title>
+      <single>
+        <search>
+          <query>index=london_network ("Connection timed out" OR "Connection refused" OR "No route to host" OR "Unable to negotiate" OR "Permission denied") earliest=-15m
+| stats count as c | eval v=if(c=0,0,100) | fields v</query>
+          <earliest>-15m</earliest><latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="colorBy">value</option><option name="colorMode">block</option><option name="useColors">1</option>
+        <option name="rangeValues">[50]</option>
+        <option name="rangeColors">["0x53a051","0xd93f3c"]</option>
+        <option name="underLabel">0 = reachable</option>
+      </single>
+    </panel>
+  </row>
+
+  <!-- Location 1 branch -->
+  <row>
+    <panel>
+      <html><div style="font-size:14px;font-weight:700;color:#4a90d9;padding:4px 2px;">Location 1</div></html>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>Splunk Core</title>
+      <single>
+        <search>
+          <query>index=loc1_metrics sourcetype=linux:metrics earliest=-15m | stats latest(cpu_pct) as v | fields v</query>
+          <earliest>-15m</earliest><latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="colorBy">value</option><option name="colorMode">block</option><option name="useColors">1</option>
+        <option name="rangeValues">[70,90]</option>
+        <option name="rangeColors">["0x53a051","0xf8be34","0xd93f3c"]</option>
+        <option name="unit">%</option><option name="underLabel">CPU</option>
+      </single>
+    </panel>
+    <panel>
+      <html>
+        <p style="color:#8b98a5;font-size:12px;line-height:1.5;padding-top:8px;">
+          This is the ITE-W-friendly glass table (native ITSI Glass Tables need an ITSI
+          license). Tiles read the same live signals as the ITSI KPIs, so they move together.
+          Run <code>demo-chaos.sh break-web</code> and watch <b>Web Service</b> → <b>Global</b>
+          turn red here in real time.
+        </p>
+      </html>
+    </panel>
+  </row>
+</dashboard>
