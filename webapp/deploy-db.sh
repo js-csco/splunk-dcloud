@@ -67,14 +67,53 @@ SQL
 sudo -u postgres psql -tc "SELECT 1 FROM pg_database WHERE datname='${DB_NAME}'" | grep -q 1 || \
   sudo -u postgres createdb -O "${DB_USER}" "${DB_NAME}"
 sudo -u postgres psql -d "${DB_NAME}" -v ON_ERROR_STOP=1 <<SQL
+-- Directory App schema: teams + employees (the org chart), plus the legacy
+-- 'entries' table (kept, harmless).
+CREATE TABLE IF NOT EXISTS teams (
+  id serial PRIMARY KEY,
+  name text UNIQUE NOT NULL
+);
+CREATE TABLE IF NOT EXISTS employees (
+  id serial PRIMARY KEY,
+  name text NOT NULL,
+  title text,
+  team_id integer REFERENCES teams(id),
+  email text,
+  created_at timestamptz DEFAULT now(),
+  created_src_ip text
+);
 CREATE TABLE IF NOT EXISTS entries (
   id serial PRIMARY KEY,
   ts timestamptz DEFAULT now(),
   src_ip text, name text, note text, user_agent text
 );
+ALTER TABLE teams OWNER TO ${DB_USER};
+ALTER TABLE employees OWNER TO ${DB_USER};
 ALTER TABLE entries OWNER TO ${DB_USER};
+
+-- Seed teams once (only if empty).
+INSERT INTO teams(name)
+SELECT v FROM (VALUES ('Leadership'),('Engineering'),('Sales'),('Support')) x(v)
+WHERE NOT EXISTS (SELECT 1 FROM teams);
+
+-- Seed a starter org once (only if no employees yet).
+INSERT INTO employees(name, title, team_id, email)
+SELECT e.name, e.title, t.id, e.email
+FROM (VALUES
+  ('Alice Weber','CEO','Leadership','alice@dcloud.demo'),
+  ('Bob Meyer','CFO','Leadership','bob@dcloud.demo'),
+  ('Carla Fischer','Engineering Lead','Engineering','carla@dcloud.demo'),
+  ('David Klein','Backend Engineer','Engineering','david@dcloud.demo'),
+  ('Elena Vogel','Frontend Engineer','Engineering','elena@dcloud.demo'),
+  ('Frank Bauer','Sales Lead','Sales','frank@dcloud.demo'),
+  ('Greta Hoffmann','Account Executive','Sales','greta@dcloud.demo'),
+  ('Hans Richter','Support Lead','Support','hans@dcloud.demo'),
+  ('Ida Schulz','Support Engineer','Support','ida@dcloud.demo')
+) e(name,title,team,email)
+JOIN teams t ON t.name = e.team
+WHERE NOT EXISTS (SELECT 1 FROM employees);
 SQL
-echo "PostgreSQL ready: db=${DB_NAME} user=${DB_USER}, table 'entries'."
+echo "PostgreSQL ready: db=${DB_NAME} user=${DB_USER}, tables 'teams','employees','entries'."
 
 # --- 2) Universal Forwarder ------------------------------------------------
 if [ ! -x "${UF_HOME}/bin/splunk" ]; then

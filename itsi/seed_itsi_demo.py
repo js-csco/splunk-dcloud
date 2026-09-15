@@ -123,8 +123,13 @@ SERVICES = [
         ("Internal Event Volume", "index=_internal",                             "count",         "count", "events", 800000, 2000000),
      ]},
     # ---- mid-level branches ----------------------------------------------
-    {"title": "Proxmox Hypervisor", "desc": "Berlin Proxmox host + the containers it runs.",
-     "rule": ("role", "hypervisor"), "depends_on": ["Web Service (Berlin)", "Database Service (Berlin)"], "kpis": [
+    # The Directory App is the SERVICE the business cares about; it runs ON TOP
+    # of Proxmox, so it summarises the Web + DB tiers (not the hypervisor).
+    {"title": "Directory App", "desc": "The employee directory service (web tier + database tier).",
+     "rule": None, "depends_on": ["Web Service (Berlin)", "Database Service (Berlin)"], "kpis": []},
+    # Proxmox is infrastructure - a sibling of the app, not its parent.
+    {"title": "Proxmox Hypervisor", "desc": "Berlin Proxmox hypervisor (infrastructure).",
+     "rule": ("role", "hypervisor"), "depends_on": [], "kpis": [
         ("Proxmox Event Volume", "index=berlin_proxmox", "count", "count", "events", 50000, 200000),
      ]},
     {"title": "Berlin Infrastructure", "desc": "Berlin site hosts and network.",
@@ -133,7 +138,7 @@ SERVICES = [
      "rule": None, "depends_on": ["Ubuntu London", "Router London"], "kpis": []},
     # ---- location branches -----------------------------------------------
     {"title": "Berlin", "desc": "Berlin location.",
-     "rule": None, "depends_on": ["Proxmox Hypervisor", "Berlin Infrastructure"], "kpis": []},
+     "rule": None, "depends_on": ["Directory App", "Proxmox Hypervisor", "Berlin Infrastructure"], "kpis": []},
     {"title": "London", "desc": "London location.",
      "rule": None, "depends_on": ["London Infrastructure"], "kpis": []},
     {"title": "Location 1", "desc": "Location 1 (the Splunk core site).",

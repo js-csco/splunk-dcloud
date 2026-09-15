@@ -150,10 +150,10 @@ locally, no SSH):
 curl -fsSL https://raw.githubusercontent.com/js-csco/splunk-dcloud/main/ubuntu/create-webapp-container.sh | bash
 ```
 
-**5b. database container (Berlin)** — a second service: a PostgreSQL LXC (VMID 201) at
-`198.18.3.51`. The web-app's "Save entry to database" button writes rows here (each row
-records the client `src_ip`). Postgres logs → `berlin_db`, metrics → `berlin_metrics`
-(host `db-berlin`). Run it **either** on the **Proxmox host as root** (Debian — no `sudo`;
+**5b. database container (Berlin)** — the DB tier of the **Directory App**: a PostgreSQL LXC
+(VMID 201) at `198.18.3.51` holding the `teams` + `employees` tables (the org chart). Adding
+an employee in the web UI writes here (recording the client `src_ip`). Postgres logs →
+`berlin_db`, metrics → `berlin_metrics` (host `db-berlin`). Run it **either** on the **Proxmox host as root** (Debian — no `sudo`;
 runs `pct` locally, no SSH):
 
 ```bash
@@ -640,9 +640,11 @@ curl http://198.18.3.50:8080/
 
 Then open **Correlation → Client → Hypervisor → App** (as **gary** — see note below).
 
-- **The web-app container:** LXC `webapp-berlin` (VMID 200) at `198.18.3.50:8080`,
-  created via `pct` over SSH to Proxmox; a tiny stdlib Python app (`webapp/app.py`)
-  logs every request; an in-container UF ships the access log + host metrics.
+- **The web tier (Directory App):** LXC `webapp-berlin` (VMID 200) at `198.18.3.50:8080` —
+  a stdlib Python app (`webapp/app.py`) that renders an **org chart** (employees grouped by
+  team, read from PostgreSQL) with an **add-employee** form; every request is logged and an
+  in-container UF ships the access log + host metrics. In ITSI, the web + DB tiers roll up
+  into one **Directory App** service under Berlin (sibling of Proxmox, not under it).
 - **Reachability probe:** the ubuntu-berlin UF hits `…:8080/healthz` every 60s →
   `berlin_web` (`webapp:probe`, `reachable`/`latency_ms`).
 
