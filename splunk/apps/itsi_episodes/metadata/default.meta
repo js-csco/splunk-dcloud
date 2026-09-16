@@ -1,0 +1,9 @@
+# itsi_episodes - the correlation search must be globally visible so ITSI's
+# event generator and Episode Review pick it up regardless of app context.
+
+[]
+access = read : [ * ], write : [ admin, power ]
+export = system
+
+[savedsearches]
+export = system
