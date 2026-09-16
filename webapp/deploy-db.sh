@@ -171,5 +171,28 @@ else
   "${UF_HOME}/bin/splunk" restart --accept-license --answer-yes --no-prompt
 fi
 
+# --- keepalive: keep this container reachable ------------------------------
+# An LXC container that only SERVES traffic can go quiet; dCloud's virtual switch
+# then ages its MAC out of the forwarding table and the container becomes
+# unreachable from other subnets until it transmits again (the "flapping"). A
+# 30s ping to the default gateway keeps the MAC/ARP entries fresh.
+GW="$(ip route 2>/dev/null | awk '/^default/{print $3; exit}')"
+cat > /etc/systemd/system/dcloud-keepalive.service <<EOF
+[Unit]
+Description=dCloud keepalive (periodic gateway ping so this container's MAC stays learned upstream)
+After=network-online.target
+
+[Service]
+ExecStart=/bin/sh -c 'while true; do ping -c1 -W2 ${GW:-198.18.3.1} >/dev/null 2>&1; sleep 30; done'
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+EOF
+systemctl daemon-reload
+systemctl enable dcloud-keepalive.service >/dev/null 2>&1 || true
+systemctl restart dcloud-keepalive.service
+
 echo "Done. ${HOSTLABEL}: PostgreSQL on :5432; UF -> ${INDEXER}:${RECV_PORT}"
 echo "  postgres log -> ${DB_INDEX} (postgres:log), metrics -> ${METRICS_INDEX}"
+echo "  keepalive: 30s ping -> ${GW:-198.18.3.1} (prevents idle-container flapping)"
