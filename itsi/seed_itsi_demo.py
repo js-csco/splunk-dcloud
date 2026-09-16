@@ -115,13 +115,18 @@ SERVICES = [
      ]},
     {"title": "Ubuntu Berlin", "desc": "Ubuntu server host (Berlin).",
      "rule": ("host", "ubuntu-berlin"), "depends_on": [], "kpis": [
+        ("Reachability",       "index=berlin_web sourcetype=port:probe host=ubuntu-berlin | stats count as c latest(open) as o | eval up=if(c>0,o*100,0)", "up", "max", "%", 50, 50),
         ("CPU Utilization",    "index=berlin_metrics sourcetype=linux:metrics host=ubuntu-berlin", "cpu_pct",       "avg", "%", 70, 90),
         ("Memory Utilization", "index=berlin_metrics sourcetype=linux:metrics host=ubuntu-berlin", "mem_used_pct",  "avg", "%", 70, 90),
         ("Disk Usage",         "index=berlin_metrics sourcetype=linux:metrics host=ubuntu-berlin", "disk_used_pct", "avg", "%", 80, 90),
      ]},
     {"title": "Router Berlin", "desc": "Cisco Catalyst 8000v router (Berlin).",
      "rule": ("host", "cat8kv-berlin"), "depends_on": [], "kpis": [
-        # SSH poll health (the scripted input).
+        # Reachability %: active TCP probe of the router's SSH port from the Splunk
+        # server - the gating health. Router down -> open=0 (RED), regardless of
+        # whether the SSH poll or SNMP happen to have data.
+        ("Reachability", "index=berlin_web sourcetype=port:probe host=cat8kv-berlin | stats count as c latest(open) as o | eval up=if(c>0,o*100,0)", "up", "max", "%", 50, 50),
+        # SSH poll health (the scripted input) - enrichment only now.
         ("Poll Errors", "index=berlin_network (\"Connection timed out\" OR \"Connection refused\" OR \"No route to host\" OR \"Unable to negotiate\" OR \"Permission denied\" OR \"Could not resolve\")", "count", "count", "errors", 1, 3),
         ("Poll Volume",  "index=berlin_network", "count", "count", "events", 50000, 200000),
         # SNMP: poll reachability (up% from SC4SNMP GET data) + link-down traps.
@@ -131,17 +136,21 @@ SERVICES = [
      ]},
     {"title": "Ubuntu London", "desc": "Ubuntu server host (London).",
      "rule": ("host", "ubuntu-london"), "depends_on": [], "kpis": [
+        ("Reachability",       "index=london_web sourcetype=port:probe host=ubuntu-london | stats count as c latest(open) as o | eval up=if(c>0,o*100,0)", "up", "max", "%", 50, 50),
         ("CPU Utilization",    "index=london_metrics sourcetype=linux:metrics host=ubuntu-london", "cpu_pct",       "avg", "%", 70, 90),
         ("Memory Utilization", "index=london_metrics sourcetype=linux:metrics host=ubuntu-london", "mem_used_pct",  "avg", "%", 70, 90),
         ("Disk Usage",         "index=london_metrics sourcetype=linux:metrics host=ubuntu-london", "disk_used_pct", "avg", "%", 80, 90),
      ]},
     {"title": "Router London", "desc": "Cisco Catalyst 8000v router (London).",
      "rule": ("host", "cat8kv-london"), "depends_on": [], "kpis": [
+        # Reachability %: active TCP probe of the router's SSH port (gating).
+        ("Reachability", "index=london_web sourcetype=port:probe host=cat8kv-london | stats count as c latest(open) as o | eval up=if(c>0,o*100,0)", "up", "max", "%", 50, 50),
+        # SSH poll health - enrichment only.
         ("Poll Errors", "index=london_network (\"Connection timed out\" OR \"Connection refused\" OR \"No route to host\" OR \"Unable to negotiate\" OR \"Permission denied\" OR \"Could not resolve\")", "count", "count", "errors", 1, 3),
         ("Poll Volume",  "index=london_network", "count", "count", "events", 50000, 200000),
-        # SNMP (SC4SNMP ships all devices to berlin_snmp today; London router IP).
-        ("SNMP Reachability", "index=berlin_snmp host=198.18.2.32* (sourcetype=sc4snmp:event OR sourcetype=sc4snmp:metric) | stats count as c | eval up=if(c>0,100,0)", "up", "max", "%", 50, 50),
-        ("Link-Down Traps",   "index=berlin_snmp sourcetype=sc4snmp:traps host=198.18.2.32* (linkDown OR coldStart)", "count", "count", "traps", 1, 1),
+        # SNMP enrichment - London traffic lands in london_snmp (RBAC per region).
+        ("SNMP Reachability", "index=london_snmp host=198.18.2.32* (sourcetype=sc4snmp:event OR sourcetype=sc4snmp:metric) | stats count as c | eval up=if(c>0,100,0)", "up", "max", "%", 50, 50),
+        ("Link-Down Traps",   "index=london_snmp sourcetype=sc4snmp:traps host=198.18.2.32* (linkDown OR coldStart)", "count", "count", "traps", 1, 1),
      ]},
     {"title": "Splunk Core", "desc": "The Splunk server itself (Location 1).",
      "rule": ("role", "splunk"), "depends_on": [], "kpis": [
@@ -357,7 +366,9 @@ def kpi_payload(title, base_search, field, agg, unit, medium, critical, adaptive
         importance = 1
     elif field == "up":
         importance = 11
-    elif "volume" in tl or "connections" in tl:
+    elif "poll" in tl or "volume" in tl or "connections" in tl:
+        # SSH-poll health + volume/count KPIs: informational color, not gating
+        # (the central reachability probe is the gate now).
         importance = 2
     else:
         importance = 5
