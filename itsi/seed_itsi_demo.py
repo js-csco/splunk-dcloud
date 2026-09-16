@@ -115,7 +115,10 @@ SERVICES = [
      ]},
     {"title": "Ubuntu Berlin", "desc": "Ubuntu server host (Berlin).",
      "rule": ("host", "ubuntu-berlin"), "depends_on": [], "kpis": [
-        ("Reachability",       "index=berlin_web sourcetype=port:probe host=ubuntu-berlin | stats count as c latest(open) as o | eval up=if(c>0,o*100,0)", "up", "max", "%", 50, 50),
+        # Reachability %: the UF ships linux:metrics every 60s, so recent data =
+        # host up. Works on DHCP (no static IP / SSH needed - the host label is
+        # fixed). stats count always returns a row, so host down -> up=0 (RED).
+        ("Reachability",       "index=berlin_metrics sourcetype=linux:metrics host=ubuntu-berlin | stats count as c | eval up=if(c>0,100,0)", "up", "max", "%", 50, 50),
         ("CPU Utilization",    "index=berlin_metrics sourcetype=linux:metrics host=ubuntu-berlin", "cpu_pct",       "avg", "%", 70, 90),
         ("Memory Utilization", "index=berlin_metrics sourcetype=linux:metrics host=ubuntu-berlin", "mem_used_pct",  "avg", "%", 70, 90),
         ("Disk Usage",         "index=berlin_metrics sourcetype=linux:metrics host=ubuntu-berlin", "disk_used_pct", "avg", "%", 80, 90),
@@ -136,7 +139,8 @@ SERVICES = [
      ]},
     {"title": "Ubuntu London", "desc": "Ubuntu server host (London).",
      "rule": ("host", "ubuntu-london"), "depends_on": [], "kpis": [
-        ("Reachability",       "index=london_web sourcetype=port:probe host=ubuntu-london | stats count as c latest(open) as o | eval up=if(c>0,o*100,0)", "up", "max", "%", 50, 50),
+        # Reachability via the UF heartbeat (DHCP-safe; see Ubuntu Berlin note).
+        ("Reachability",       "index=london_metrics sourcetype=linux:metrics host=ubuntu-london | stats count as c | eval up=if(c>0,100,0)", "up", "max", "%", 50, 50),
         ("CPU Utilization",    "index=london_metrics sourcetype=linux:metrics host=ubuntu-london", "cpu_pct",       "avg", "%", 70, 90),
         ("Memory Utilization", "index=london_metrics sourcetype=linux:metrics host=ubuntu-london", "mem_used_pct",  "avg", "%", 70, 90),
         ("Disk Usage",         "index=london_metrics sourcetype=linux:metrics host=ubuntu-london", "disk_used_pct", "avg", "%", 80, 90),
