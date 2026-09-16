@@ -23,6 +23,9 @@ CTNAME="${CT_HOSTNAME:-db-berlin}"
 CT_IP="${CT_IP:-198.18.3.51}"
 BRIDGE="${CT_BRIDGE:-vmbr0}"
 CT_GW="${CT_GW:-$(ip route 2>/dev/null | awk '/^default/{print $3; exit}')}"
+# Pin DNS at create time - the dCloud gateway serves DNS (:53); without this the
+# container can boot with an empty resolv.conf and fail to resolve github etc.
+CT_DNS="${CT_DNS:-${CT_GW}}"
 REPO="${DCLOUD_REPO:-js-csco/splunk-dcloud}"; BRANCH="${DCLOUD_BRANCH:-main}"
 DEPLOY_URL="https://raw.githubusercontent.com/${REPO}/${BRANCH}/webapp/deploy-db.sh"
 
@@ -62,7 +65,7 @@ else
   echo "Using storage=${STORAGE} template=${TEMPLATE}"
   create_ct() {
     remote "pct create ${VMID} '${TEMPLATE}' --hostname ${CTNAME} --cores 1 --memory 1024 --swap 512 \
-      --net0 name=eth0,bridge=${BRIDGE},ip=${CT_IP}/24,gw=${CT_GW} \
+      --net0 name=eth0,bridge=${BRIDGE},ip=${CT_IP}/24,gw=${CT_GW} --nameserver ${CT_DNS} \
       --storage $1 --rootfs $1:6 --unprivileged 1 --features nesting=1 \
       --onboot 1 --password '${PPW}' --description 'dCloud demo PostgreSQL (Splunk correlation)'"
   }
