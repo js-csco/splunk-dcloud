@@ -76,8 +76,14 @@ SERVICES = [
     # hypervisor. Proxmox down -> both tiers degrade -> Directory App -> Berlin.
     {"title": "Proxmox Hypervisor", "desc": "Berlin Proxmox hypervisor - hosts the app containers.",
      "rule": ("role", "hypervisor"), "depends_on": [], "kpis": [
+        # Reachability %: active TCP probe of the Proxmox management UI (8006) from
+        # the Splunk server (probe_ports.sh) - always present, no agent needed.
+        # Hypervisor up -> open=1 (GREEN); host down -> open=0 (RED). This is the
+        # GATING health for the tier the containers run on.
+        ("Reachability", "index=berlin_web sourcetype=port:probe host=proxmox-berlin | stats count as c latest(open) as o | eval up=if(c>0,o*100,0)", "up", "max", "%", 50, 50),
         ("Proxmox Event Volume", "index=berlin_proxmox", "count", "count", "events", 50000, 200000),
-        # SNMP: is SC4SNMP getting poll data from the hypervisor's SNMP agent?
+        # SNMP (optional enrichment - importance 1): SC4SNMP poll data from the
+        # hypervisor's SNMP agent. Absent when SC4SNMP isn't stood up; never gates.
         ("SNMP Reachability", "index=berlin_snmp host=198.18.3.11* (sourcetype=sc4snmp:event OR sourcetype=sc4snmp:metric) | stats count as c | eval up=if(c>0,100,0)", "up", "max", "%", 50, 50),
      ]},
     # ---- app tiers (carry KPIs; depend on the hypervisor they run on) ------
@@ -337,15 +343,20 @@ def kpi_payload(title, base_search, field, agg, unit, medium, critical, adaptive
     else:
         thr = thresholds(field, medium, critical)
     # Importance drives the service health score:
-    #   11 = GATING - the container-heartbeat Reachability. Down => service red,
+    #   11 = GATING - the active Reachability probe. Down => service red,
     #        regardless of the other KPIs (a dead service has 0 traffic, which the
     #        volume KPIs would otherwise read as "green").
+    #    5 = normal enrichment - latency, error counts, CPU/mem/disk.
     #    2 = informational - volume/count KPIs (visible, but must not dilute health).
-    #    5 = normal - latency, error counts, CPU/mem/disk, SNMP reachability
-    #        (SNMP not gating: SC4SNMP may be down without the service being down).
+    #    1 = OPTIONAL enrichment - SNMP / traps. SC4SNMP is a add-on agent that may
+    #        never be stood up in a given lab; when it is absent these read 0/N/A,
+    #        so they MUST NOT be able to drag the tree. Gating health always comes
+    #        from the central probes/polls instead.
     tl = title.lower()
-    if field == "up":
-        importance = 5 if "snmp" in tl else 11
+    if "snmp" in tl or "trap" in tl:
+        importance = 1
+    elif field == "up":
+        importance = 11
     elif "volume" in tl or "connections" in tl:
         importance = 2
     else:
@@ -368,10 +379,11 @@ def kpi_payload(title, base_search, field, agg, unit, medium, critical, adaptive
         "entity_breakdown_id_fields": "host",
         "entity_id_fields": "host",
         "is_entity_breakdown": False,
-        # For reachability KPIs a data gap means "we lost sight of the service" -
-        # treat that as high severity, not the silent "unknown" that reads green.
+        # For the active Reachability probes a data gap means "we lost sight of the
+        # service" -> high. But SNMP/trap KPIs are optional (SC4SNMP may be absent),
+        # so their gap must be benign or they'd drag the tree when SNMP isn't set up.
         "fill_gaps": "null_value",
-        "gap_severity": ("high" if field == "up" else "unknown"),
+        "gap_severity": ("high" if (field == "up" and "snmp" not in tl) else "unknown"),
         # Run every 1 min over a 2-min window so the service tree reacts to a
         # kill in ~1-2 min (ITSI is scheduled-search based - this is its floor;
         # the instant signal is the SNMP trap -> Webex, not the tree colour).
