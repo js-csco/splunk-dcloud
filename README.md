@@ -578,6 +578,45 @@ demo):**
 (API-seeding NEM objects is version-fragile, so the UI is the supported path for the
 native version; the config-as-code alert above covers the outcome without it.)
 
+### ITSI Glass Tables (premium) — three ready-to-import styles
+
+Three native **GTv2 (Dashboard Studio) glass tables** ship as config-as-code, all
+reading the **same host-keyed live signals** the ITSI KPIs use (`index=berlin_web
+sourcetype=port:probe host=…` reachability, `index=*_metrics
+sourcetype=linux:metrics host=…` heartbeats). Because they key on **host**, not on
+ITSI service `_key`s, they render correctly and **survive every re-seed** — green
+when reachable, red when a container is down, and the red "blast radius" rolls up the
+tree (kill the DB → Database, Directory App, Berlin and Global all go red).
+
+| Style | File | Best for |
+|---|---|---|
+| **NOC Ops Wall** | `itsi/glass_tables/glass_table_noc.json` | Big-screen SOC wall — glowing UP/DOWN tiles grouped by site under a global health hero |
+| **Service Topology** (draw.io) | `itsi/glass_tables/glass_table_topology.json` | Dependency map with orthogonal connectors — shows blast radius / what a component takes down |
+| **Business Services** | `itsi/glass_tables/glass_table_exec.json` | Leadership view — branded cards with a per-service KPI breakdown and a global-health ring |
+
+**Regenerate the files** (source of truth is the generator, so edit there, not the JSON):
+
+```bash
+sudo -u splunk /opt/splunk/bin/splunk cmd python3 \
+  /opt/dcloud-splunk/itsi/seed_glass_table.py --write
+```
+
+**Import (recommended, proven path):** ITSI → *Dashboards / Glass Tables* → **Create
+Glass Table** → open the **Source `</>`** editor → paste the contents of one JSON file
+→ Save. Repeat for each of the three.
+
+**Or seed via the API (best-effort, reset-proof):**
+
+```bash
+sudo -u splunk /opt/splunk/bin/splunk cmd python3 \
+  /opt/dcloud-splunk/itsi/seed_glass_table.py \
+  --user admin --password C1sco12345 --seed --verbose
+```
+
+Idempotent per title (updates in place if it already exists). The GTv2 API schema
+shifts between ITSI versions; if a POST is rejected, `--write` still produced the
+files to import by hand, which always works.
+
 ## Asset Configuration (asset inventory + enrichment)
 
 The **Infrastructure Monitoring** app has an **Asset Configuration** view — describe

@@ -1,0 +1,1522 @@
+{
+  "title": "dCloud - Service Topology",
+  "description": "Service dependency map - node color is live reachability; edges show blast radius.",
+  "defaults": {
+    "dataSources": {
+      "global": {
+        "options": {
+          "queryParameters": {
+            "earliest": "$global_time.earliest$",
+            "latest": "$global_time.latest$"
+          },
+          "refreshType": "delay",
+          "refresh": "$global_refresh_rate$"
+        }
+      }
+    }
+  },
+  "layout": {
+    "options": {
+      "showTitleAndDescription": true
+    },
+    "globalInputs": [
+      "input_global_trp",
+      "input_global_refresh_rate"
+    ],
+    "tabs": {
+      "items": [
+        {
+          "layoutId": "layout_1",
+          "label": "Topology"
+        }
+      ]
+    },
+    "layoutDefinitions": {
+      "layout_1": {
+        "type": "absolute",
+        "options": {
+          "width": 1920,
+          "height": 820
+        },
+        "structure": [
+          {
+            "item": "bg_canvas",
+            "type": "block",
+            "position": {
+              "x": 0,
+              "y": 0,
+              "w": 1920,
+              "h": 820
+            }
+          },
+          {
+            "item": "band_0",
+            "type": "block",
+            "position": {
+              "x": 0,
+              "y": 230,
+              "w": 1920,
+              "h": 110
+            }
+          },
+          {
+            "item": "band_1",
+            "type": "block",
+            "position": {
+              "x": 0,
+              "y": 460,
+              "w": 1920,
+              "h": 110
+            }
+          },
+          {
+            "item": "conn_0_0",
+            "type": "block",
+            "position": {
+              "x": 959,
+              "y": 132,
+              "w": 3,
+              "h": 58
+            }
+          },
+          {
+            "item": "conn_0_1",
+            "type": "block",
+            "position": {
+              "x": 466,
+              "y": 189,
+              "w": 496,
+              "h": 3
+            }
+          },
+          {
+            "item": "conn_0_2",
+            "type": "block",
+            "position": {
+              "x": 466,
+              "y": 190,
+              "w": 3,
+              "h": 50
+            }
+          },
+          {
+            "item": "conn_1_0",
+            "type": "block",
+            "position": {
+              "x": 959,
+              "y": 132,
+              "w": 3,
+              "h": 58
+            }
+          },
+          {
+            "item": "conn_1_1",
+            "type": "block",
+            "position": {
+              "x": 959,
+              "y": 189,
+              "w": 143,
+              "h": 3
+            }
+          },
+          {
+            "item": "conn_1_2",
+            "type": "block",
+            "position": {
+              "x": 1099,
+              "y": 190,
+              "w": 3,
+              "h": 50
+            }
+          },
+          {
+            "item": "conn_2_0",
+            "type": "block",
+            "position": {
+              "x": 959,
+              "y": 132,
+              "w": 3,
+              "h": 58
+            }
+          },
+          {
+            "item": "conn_2_1",
+            "type": "block",
+            "position": {
+              "x": 959,
+              "y": 189,
+              "w": 633,
+              "h": 3
+            }
+          },
+          {
+            "item": "conn_2_2",
+            "type": "block",
+            "position": {
+              "x": 1589,
+              "y": 190,
+              "w": 3,
+              "h": 50
+            }
+          },
+          {
+            "item": "conn_3_0",
+            "type": "block",
+            "position": {
+              "x": 466,
+              "y": 324,
+              "w": 3,
+              "h": 96
+            }
+          },
+          {
+            "item": "conn_3_1",
+            "type": "block",
+            "position": {
+              "x": 164,
+              "y": 419,
+              "w": 305,
+              "h": 3
+            }
+          },
+          {
+            "item": "conn_3_2",
+            "type": "block",
+            "position": {
+              "x": 164,
+              "y": 420,
+              "w": 3,
+              "h": 50
+            }
+          },
+          {
+            "item": "conn_4_0",
+            "type": "block",
+            "position": {
+              "x": 466,
+              "y": 324,
+              "w": 3,
+              "h": 96
+            }
+          },
+          {
+            "item": "conn_4_1",
+            "type": "block",
+            "position": {
+              "x": 379,
+              "y": 419,
+              "w": 90,
+              "h": 3
+            }
+          },
+          {
+            "item": "conn_4_2",
+            "type": "block",
+            "position": {
+              "x": 379,
+              "y": 420,
+              "w": 3,
+              "h": 50
+            }
+          },
+          {
+            "item": "conn_5_0",
+            "type": "block",
+            "position": {
+              "x": 466,
+              "y": 324,
+              "w": 3,
+              "h": 96
+            }
+          },
+          {
+            "item": "conn_5_1",
+            "type": "block",
+            "position": {
+              "x": 466,
+              "y": 419,
+              "w": 111,
+              "h": 3
+            }
+          },
+          {
+            "item": "conn_5_2",
+            "type": "block",
+            "position": {
+              "x": 574,
+              "y": 420,
+              "w": 3,
+              "h": 50
+            }
+          },
+          {
+            "item": "conn_6_0",
+            "type": "block",
+            "position": {
+              "x": 466,
+              "y": 324,
+              "w": 3,
+              "h": 96
+            }
+          },
+          {
+            "item": "conn_6_1",
+            "type": "block",
+            "position": {
+              "x": 466,
+              "y": 419,
+              "w": 306,
+              "h": 3
+            }
+          },
+          {
+            "item": "conn_6_2",
+            "type": "block",
+            "position": {
+              "x": 769,
+              "y": 420,
+              "w": 3,
+              "h": 50
+            }
+          },
+          {
+            "item": "conn_7_0",
+            "type": "block",
+            "position": {
+              "x": 164,
+              "y": 554,
+              "w": 3,
+              "h": 66
+            }
+          },
+          {
+            "item": "conn_7_1",
+            "type": "block",
+            "position": {
+              "x": 79,
+              "y": 619,
+              "w": 88,
+              "h": 3
+            }
+          },
+          {
+            "item": "conn_7_2",
+            "type": "block",
+            "position": {
+              "x": 79,
+              "y": 620,
+              "w": 3,
+              "h": 40
+            }
+          },
+          {
+            "item": "conn_8_0",
+            "type": "block",
+            "position": {
+              "x": 164,
+              "y": 554,
+              "w": 3,
+              "h": 66
+            }
+          },
+          {
+            "item": "conn_8_1",
+            "type": "block",
+            "position": {
+              "x": 164,
+              "y": 619,
+              "w": 88,
+              "h": 3
+            }
+          },
+          {
+            "item": "conn_8_2",
+            "type": "block",
+            "position": {
+              "x": 249,
+              "y": 620,
+              "w": 3,
+              "h": 40
+            }
+          },
+          {
+            "item": "conn_9_0",
+            "type": "block",
+            "position": {
+              "x": 1099,
+              "y": 324,
+              "w": 3,
+              "h": 96
+            }
+          },
+          {
+            "item": "conn_9_1",
+            "type": "block",
+            "position": {
+              "x": 999,
+              "y": 419,
+              "w": 103,
+              "h": 3
+            }
+          },
+          {
+            "item": "conn_9_2",
+            "type": "block",
+            "position": {
+              "x": 999,
+              "y": 420,
+              "w": 3,
+              "h": 50
+            }
+          },
+          {
+            "item": "conn_10_0",
+            "type": "block",
+            "position": {
+              "x": 1099,
+              "y": 324,
+              "w": 3,
+              "h": 96
+            }
+          },
+          {
+            "item": "conn_10_1",
+            "type": "block",
+            "position": {
+              "x": 1099,
+              "y": 419,
+              "w": 103,
+              "h": 3
+            }
+          },
+          {
+            "item": "conn_10_2",
+            "type": "block",
+            "position": {
+              "x": 1199,
+              "y": 420,
+              "w": 3,
+              "h": 50
+            }
+          },
+          {
+            "item": "conn_11_0",
+            "type": "block",
+            "position": {
+              "x": 1589,
+              "y": 324,
+              "w": 3,
+              "h": 96
+            }
+          },
+          {
+            "item": "conn_11_1",
+            "type": "block",
+            "position": {
+              "x": 1589,
+              "y": 419,
+              "w": 3,
+              "h": 3
+            }
+          },
+          {
+            "item": "conn_11_2",
+            "type": "block",
+            "position": {
+              "x": 1589,
+              "y": 420,
+              "w": 3,
+              "h": 50
+            }
+          },
+          {
+            "item": "viz_global",
+            "type": "block",
+            "position": {
+              "x": 810,
+              "y": 40,
+              "w": 300,
+              "h": 92
+            }
+          },
+          {
+            "item": "viz_berlin",
+            "type": "block",
+            "position": {
+              "x": 337,
+              "y": 240,
+              "w": 260,
+              "h": 84
+            }
+          },
+          {
+            "item": "viz_london",
+            "type": "block",
+            "position": {
+              "x": 980,
+              "y": 240,
+              "w": 240,
+              "h": 84
+            }
+          },
+          {
+            "item": "viz_loc1",
+            "type": "block",
+            "position": {
+              "x": 1460,
+              "y": 240,
+              "w": 260,
+              "h": 84
+            }
+          },
+          {
+            "item": "viz_dirapp",
+            "type": "block",
+            "position": {
+              "x": 75,
+              "y": 470,
+              "w": 180,
+              "h": 84
+            }
+          },
+          {
+            "item": "viz_proxmox",
+            "type": "block",
+            "position": {
+              "x": 293,
+              "y": 470,
+              "w": 175,
+              "h": 84
+            }
+          },
+          {
+            "item": "viz_ubuntu_b",
+            "type": "block",
+            "position": {
+              "x": 483,
+              "y": 470,
+              "w": 185,
+              "h": 84
+            }
+          },
+          {
+            "item": "viz_router_b",
+            "type": "block",
+            "position": {
+              "x": 683,
+              "y": 470,
+              "w": 175,
+              "h": 84
+            }
+          },
+          {
+            "item": "viz_web",
+            "type": "block",
+            "position": {
+              "x": 5,
+              "y": 660,
+              "w": 150,
+              "h": 76
+            }
+          },
+          {
+            "item": "viz_db",
+            "type": "block",
+            "position": {
+              "x": 175,
+              "y": 660,
+              "w": 150,
+              "h": 76
+            }
+          },
+          {
+            "item": "viz_ubuntu_l",
+            "type": "block",
+            "position": {
+              "x": 910,
+              "y": 470,
+              "w": 180,
+              "h": 84
+            }
+          },
+          {
+            "item": "viz_router_l",
+            "type": "block",
+            "position": {
+              "x": 1110,
+              "y": 470,
+              "w": 180,
+              "h": 84
+            }
+          },
+          {
+            "item": "viz_splunk",
+            "type": "block",
+            "position": {
+              "x": 1480,
+              "y": 470,
+              "w": 220,
+              "h": 84
+            }
+          },
+          {
+            "item": "mark",
+            "type": "block",
+            "position": {
+              "x": 40,
+              "y": 760,
+              "w": 700,
+              "h": 40
+            }
+          }
+        ]
+      }
+    }
+  },
+  "dataSources": {
+    "ds_web": {
+      "type": "ds.search",
+      "options": {
+        "query": "index=berlin_web sourcetype=port:probe host=webapp-berlin | stats count as c latest(open) as o | eval v=if(c>0 AND o=1,100,0), status=if(v>=50,\"UP\",\"DOWN\") | table status v",
+        "queryParameters": {
+          "earliest": "-15m",
+          "latest": "now"
+        }
+      },
+      "name": "Web Service"
+    },
+    "ds_db": {
+      "type": "ds.search",
+      "options": {
+        "query": "index=berlin_web sourcetype=port:probe host=db-berlin | stats count as c latest(open) as o | eval v=if(c>0 AND o=1,100,0), status=if(v>=50,\"UP\",\"DOWN\") | table status v",
+        "queryParameters": {
+          "earliest": "-15m",
+          "latest": "now"
+        }
+      },
+      "name": "Database Service"
+    },
+    "ds_proxmox": {
+      "type": "ds.search",
+      "options": {
+        "query": "index=berlin_web sourcetype=port:probe host=proxmox-berlin | stats count as c latest(open) as o | eval v=if(c>0 AND o=1,100,0), status=if(v>=50,\"UP\",\"DOWN\") | table status v",
+        "queryParameters": {
+          "earliest": "-15m",
+          "latest": "now"
+        }
+      },
+      "name": "Proxmox Hypervisor"
+    },
+    "ds_ubuntu_b": {
+      "type": "ds.search",
+      "options": {
+        "query": "index=berlin_metrics sourcetype=linux:metrics host=ubuntu-berlin | stats count as c | eval v=if(c>0,100,0), status=if(v>=50,\"UP\",\"DOWN\") | table status v",
+        "queryParameters": {
+          "earliest": "-15m",
+          "latest": "now"
+        }
+      },
+      "name": "Ubuntu Berlin"
+    },
+    "ds_router_b": {
+      "type": "ds.search",
+      "options": {
+        "query": "index=berlin_web sourcetype=port:probe host=cat8kv-berlin | stats count as c latest(open) as o | eval v=if(c>0 AND o=1,100,0), status=if(v>=50,\"UP\",\"DOWN\") | table status v",
+        "queryParameters": {
+          "earliest": "-15m",
+          "latest": "now"
+        }
+      },
+      "name": "Router Berlin"
+    },
+    "ds_ubuntu_l": {
+      "type": "ds.search",
+      "options": {
+        "query": "index=london_metrics sourcetype=linux:metrics host=ubuntu-london | stats count as c | eval v=if(c>0,100,0), status=if(v>=50,\"UP\",\"DOWN\") | table status v",
+        "queryParameters": {
+          "earliest": "-15m",
+          "latest": "now"
+        }
+      },
+      "name": "Ubuntu London"
+    },
+    "ds_router_l": {
+      "type": "ds.search",
+      "options": {
+        "query": "index=london_web sourcetype=port:probe host=cat8kv-london | stats count as c latest(open) as o | eval v=if(c>0 AND o=1,100,0), status=if(v>=50,\"UP\",\"DOWN\") | table status v",
+        "queryParameters": {
+          "earliest": "-15m",
+          "latest": "now"
+        }
+      },
+      "name": "Router London"
+    },
+    "ds_splunk": {
+      "type": "ds.search",
+      "options": {
+        "query": "index=loc1_metrics sourcetype=linux:metrics | stats count as c | eval v=if(c>0,100,0), status=if(v>=50,\"UP\",\"DOWN\") | table status v",
+        "queryParameters": {
+          "earliest": "-15m",
+          "latest": "now"
+        }
+      },
+      "name": "Splunk Core"
+    },
+    "ds_cpu_ub_b": {
+      "type": "ds.search",
+      "options": {
+        "query": "index=berlin_metrics sourcetype=linux:metrics host=ubuntu-berlin | stats latest(cpu_pct) as raw | eval v=coalesce(raw,0), status=round(v).\"%\" | table status v",
+        "queryParameters": {
+          "earliest": "-15m",
+          "latest": "now"
+        }
+      },
+      "name": "Ubuntu Berlin CPU"
+    },
+    "ds_cpu_ub_l": {
+      "type": "ds.search",
+      "options": {
+        "query": "index=london_metrics sourcetype=linux:metrics host=ubuntu-london | stats latest(cpu_pct) as raw | eval v=coalesce(raw,0), status=round(v).\"%\" | table status v",
+        "queryParameters": {
+          "earliest": "-15m",
+          "latest": "now"
+        }
+      },
+      "name": "Ubuntu London CPU"
+    },
+    "ds_dirapp": {
+      "type": "ds.search",
+      "options": {
+        "query": "| makeresults \n| appendcols [ search index=berlin_web sourcetype=port:probe host=webapp-berlin earliest=-15m | stats count as c latest(open) as o | eval f0=if(c>0 AND o=1,1,0) | fields f0 ] \n| appendcols [ search index=berlin_web sourcetype=port:probe host=db-berlin earliest=-15m | stats count as c latest(open) as o | eval f1=if(c>0 AND o=1,1,0) | fields f1 ] \n| eval v=if(f0=1 AND f1=1,100,0), status=if(v>=50,\"UP\",\"DOWN\") | table status v",
+        "queryParameters": {
+          "earliest": "-15m",
+          "latest": "now"
+        }
+      },
+      "name": "Directory App"
+    },
+    "ds_berlin_infra": {
+      "type": "ds.search",
+      "options": {
+        "query": "| makeresults \n| appendcols [ search index=berlin_web sourcetype=port:probe host=proxmox-berlin earliest=-15m | stats count as c latest(open) as o | eval f0=if(c>0 AND o=1,1,0) | fields f0 ] \n| appendcols [ search index=berlin_metrics sourcetype=linux:metrics host=ubuntu-berlin earliest=-15m | stats count as c | eval f1=if(c>0,1,0) | fields f1 ] \n| appendcols [ search index=berlin_web sourcetype=port:probe host=cat8kv-berlin earliest=-15m | stats count as c latest(open) as o | eval f2=if(c>0 AND o=1,1,0) | fields f2 ] \n| eval v=if(f0=1 AND f1=1 AND f2=1,100,0), status=if(v>=50,\"UP\",\"DOWN\") | table status v",
+        "queryParameters": {
+          "earliest": "-15m",
+          "latest": "now"
+        }
+      },
+      "name": "Berlin Infrastructure"
+    },
+    "ds_berlin": {
+      "type": "ds.search",
+      "options": {
+        "query": "| makeresults \n| appendcols [ search index=berlin_web sourcetype=port:probe host=webapp-berlin earliest=-15m | stats count as c latest(open) as o | eval f0=if(c>0 AND o=1,1,0) | fields f0 ] \n| appendcols [ search index=berlin_web sourcetype=port:probe host=db-berlin earliest=-15m | stats count as c latest(open) as o | eval f1=if(c>0 AND o=1,1,0) | fields f1 ] \n| appendcols [ search index=berlin_web sourcetype=port:probe host=proxmox-berlin earliest=-15m | stats count as c latest(open) as o | eval f2=if(c>0 AND o=1,1,0) | fields f2 ] \n| appendcols [ search index=berlin_metrics sourcetype=linux:metrics host=ubuntu-berlin earliest=-15m | stats count as c | eval f3=if(c>0,1,0) | fields f3 ] \n| appendcols [ search index=berlin_web sourcetype=port:probe host=cat8kv-berlin earliest=-15m | stats count as c latest(open) as o | eval f4=if(c>0 AND o=1,1,0) | fields f4 ] \n| eval v=if(f0=1 AND f1=1 AND f2=1 AND f3=1 AND f4=1,100,0), status=if(v>=50,\"UP\",\"DOWN\") | table status v",
+        "queryParameters": {
+          "earliest": "-15m",
+          "latest": "now"
+        }
+      },
+      "name": "Berlin"
+    },
+    "ds_london": {
+      "type": "ds.search",
+      "options": {
+        "query": "| makeresults \n| appendcols [ search index=london_metrics sourcetype=linux:metrics host=ubuntu-london earliest=-15m | stats count as c | eval f0=if(c>0,1,0) | fields f0 ] \n| appendcols [ search index=london_web sourcetype=port:probe host=cat8kv-london earliest=-15m | stats count as c latest(open) as o | eval f1=if(c>0 AND o=1,1,0) | fields f1 ] \n| eval v=if(f0=1 AND f1=1,100,0), status=if(v>=50,\"UP\",\"DOWN\") | table status v",
+        "queryParameters": {
+          "earliest": "-15m",
+          "latest": "now"
+        }
+      },
+      "name": "London"
+    },
+    "ds_loc1": {
+      "type": "ds.search",
+      "options": {
+        "query": "index=loc1_metrics sourcetype=linux:metrics | stats count as c | eval v=if(c>0,100,0), status=if(v>=50,\"UP\",\"DOWN\") | table status v",
+        "queryParameters": {
+          "earliest": "-15m",
+          "latest": "now"
+        }
+      },
+      "name": "Location 1"
+    },
+    "ds_global": {
+      "type": "ds.search",
+      "options": {
+        "query": "| makeresults \n| appendcols [ search index=berlin_web sourcetype=port:probe host=webapp-berlin earliest=-15m | stats count as c latest(open) as o | eval f0=if(c>0 AND o=1,1,0) | fields f0 ] \n| appendcols [ search index=berlin_web sourcetype=port:probe host=db-berlin earliest=-15m | stats count as c latest(open) as o | eval f1=if(c>0 AND o=1,1,0) | fields f1 ] \n| appendcols [ search index=berlin_web sourcetype=port:probe host=proxmox-berlin earliest=-15m | stats count as c latest(open) as o | eval f2=if(c>0 AND o=1,1,0) | fields f2 ] \n| appendcols [ search index=berlin_metrics sourcetype=linux:metrics host=ubuntu-berlin earliest=-15m | stats count as c | eval f3=if(c>0,1,0) | fields f3 ] \n| appendcols [ search index=london_metrics sourcetype=linux:metrics host=ubuntu-london earliest=-15m | stats count as c | eval f4=if(c>0,1,0) | fields f4 ] \n| eval v=if(f0=1 AND f1=1 AND f2=1 AND f3=1 AND f4=1,100,0), status=if(v>=50,\"UP\",\"DOWN\") | table status v",
+        "queryParameters": {
+          "earliest": "-15m",
+          "latest": "now"
+        }
+      },
+      "name": "Global IT Operations"
+    }
+  },
+  "visualizations": {
+    "bg_canvas": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#0a0e16",
+        "fillOpacity": 1.0,
+        "strokeColor": "#0a0e16",
+        "strokeWidth": 0
+      }
+    },
+    "band_0": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#10192a",
+        "fillOpacity": 0.45,
+        "strokeColor": "#10192a",
+        "strokeWidth": 0
+      }
+    },
+    "band_1": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#10192a",
+        "fillOpacity": 0.45,
+        "strokeColor": "#10192a",
+        "strokeWidth": 0
+      }
+    },
+    "conn_0_0": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#33445e",
+        "fillOpacity": 1.0,
+        "strokeColor": "#33445e",
+        "strokeWidth": 0
+      }
+    },
+    "conn_0_1": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#33445e",
+        "fillOpacity": 1.0,
+        "strokeColor": "#33445e",
+        "strokeWidth": 0
+      }
+    },
+    "conn_0_2": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#33445e",
+        "fillOpacity": 1.0,
+        "strokeColor": "#33445e",
+        "strokeWidth": 0
+      }
+    },
+    "conn_1_0": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#33445e",
+        "fillOpacity": 1.0,
+        "strokeColor": "#33445e",
+        "strokeWidth": 0
+      }
+    },
+    "conn_1_1": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#33445e",
+        "fillOpacity": 1.0,
+        "strokeColor": "#33445e",
+        "strokeWidth": 0
+      }
+    },
+    "conn_1_2": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#33445e",
+        "fillOpacity": 1.0,
+        "strokeColor": "#33445e",
+        "strokeWidth": 0
+      }
+    },
+    "conn_2_0": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#33445e",
+        "fillOpacity": 1.0,
+        "strokeColor": "#33445e",
+        "strokeWidth": 0
+      }
+    },
+    "conn_2_1": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#33445e",
+        "fillOpacity": 1.0,
+        "strokeColor": "#33445e",
+        "strokeWidth": 0
+      }
+    },
+    "conn_2_2": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#33445e",
+        "fillOpacity": 1.0,
+        "strokeColor": "#33445e",
+        "strokeWidth": 0
+      }
+    },
+    "conn_3_0": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#33445e",
+        "fillOpacity": 1.0,
+        "strokeColor": "#33445e",
+        "strokeWidth": 0
+      }
+    },
+    "conn_3_1": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#33445e",
+        "fillOpacity": 1.0,
+        "strokeColor": "#33445e",
+        "strokeWidth": 0
+      }
+    },
+    "conn_3_2": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#33445e",
+        "fillOpacity": 1.0,
+        "strokeColor": "#33445e",
+        "strokeWidth": 0
+      }
+    },
+    "conn_4_0": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#33445e",
+        "fillOpacity": 1.0,
+        "strokeColor": "#33445e",
+        "strokeWidth": 0
+      }
+    },
+    "conn_4_1": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#33445e",
+        "fillOpacity": 1.0,
+        "strokeColor": "#33445e",
+        "strokeWidth": 0
+      }
+    },
+    "conn_4_2": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#33445e",
+        "fillOpacity": 1.0,
+        "strokeColor": "#33445e",
+        "strokeWidth": 0
+      }
+    },
+    "conn_5_0": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#33445e",
+        "fillOpacity": 1.0,
+        "strokeColor": "#33445e",
+        "strokeWidth": 0
+      }
+    },
+    "conn_5_1": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#33445e",
+        "fillOpacity": 1.0,
+        "strokeColor": "#33445e",
+        "strokeWidth": 0
+      }
+    },
+    "conn_5_2": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#33445e",
+        "fillOpacity": 1.0,
+        "strokeColor": "#33445e",
+        "strokeWidth": 0
+      }
+    },
+    "conn_6_0": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#33445e",
+        "fillOpacity": 1.0,
+        "strokeColor": "#33445e",
+        "strokeWidth": 0
+      }
+    },
+    "conn_6_1": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#33445e",
+        "fillOpacity": 1.0,
+        "strokeColor": "#33445e",
+        "strokeWidth": 0
+      }
+    },
+    "conn_6_2": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#33445e",
+        "fillOpacity": 1.0,
+        "strokeColor": "#33445e",
+        "strokeWidth": 0
+      }
+    },
+    "conn_7_0": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#33445e",
+        "fillOpacity": 1.0,
+        "strokeColor": "#33445e",
+        "strokeWidth": 0
+      }
+    },
+    "conn_7_1": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#33445e",
+        "fillOpacity": 1.0,
+        "strokeColor": "#33445e",
+        "strokeWidth": 0
+      }
+    },
+    "conn_7_2": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#33445e",
+        "fillOpacity": 1.0,
+        "strokeColor": "#33445e",
+        "strokeWidth": 0
+      }
+    },
+    "conn_8_0": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#33445e",
+        "fillOpacity": 1.0,
+        "strokeColor": "#33445e",
+        "strokeWidth": 0
+      }
+    },
+    "conn_8_1": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#33445e",
+        "fillOpacity": 1.0,
+        "strokeColor": "#33445e",
+        "strokeWidth": 0
+      }
+    },
+    "conn_8_2": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#33445e",
+        "fillOpacity": 1.0,
+        "strokeColor": "#33445e",
+        "strokeWidth": 0
+      }
+    },
+    "conn_9_0": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#33445e",
+        "fillOpacity": 1.0,
+        "strokeColor": "#33445e",
+        "strokeWidth": 0
+      }
+    },
+    "conn_9_1": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#33445e",
+        "fillOpacity": 1.0,
+        "strokeColor": "#33445e",
+        "strokeWidth": 0
+      }
+    },
+    "conn_9_2": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#33445e",
+        "fillOpacity": 1.0,
+        "strokeColor": "#33445e",
+        "strokeWidth": 0
+      }
+    },
+    "conn_10_0": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#33445e",
+        "fillOpacity": 1.0,
+        "strokeColor": "#33445e",
+        "strokeWidth": 0
+      }
+    },
+    "conn_10_1": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#33445e",
+        "fillOpacity": 1.0,
+        "strokeColor": "#33445e",
+        "strokeWidth": 0
+      }
+    },
+    "conn_10_2": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#33445e",
+        "fillOpacity": 1.0,
+        "strokeColor": "#33445e",
+        "strokeWidth": 0
+      }
+    },
+    "conn_11_0": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#33445e",
+        "fillOpacity": 1.0,
+        "strokeColor": "#33445e",
+        "strokeWidth": 0
+      }
+    },
+    "conn_11_1": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#33445e",
+        "fillOpacity": 1.0,
+        "strokeColor": "#33445e",
+        "strokeWidth": 0
+      }
+    },
+    "conn_11_2": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#33445e",
+        "fillOpacity": 1.0,
+        "strokeColor": "#33445e",
+        "strokeWidth": 0
+      }
+    },
+    "viz_global": {
+      "type": "splunk.singlevalue",
+      "options": {
+        "majorValue": "> primary | seriesByName('status')",
+        "backgroundColor": "> primary | seriesByName('v') | rangeValue(bg)",
+        "majorColor": "#ffffff",
+        "majorFontSize": 26,
+        "sparklineDisplay": "off",
+        "numberPrecision": 0,
+        "underLabel": "\ud83c\udf10 Global IT Ops",
+        "unitPosition": "after"
+      },
+      "context": {
+        "bg": [
+          {
+            "to": 50,
+            "value": "#B23B3B"
+          },
+          {
+            "from": 50,
+            "value": "#2E8B4F"
+          }
+        ]
+      },
+      "dataSources": {
+        "primary": "ds_global"
+      },
+      "title": "\ud83c\udf10 Global IT Ops"
+    },
+    "viz_berlin": {
+      "type": "splunk.singlevalue",
+      "options": {
+        "majorValue": "> primary | seriesByName('status')",
+        "backgroundColor": "> primary | seriesByName('v') | rangeValue(bg)",
+        "majorColor": "#ffffff",
+        "majorFontSize": 22,
+        "sparklineDisplay": "off",
+        "numberPrecision": 0,
+        "underLabel": "\ud83d\udccd Berlin",
+        "unitPosition": "after"
+      },
+      "context": {
+        "bg": [
+          {
+            "to": 50,
+            "value": "#B23B3B"
+          },
+          {
+            "from": 50,
+            "value": "#2E8B4F"
+          }
+        ]
+      },
+      "dataSources": {
+        "primary": "ds_berlin"
+      },
+      "title": "\ud83d\udccd Berlin"
+    },
+    "viz_london": {
+      "type": "splunk.singlevalue",
+      "options": {
+        "majorValue": "> primary | seriesByName('status')",
+        "backgroundColor": "> primary | seriesByName('v') | rangeValue(bg)",
+        "majorColor": "#ffffff",
+        "majorFontSize": 22,
+        "sparklineDisplay": "off",
+        "numberPrecision": 0,
+        "underLabel": "\ud83d\udccd London",
+        "unitPosition": "after"
+      },
+      "context": {
+        "bg": [
+          {
+            "to": 50,
+            "value": "#B23B3B"
+          },
+          {
+            "from": 50,
+            "value": "#2E8B4F"
+          }
+        ]
+      },
+      "dataSources": {
+        "primary": "ds_london"
+      },
+      "title": "\ud83d\udccd London"
+    },
+    "viz_loc1": {
+      "type": "splunk.singlevalue",
+      "options": {
+        "majorValue": "> primary | seriesByName('status')",
+        "backgroundColor": "> primary | seriesByName('v') | rangeValue(bg)",
+        "majorColor": "#ffffff",
+        "majorFontSize": 22,
+        "sparklineDisplay": "off",
+        "numberPrecision": 0,
+        "underLabel": "\ud83d\udccd Location 1",
+        "unitPosition": "after"
+      },
+      "context": {
+        "bg": [
+          {
+            "to": 50,
+            "value": "#B23B3B"
+          },
+          {
+            "from": 50,
+            "value": "#2E8B4F"
+          }
+        ]
+      },
+      "dataSources": {
+        "primary": "ds_loc1"
+      },
+      "title": "\ud83d\udccd Location 1"
+    },
+    "viz_dirapp": {
+      "type": "splunk.singlevalue",
+      "options": {
+        "majorValue": "> primary | seriesByName('status')",
+        "backgroundColor": "> primary | seriesByName('v') | rangeValue(bg)",
+        "majorColor": "#ffffff",
+        "majorFontSize": 22,
+        "sparklineDisplay": "off",
+        "numberPrecision": 0,
+        "underLabel": "\ud83c\udf10 Directory App",
+        "unitPosition": "after"
+      },
+      "context": {
+        "bg": [
+          {
+            "to": 50,
+            "value": "#B23B3B"
+          },
+          {
+            "from": 50,
+            "value": "#2E8B4F"
+          }
+        ]
+      },
+      "dataSources": {
+        "primary": "ds_dirapp"
+      },
+      "title": "\ud83c\udf10 Directory App"
+    },
+    "viz_proxmox": {
+      "type": "splunk.singlevalue",
+      "options": {
+        "majorValue": "> primary | seriesByName('status')",
+        "backgroundColor": "> primary | seriesByName('v') | rangeValue(bg)",
+        "majorColor": "#ffffff",
+        "majorFontSize": 22,
+        "sparklineDisplay": "off",
+        "numberPrecision": 0,
+        "underLabel": "\ud83e\uddf1 Proxmox",
+        "unitPosition": "after"
+      },
+      "context": {
+        "bg": [
+          {
+            "to": 50,
+            "value": "#B23B3B"
+          },
+          {
+            "from": 50,
+            "value": "#2E8B4F"
+          }
+        ]
+      },
+      "dataSources": {
+        "primary": "ds_proxmox"
+      },
+      "title": "\ud83e\uddf1 Proxmox"
+    },
+    "viz_ubuntu_b": {
+      "type": "splunk.singlevalue",
+      "options": {
+        "majorValue": "> primary | seriesByName('status')",
+        "backgroundColor": "> primary | seriesByName('v') | rangeValue(bg)",
+        "majorColor": "#ffffff",
+        "majorFontSize": 22,
+        "sparklineDisplay": "off",
+        "numberPrecision": 0,
+        "underLabel": "\ud83d\udda5\ufe0f Ubuntu Berlin",
+        "unitPosition": "after"
+      },
+      "context": {
+        "bg": [
+          {
+            "to": 50,
+            "value": "#B23B3B"
+          },
+          {
+            "from": 50,
+            "value": "#2E8B4F"
+          }
+        ]
+      },
+      "dataSources": {
+        "primary": "ds_ubuntu_b"
+      },
+      "title": "\ud83d\udda5\ufe0f Ubuntu Berlin"
+    },
+    "viz_router_b": {
+      "type": "splunk.singlevalue",
+      "options": {
+        "majorValue": "> primary | seriesByName('status')",
+        "backgroundColor": "> primary | seriesByName('v') | rangeValue(bg)",
+        "majorColor": "#ffffff",
+        "majorFontSize": 22,
+        "sparklineDisplay": "off",
+        "numberPrecision": 0,
+        "underLabel": "\ud83d\udd00 Router Berlin",
+        "unitPosition": "after"
+      },
+      "context": {
+        "bg": [
+          {
+            "to": 50,
+            "value": "#B23B3B"
+          },
+          {
+            "from": 50,
+            "value": "#2E8B4F"
+          }
+        ]
+      },
+      "dataSources": {
+        "primary": "ds_router_b"
+      },
+      "title": "\ud83d\udd00 Router Berlin"
+    },
+    "viz_web": {
+      "type": "splunk.singlevalue",
+      "options": {
+        "majorValue": "> primary | seriesByName('status')",
+        "backgroundColor": "> primary | seriesByName('v') | rangeValue(bg)",
+        "majorColor": "#ffffff",
+        "majorFontSize": 20,
+        "sparklineDisplay": "off",
+        "numberPrecision": 0,
+        "underLabel": "\ud83c\udf10 Web",
+        "unitPosition": "after"
+      },
+      "context": {
+        "bg": [
+          {
+            "to": 50,
+            "value": "#B23B3B"
+          },
+          {
+            "from": 50,
+            "value": "#2E8B4F"
+          }
+        ]
+      },
+      "dataSources": {
+        "primary": "ds_web"
+      },
+      "title": "\ud83c\udf10 Web"
+    },
+    "viz_db": {
+      "type": "splunk.singlevalue",
+      "options": {
+        "majorValue": "> primary | seriesByName('status')",
+        "backgroundColor": "> primary | seriesByName('v') | rangeValue(bg)",
+        "majorColor": "#ffffff",
+        "majorFontSize": 20,
+        "sparklineDisplay": "off",
+        "numberPrecision": 0,
+        "underLabel": "\ud83d\uddc4\ufe0f Database",
+        "unitPosition": "after"
+      },
+      "context": {
+        "bg": [
+          {
+            "to": 50,
+            "value": "#B23B3B"
+          },
+          {
+            "from": 50,
+            "value": "#2E8B4F"
+          }
+        ]
+      },
+      "dataSources": {
+        "primary": "ds_db"
+      },
+      "title": "\ud83d\uddc4\ufe0f Database"
+    },
+    "viz_ubuntu_l": {
+      "type": "splunk.singlevalue",
+      "options": {
+        "majorValue": "> primary | seriesByName('status')",
+        "backgroundColor": "> primary | seriesByName('v') | rangeValue(bg)",
+        "majorColor": "#ffffff",
+        "majorFontSize": 22,
+        "sparklineDisplay": "off",
+        "numberPrecision": 0,
+        "underLabel": "\ud83d\udda5\ufe0f Ubuntu London",
+        "unitPosition": "after"
+      },
+      "context": {
+        "bg": [
+          {
+            "to": 50,
+            "value": "#B23B3B"
+          },
+          {
+            "from": 50,
+            "value": "#2E8B4F"
+          }
+        ]
+      },
+      "dataSources": {
+        "primary": "ds_ubuntu_l"
+      },
+      "title": "\ud83d\udda5\ufe0f Ubuntu London"
+    },
+    "viz_router_l": {
+      "type": "splunk.singlevalue",
+      "options": {
+        "majorValue": "> primary | seriesByName('status')",
+        "backgroundColor": "> primary | seriesByName('v') | rangeValue(bg)",
+        "majorColor": "#ffffff",
+        "majorFontSize": 22,
+        "sparklineDisplay": "off",
+        "numberPrecision": 0,
+        "underLabel": "\ud83d\udd00 Router London",
+        "unitPosition": "after"
+      },
+      "context": {
+        "bg": [
+          {
+            "to": 50,
+            "value": "#B23B3B"
+          },
+          {
+            "from": 50,
+            "value": "#2E8B4F"
+          }
+        ]
+      },
+      "dataSources": {
+        "primary": "ds_router_l"
+      },
+      "title": "\ud83d\udd00 Router London"
+    },
+    "viz_splunk": {
+      "type": "splunk.singlevalue",
+      "options": {
+        "majorValue": "> primary | seriesByName('status')",
+        "backgroundColor": "> primary | seriesByName('v') | rangeValue(bg)",
+        "majorColor": "#ffffff",
+        "majorFontSize": 22,
+        "sparklineDisplay": "off",
+        "numberPrecision": 0,
+        "underLabel": "\u25b8 Splunk Core",
+        "unitPosition": "after"
+      },
+      "context": {
+        "bg": [
+          {
+            "to": 50,
+            "value": "#B23B3B"
+          },
+          {
+            "from": 50,
+            "value": "#2E8B4F"
+          }
+        ]
+      },
+      "dataSources": {
+        "primary": "ds_splunk"
+      },
+      "title": "\u25b8 Splunk Core"
+    },
+    "mark": {
+      "type": "splunk.markdown",
+      "options": {
+        "markdown": "<div style='font:800 20px Inter,sans-serif;color:#65a637'>splunk<span style='color:#65a637'>&gt;</span> <span style='font:600 11px monospace;color:#4a5a72'>ITSI &middot; dCloud service topology</span></div>"
+      }
+    }
+  },
+  "inputs": {
+    "input_global_trp": {
+      "options": {
+        "defaultValue": "-60m@m, now",
+        "token": "global_time"
+      },
+      "type": "input.timerange",
+      "title": "Global Time Range"
+    },
+    "input_global_refresh_rate": {
+      "options": {
+        "items": [
+          {
+            "value": "60s",
+            "label": "1 Minute"
+          },
+          {
+            "value": "300s",
+            "label": "5 Minutes"
+          },
+          {
+            "value": "1800s",
+            "label": "30 Minutes"
+          }
+        ],
+        "defaultValue": "60s",
+        "token": "global_refresh_rate"
+      },
+      "type": "input.dropdown",
+      "title": "Global Refresh Rate"
+    }
+  }
+}
