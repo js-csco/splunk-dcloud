@@ -405,7 +405,13 @@ def kpi_payload(title, base_search, field, agg, unit, medium, critical, adaptive
         "search_alert_earliest": "2",
         # Backfill so KPI values (and health colours) appear immediately instead
         # of only after the scheduled searches have run for a while.
-        "backfill_enabled": True,
+        # Backfill replays the base search over the last 24h to seed history. For
+        # the enrichment KPIs (CPU, counts) that's harmless. But the Reachability
+        # search FORCES down=100 (critical) when there's no data - and 24h ago the
+        # probes didn't exist, so backfill writes a critical-heavy fake history that
+        # drags the health score even when the service is up NOW. So: no backfill on
+        # reachability (it's a live probe; health populates within a couple minutes).
+        "backfill_enabled": (False if "reachab" in tl else True),
         "backfill_earliest_time": "-24h",
         "time_variate_thresholds": use_adaptive,
         "adaptive_thresholds_is_enabled": use_adaptive,
