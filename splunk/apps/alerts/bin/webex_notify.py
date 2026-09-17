@@ -18,7 +18,7 @@ import json
 import os
 import sys
 import ssl
-from urllib import request, error
+from urllib import request, error, parse
 
 VAR_ENV = os.path.join(os.environ.get("SPLUNK_HOME", "/opt/splunk"), "var", "lib", "dcloud", "webex.env")
 MESSAGES_API = "https://webexapis.com/v1/messages"
@@ -66,10 +66,19 @@ def main():
     name = payload.get("search_name", "Splunk alert")
     link = payload.get("results_link", "")
     msg = cfg.get("message") or ("Splunk alert fired: %s" % name)
-    if link:
-        msg = "%s\n\n[View in Splunk](%s)" % (msg, link)
 
     env = load_env()
+    if link:
+        # Splunk builds results_link with the server's internal hostname (e.g.
+        # ubuntu24-splunk:8000), which isn't resolvable from a demo workstation.
+        # Rewrite the host to the lab's reachable Splunk web address.
+        web = (env.get("SPLUNK_WEB_URL") or "198.18.1.124:8000").strip().rstrip("/")
+        try:
+            p = parse.urlsplit(link)
+            link = parse.urlunsplit((p.scheme or "http", web, p.path, p.query, p.fragment))
+        except Exception:  # noqa: BLE001
+            pass
+        msg = "%s\n\n[View in Splunk](%s)" % (msg, link)
     try:
         if env.get("WEBEX_WEBHOOK_URL"):
             code = post(env["WEBEX_WEBHOOK_URL"], {"markdown": msg}, {})
