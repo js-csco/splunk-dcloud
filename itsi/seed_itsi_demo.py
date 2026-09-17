@@ -156,6 +156,8 @@ SERVICES = [
      ]},
     {"title": "Splunk Core", "desc": "The Splunk server itself (Location 1).",
      "rule": ("role", "splunk"), "depends_on": [], "kpis": [
+        # Gating: the Splunk box ships loc1_metrics every 30-60s; recent data = up.
+        ("Reachability",          "index=loc1_metrics sourcetype=linux:metrics | stats count as c | eval down=if(c>0,0,100)", "down", "max", "%", 50, 90),
         ("CPU Utilization",       "index=loc1_metrics sourcetype=linux:metrics", "cpu_pct",       "avg",   "%",      70, 90),
         ("Memory Utilization",    "index=loc1_metrics sourcetype=linux:metrics", "mem_used_pct",  "avg",   "%",      70, 90),
         ("Disk Usage",            "index=loc1_metrics sourcetype=linux:metrics", "disk_used_pct", "avg",   "%",      80, 90),
@@ -365,21 +367,17 @@ def kpi_payload(title, base_search, field, agg, unit, medium, critical, adaptive
     #        so they MUST NOT be able to drag the tree. Gating health always comes
     #        from the central probes/polls instead.
     tl = title.lower()
-    if "snmp" in tl or "trap" in tl:
-        importance = 1
-    elif "reachab" in tl:
-        # GATING (importance 11): reachability defines service health. Down -> the
-        # service is critical regardless of the enrichment KPIs; up -> enrichment
-        # only adds detail. This is the correct ITSI use of importance 11 now that
-        # reachability is a down% metric (higher=worse), so a normal gating KPI no
-        # longer inverts the score the way the old up% one did.
+    if "reachab" in tl:
+        # GATING (importance 11): Reachability is the SOLE driver of service health.
+        # Down -> service critical; up -> healthy. Correct now that Reachability is a
+        # down% metric (higher=worse) so a normal gating KPI no longer inverts.
         importance = 11
-    elif "poll" in tl or "volume" in tl or "connections" in tl:
-        # SSH-poll health + volume/count KPIs: informational color, not gating
-        # (the central reachability probe is the gate now).
-        importance = 2
     else:
-        importance = 5
+        # ENRICHMENT (importance 0): shows in Deep Dives / Glass Table and on the
+        # service, but does NOT contribute to the health score - so an idle/no-data
+        # KPI (latency, DB errors, poll, CPU when a host is quiet) can never drag the
+        # tree. This is ITSI's built-in "informational only" weight.
+        importance = 0
     return {
         "_key": str(uuid.uuid4()),
         "title": title,
