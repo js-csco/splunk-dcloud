@@ -1,0 +1,689 @@
+{
+  "title": "dCloud - Service Topology",
+  "description": "Live service health - green = reachable, red = down. Tiles read the same probe/heartbeat signals as the ITSI tree.",
+  "defaults": {
+    "dataSources": {
+      "global": {
+        "options": {
+          "queryParameters": {
+            "earliest": "$global_time.earliest$",
+            "latest": "$global_time.latest$"
+          },
+          "refreshType": "delay",
+          "refresh": "$global_refresh_rate$"
+        }
+      }
+    }
+  },
+  "layout": {
+    "options": {
+      "showTitleAndDescription": true
+    },
+    "globalInputs": [
+      "input_global_trp",
+      "input_global_refresh_rate"
+    ],
+    "tabs": {
+      "items": [
+        {
+          "layoutId": "layout_1",
+          "label": "Topology"
+        }
+      ]
+    },
+    "layoutDefinitions": {
+      "layout_1": {
+        "type": "absolute",
+        "options": {
+          "width": 1920,
+          "height": 1080,
+          "backgroundColor": "#0b0e13"
+        },
+        "structure": [
+          {
+            "item": "viz_global",
+            "type": "block",
+            "position": {
+              "x": 720,
+              "y": 40,
+              "w": 480,
+              "h": 120
+            }
+          },
+          {
+            "item": "viz_berlin",
+            "type": "block",
+            "position": {
+              "x": 160,
+              "y": 210,
+              "w": 340,
+              "h": 100
+            }
+          },
+          {
+            "item": "viz_london",
+            "type": "block",
+            "position": {
+              "x": 790,
+              "y": 210,
+              "w": 340,
+              "h": 100
+            }
+          },
+          {
+            "item": "viz_loc1",
+            "type": "block",
+            "position": {
+              "x": 1420,
+              "y": 210,
+              "w": 340,
+              "h": 100
+            }
+          },
+          {
+            "item": "viz_dirapp",
+            "type": "block",
+            "position": {
+              "x": 40,
+              "y": 380,
+              "w": 300,
+              "h": 100
+            }
+          },
+          {
+            "item": "viz_proxmox",
+            "type": "block",
+            "position": {
+              "x": 360,
+              "y": 380,
+              "w": 300,
+              "h": 100
+            }
+          },
+          {
+            "item": "viz_ubuntu_l",
+            "type": "block",
+            "position": {
+              "x": 790,
+              "y": 380,
+              "w": 340,
+              "h": 100
+            }
+          },
+          {
+            "item": "viz_splunk",
+            "type": "block",
+            "position": {
+              "x": 1420,
+              "y": 380,
+              "w": 340,
+              "h": 100
+            }
+          },
+          {
+            "item": "viz_web",
+            "type": "block",
+            "position": {
+              "x": 20,
+              "y": 540,
+              "w": 220,
+              "h": 100
+            }
+          },
+          {
+            "item": "viz_db",
+            "type": "block",
+            "position": {
+              "x": 260,
+              "y": 540,
+              "w": 220,
+              "h": 100
+            }
+          },
+          {
+            "item": "viz_ubuntu_b",
+            "type": "block",
+            "position": {
+              "x": 480,
+              "y": 540,
+              "w": 220,
+              "h": 100
+            }
+          },
+          {
+            "item": "viz_router_b",
+            "type": "block",
+            "position": {
+              "x": 720,
+              "y": 540,
+              "w": 220,
+              "h": 100
+            }
+          },
+          {
+            "item": "viz_router_l",
+            "type": "block",
+            "position": {
+              "x": 790,
+              "y": 520,
+              "w": 340,
+              "h": 100
+            }
+          }
+        ]
+      }
+    }
+  },
+  "dataSources": {
+    "ds_global": {
+      "type": "ds.search",
+      "options": {
+        "query": "| makeresults \n| appendcols [ search index=berlin_web sourcetype=port:probe host=webapp-berlin earliest=-15m | stats count as c latest(open) as o | eval f0=if(c>0 AND o=1,1,0) | fields f0 ] \n| appendcols [ search index=berlin_web sourcetype=port:probe host=db-berlin earliest=-15m | stats count as c latest(open) as o | eval f1=if(c>0 AND o=1,1,0) | fields f1 ] \n| appendcols [ search index=berlin_web sourcetype=port:probe host=proxmox-berlin earliest=-15m | stats count as c latest(open) as o | eval f2=if(c>0 AND o=1,1,0) | fields f2 ] \n| appendcols [ search index=berlin_metrics sourcetype=linux:metrics host=ubuntu-berlin earliest=-15m | stats count as c | eval f3=if(c>0,1,0) | fields f3 ] \n| appendcols [ search index=london_metrics sourcetype=linux:metrics host=ubuntu-london earliest=-15m | stats count as c | eval f4=if(c>0,1,0) | fields f4 ] \n| eval v=if(f0=1 AND f1=1 AND f2=1 AND f3=1 AND f4=1,100,0) | fields v",
+        "queryParameters": {
+          "earliest": "-15m",
+          "latest": "now"
+        }
+      },
+      "name": "Global IT Operations"
+    },
+    "ds_berlin": {
+      "type": "ds.search",
+      "options": {
+        "query": "| makeresults \n| appendcols [ search index=berlin_web sourcetype=port:probe host=webapp-berlin earliest=-15m | stats count as c latest(open) as o | eval f0=if(c>0 AND o=1,1,0) | fields f0 ] \n| appendcols [ search index=berlin_web sourcetype=port:probe host=db-berlin earliest=-15m | stats count as c latest(open) as o | eval f1=if(c>0 AND o=1,1,0) | fields f1 ] \n| appendcols [ search index=berlin_web sourcetype=port:probe host=proxmox-berlin earliest=-15m | stats count as c latest(open) as o | eval f2=if(c>0 AND o=1,1,0) | fields f2 ] \n| appendcols [ search index=berlin_metrics sourcetype=linux:metrics host=ubuntu-berlin earliest=-15m | stats count as c | eval f3=if(c>0,1,0) | fields f3 ] \n| appendcols [ search index=berlin_web sourcetype=port:probe host=cat8kv-berlin earliest=-15m | stats count as c latest(open) as o | eval f4=if(c>0 AND o=1,1,0) | fields f4 ] \n| eval v=if(f0=1 AND f1=1 AND f2=1 AND f3=1 AND f4=1,100,0) | fields v",
+        "queryParameters": {
+          "earliest": "-15m",
+          "latest": "now"
+        }
+      },
+      "name": "Berlin"
+    },
+    "ds_london": {
+      "type": "ds.search",
+      "options": {
+        "query": "| makeresults \n| appendcols [ search index=london_metrics sourcetype=linux:metrics host=ubuntu-london earliest=-15m | stats count as c | eval f0=if(c>0,1,0) | fields f0 ] \n| appendcols [ search index=london_web sourcetype=port:probe host=cat8kv-london earliest=-15m | stats count as c latest(open) as o | eval f1=if(c>0 AND o=1,1,0) | fields f1 ] \n| eval v=if(f0=1 AND f1=1,100,0) | fields v",
+        "queryParameters": {
+          "earliest": "-15m",
+          "latest": "now"
+        }
+      },
+      "name": "London"
+    },
+    "ds_loc1": {
+      "type": "ds.search",
+      "options": {
+        "query": "index=loc1_metrics sourcetype=linux:metrics | stats count as c | eval v=if(c>0,100,0) | fields v",
+        "queryParameters": {
+          "earliest": "-15m",
+          "latest": "now"
+        }
+      },
+      "name": "Location 1"
+    },
+    "ds_dirapp": {
+      "type": "ds.search",
+      "options": {
+        "query": "| makeresults \n| appendcols [ search index=berlin_web sourcetype=port:probe host=webapp-berlin earliest=-15m | stats count as c latest(open) as o | eval f0=if(c>0 AND o=1,1,0) | fields f0 ] \n| appendcols [ search index=berlin_web sourcetype=port:probe host=db-berlin earliest=-15m | stats count as c latest(open) as o | eval f1=if(c>0 AND o=1,1,0) | fields f1 ] \n| eval v=if(f0=1 AND f1=1,100,0) | fields v",
+        "queryParameters": {
+          "earliest": "-15m",
+          "latest": "now"
+        }
+      },
+      "name": "Directory App"
+    },
+    "ds_proxmox": {
+      "type": "ds.search",
+      "options": {
+        "query": "index=berlin_web sourcetype=port:probe host=proxmox-berlin | stats count as c latest(open) as o | eval v=if(c>0 AND o=1,100,0) | fields v",
+        "queryParameters": {
+          "earliest": "-15m",
+          "latest": "now"
+        }
+      },
+      "name": "Proxmox Hypervisor"
+    },
+    "ds_ubuntu_l": {
+      "type": "ds.search",
+      "options": {
+        "query": "index=london_metrics sourcetype=linux:metrics host=ubuntu-london | stats count as c | eval v=if(c>0,100,0) | fields v",
+        "queryParameters": {
+          "earliest": "-15m",
+          "latest": "now"
+        }
+      },
+      "name": "Ubuntu London"
+    },
+    "ds_splunk": {
+      "type": "ds.search",
+      "options": {
+        "query": "index=loc1_metrics sourcetype=linux:metrics | stats count as c | eval v=if(c>0,100,0) | fields v",
+        "queryParameters": {
+          "earliest": "-15m",
+          "latest": "now"
+        }
+      },
+      "name": "Splunk Core"
+    },
+    "ds_web": {
+      "type": "ds.search",
+      "options": {
+        "query": "index=berlin_web sourcetype=port:probe host=webapp-berlin | stats count as c latest(open) as o | eval v=if(c>0 AND o=1,100,0) | fields v",
+        "queryParameters": {
+          "earliest": "-15m",
+          "latest": "now"
+        }
+      },
+      "name": "Web Service"
+    },
+    "ds_db": {
+      "type": "ds.search",
+      "options": {
+        "query": "index=berlin_web sourcetype=port:probe host=db-berlin | stats count as c latest(open) as o | eval v=if(c>0 AND o=1,100,0) | fields v",
+        "queryParameters": {
+          "earliest": "-15m",
+          "latest": "now"
+        }
+      },
+      "name": "Database Service"
+    },
+    "ds_ubuntu_b": {
+      "type": "ds.search",
+      "options": {
+        "query": "index=berlin_metrics sourcetype=linux:metrics host=ubuntu-berlin | stats count as c | eval v=if(c>0,100,0) | fields v",
+        "queryParameters": {
+          "earliest": "-15m",
+          "latest": "now"
+        }
+      },
+      "name": "Ubuntu Berlin"
+    },
+    "ds_router_b": {
+      "type": "ds.search",
+      "options": {
+        "query": "index=berlin_web sourcetype=port:probe host=cat8kv-berlin | stats count as c latest(open) as o | eval v=if(c>0 AND o=1,100,0) | fields v",
+        "queryParameters": {
+          "earliest": "-15m",
+          "latest": "now"
+        }
+      },
+      "name": "Router Berlin"
+    },
+    "ds_router_l": {
+      "type": "ds.search",
+      "options": {
+        "query": "index=london_web sourcetype=port:probe host=cat8kv-london | stats count as c latest(open) as o | eval v=if(c>0 AND o=1,100,0) | fields v",
+        "queryParameters": {
+          "earliest": "-15m",
+          "latest": "now"
+        }
+      },
+      "name": "Router London"
+    }
+  },
+  "visualizations": {
+    "viz_global": {
+      "type": "splunk.singlevalue",
+      "options": {
+        "majorColor": "> majorValue | rangeValue(color_global)",
+        "unit": "%",
+        "sparklineDisplay": "off",
+        "backgroundColor": "#171D21"
+      },
+      "context": {
+        "color_global": [
+          {
+            "to": 50,
+            "value": "#D41F1F"
+          },
+          {
+            "from": 50,
+            "value": "#53A051"
+          }
+        ]
+      },
+      "dataSources": {
+        "primary": "ds_global"
+      },
+      "title": "Global IT Operations"
+    },
+    "viz_berlin": {
+      "type": "splunk.singlevalue",
+      "options": {
+        "majorColor": "> majorValue | rangeValue(color_berlin)",
+        "unit": "%",
+        "sparklineDisplay": "off",
+        "backgroundColor": "#171D21"
+      },
+      "context": {
+        "color_berlin": [
+          {
+            "to": 50,
+            "value": "#D41F1F"
+          },
+          {
+            "from": 50,
+            "value": "#53A051"
+          }
+        ]
+      },
+      "dataSources": {
+        "primary": "ds_berlin"
+      },
+      "title": "Berlin"
+    },
+    "viz_london": {
+      "type": "splunk.singlevalue",
+      "options": {
+        "majorColor": "> majorValue | rangeValue(color_london)",
+        "unit": "%",
+        "sparklineDisplay": "off",
+        "backgroundColor": "#171D21"
+      },
+      "context": {
+        "color_london": [
+          {
+            "to": 50,
+            "value": "#D41F1F"
+          },
+          {
+            "from": 50,
+            "value": "#53A051"
+          }
+        ]
+      },
+      "dataSources": {
+        "primary": "ds_london"
+      },
+      "title": "London"
+    },
+    "viz_loc1": {
+      "type": "splunk.singlevalue",
+      "options": {
+        "majorColor": "> majorValue | rangeValue(color_loc1)",
+        "unit": "%",
+        "sparklineDisplay": "off",
+        "backgroundColor": "#171D21"
+      },
+      "context": {
+        "color_loc1": [
+          {
+            "to": 50,
+            "value": "#D41F1F"
+          },
+          {
+            "from": 50,
+            "value": "#53A051"
+          }
+        ]
+      },
+      "dataSources": {
+        "primary": "ds_loc1"
+      },
+      "title": "Location 1"
+    },
+    "viz_dirapp": {
+      "type": "splunk.singlevalue",
+      "options": {
+        "majorColor": "> majorValue | rangeValue(color_dirapp)",
+        "unit": "%",
+        "sparklineDisplay": "off",
+        "backgroundColor": "#171D21"
+      },
+      "context": {
+        "color_dirapp": [
+          {
+            "to": 50,
+            "value": "#D41F1F"
+          },
+          {
+            "from": 50,
+            "value": "#53A051"
+          }
+        ]
+      },
+      "dataSources": {
+        "primary": "ds_dirapp"
+      },
+      "title": "Directory App"
+    },
+    "viz_proxmox": {
+      "type": "splunk.singlevalue",
+      "options": {
+        "majorColor": "> majorValue | rangeValue(color_proxmox)",
+        "unit": "%",
+        "sparklineDisplay": "off",
+        "backgroundColor": "#171D21"
+      },
+      "context": {
+        "color_proxmox": [
+          {
+            "to": 50,
+            "value": "#D41F1F"
+          },
+          {
+            "from": 50,
+            "value": "#53A051"
+          }
+        ]
+      },
+      "dataSources": {
+        "primary": "ds_proxmox"
+      },
+      "title": "Proxmox Hypervisor"
+    },
+    "viz_ubuntu_l": {
+      "type": "splunk.singlevalue",
+      "options": {
+        "majorColor": "> majorValue | rangeValue(color_ubuntu_l)",
+        "unit": "%",
+        "sparklineDisplay": "off",
+        "backgroundColor": "#171D21"
+      },
+      "context": {
+        "color_ubuntu_l": [
+          {
+            "to": 50,
+            "value": "#D41F1F"
+          },
+          {
+            "from": 50,
+            "value": "#53A051"
+          }
+        ]
+      },
+      "dataSources": {
+        "primary": "ds_ubuntu_l"
+      },
+      "title": "Ubuntu London"
+    },
+    "viz_splunk": {
+      "type": "splunk.singlevalue",
+      "options": {
+        "majorColor": "> majorValue | rangeValue(color_splunk)",
+        "unit": "%",
+        "sparklineDisplay": "off",
+        "backgroundColor": "#171D21"
+      },
+      "context": {
+        "color_splunk": [
+          {
+            "to": 50,
+            "value": "#D41F1F"
+          },
+          {
+            "from": 50,
+            "value": "#53A051"
+          }
+        ]
+      },
+      "dataSources": {
+        "primary": "ds_splunk"
+      },
+      "title": "Splunk Core"
+    },
+    "viz_web": {
+      "type": "splunk.singlevalue",
+      "options": {
+        "majorColor": "> majorValue | rangeValue(color_web)",
+        "unit": "%",
+        "sparklineDisplay": "off",
+        "backgroundColor": "#171D21"
+      },
+      "context": {
+        "color_web": [
+          {
+            "to": 50,
+            "value": "#D41F1F"
+          },
+          {
+            "from": 50,
+            "value": "#53A051"
+          }
+        ]
+      },
+      "dataSources": {
+        "primary": "ds_web"
+      },
+      "title": "Web Service"
+    },
+    "viz_db": {
+      "type": "splunk.singlevalue",
+      "options": {
+        "majorColor": "> majorValue | rangeValue(color_db)",
+        "unit": "%",
+        "sparklineDisplay": "off",
+        "backgroundColor": "#171D21"
+      },
+      "context": {
+        "color_db": [
+          {
+            "to": 50,
+            "value": "#D41F1F"
+          },
+          {
+            "from": 50,
+            "value": "#53A051"
+          }
+        ]
+      },
+      "dataSources": {
+        "primary": "ds_db"
+      },
+      "title": "Database Service"
+    },
+    "viz_ubuntu_b": {
+      "type": "splunk.singlevalue",
+      "options": {
+        "majorColor": "> majorValue | rangeValue(color_ubuntu_b)",
+        "unit": "%",
+        "sparklineDisplay": "off",
+        "backgroundColor": "#171D21"
+      },
+      "context": {
+        "color_ubuntu_b": [
+          {
+            "to": 50,
+            "value": "#D41F1F"
+          },
+          {
+            "from": 50,
+            "value": "#53A051"
+          }
+        ]
+      },
+      "dataSources": {
+        "primary": "ds_ubuntu_b"
+      },
+      "title": "Ubuntu Berlin"
+    },
+    "viz_router_b": {
+      "type": "splunk.singlevalue",
+      "options": {
+        "majorColor": "> majorValue | rangeValue(color_router_b)",
+        "unit": "%",
+        "sparklineDisplay": "off",
+        "backgroundColor": "#171D21"
+      },
+      "context": {
+        "color_router_b": [
+          {
+            "to": 50,
+            "value": "#D41F1F"
+          },
+          {
+            "from": 50,
+            "value": "#53A051"
+          }
+        ]
+      },
+      "dataSources": {
+        "primary": "ds_router_b"
+      },
+      "title": "Router Berlin"
+    },
+    "viz_router_l": {
+      "type": "splunk.singlevalue",
+      "options": {
+        "majorColor": "> majorValue | rangeValue(color_router_l)",
+        "unit": "%",
+        "sparklineDisplay": "off",
+        "backgroundColor": "#171D21"
+      },
+      "context": {
+        "color_router_l": [
+          {
+            "to": 50,
+            "value": "#D41F1F"
+          },
+          {
+            "from": 50,
+            "value": "#53A051"
+          }
+        ]
+      },
+      "dataSources": {
+        "primary": "ds_router_l"
+      },
+      "title": "Router London"
+    }
+  },
+  "inputs": {
+    "input_global_trp": {
+      "options": {
+        "defaultValue": "-60m@m, now",
+        "token": "global_time"
+      },
+      "type": "input.timerange",
+      "title": "Global Time Range"
+    },
+    "input_global_refresh_rate": {
+      "options": {
+        "items": [
+          {
+            "value": "60s",
+            "label": "1 Minute"
+          },
+          {
+            "value": "300s",
+            "label": "5 Minutes"
+          },
+          {
+            "value": "1800s",
+            "label": "30 Minutes"
+          },
+          {
+            "value": "3600s",
+            "label": "1 Hour"
+          },
+          {
+            "value": "86400s",
+            "label": "24 Hours"
+          }
+        ],
+        "defaultValue": "60s",
+        "token": "global_refresh_rate"
+      },
+      "type": "input.dropdown",
+      "title": "Global Refresh Rate"
+    }
+  }
+}
