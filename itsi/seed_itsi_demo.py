@@ -82,9 +82,10 @@ SERVICES = [
         # GATING health for the tier the containers run on.
         ("Reachability", "index=berlin_web sourcetype=port:probe host=proxmox-berlin | stats count as c latest(open) as o | eval up=if(c>0,o*100,0)", "up", "max", "%", 50, 50),
         ("Proxmox Event Volume", "index=berlin_proxmox", "count", "count", "events", 50000, 200000),
-        # SNMP (optional enrichment - importance 1): SC4SNMP poll data from the
-        # hypervisor's SNMP agent. Absent when SC4SNMP isn't stood up; never gates.
-        ("SNMP Reachability", "index=berlin_snmp host=198.18.3.11* (sourcetype=sc4snmp:event OR sourcetype=sc4snmp:metric) | stats count as c | eval up=if(c>0,100,0)", "up", "max", "%", 50, 50),
+        # SNMP is NOT a service KPI: SC4SNMP is an optional add-on that's usually
+        # not stood up, so it reads critical/no-data and drags the tree even at low
+        # importance. SNMP lives on the SNMP dashboard instead; re-add here only if
+        # SC4SNMP is a permanent fixture in your lab.
      ]},
     # ---- app tiers (carry KPIs; depend on the hypervisor they run on) ------
     {"title": "Web Service (Berlin)", "desc": "The Berlin web application container.",
@@ -132,10 +133,8 @@ SERVICES = [
         # SSH poll health (the scripted input) - enrichment only now.
         ("Poll Errors", "index=berlin_network (\"Connection timed out\" OR \"Connection refused\" OR \"No route to host\" OR \"Unable to negotiate\" OR \"Permission denied\" OR \"Could not resolve\")", "count", "count", "errors", 1, 3),
         ("Poll Volume",  "index=berlin_network", "count", "count", "events", 50000, 200000),
-        # SNMP: poll reachability (up% from SC4SNMP GET data) + link-down traps.
-        # A linkDown/coldStart trap makes this RED -> cascades up the tree.
-        ("SNMP Reachability", "index=berlin_snmp host=198.18.3.32* (sourcetype=sc4snmp:event OR sourcetype=sc4snmp:metric) | stats count as c | eval up=if(c>0,100,0)", "up", "max", "%", 50, 50),
-        ("Link-Down Traps",   "index=berlin_snmp sourcetype=sc4snmp:traps host=198.18.3.32* (linkDown OR coldStart)", "count", "count", "traps", 1, 1),
+        # SNMP removed from service KPIs (optional add-on; see Proxmox note). Traps
+        # and poll data remain on the SNMP dashboard.
      ]},
     {"title": "Ubuntu London", "desc": "Ubuntu server host (London).",
      "rule": ("host", "ubuntu-london"), "depends_on": [], "kpis": [
@@ -152,9 +151,7 @@ SERVICES = [
         # SSH poll health - enrichment only.
         ("Poll Errors", "index=london_network (\"Connection timed out\" OR \"Connection refused\" OR \"No route to host\" OR \"Unable to negotiate\" OR \"Permission denied\" OR \"Could not resolve\")", "count", "count", "errors", 1, 3),
         ("Poll Volume",  "index=london_network", "count", "count", "events", 50000, 200000),
-        # SNMP enrichment - London traffic lands in london_snmp (RBAC per region).
-        ("SNMP Reachability", "index=london_snmp host=198.18.2.32* (sourcetype=sc4snmp:event OR sourcetype=sc4snmp:metric) | stats count as c | eval up=if(c>0,100,0)", "up", "max", "%", 50, 50),
-        ("Link-Down Traps",   "index=london_snmp sourcetype=sc4snmp:traps host=198.18.2.32* (linkDown OR coldStart)", "count", "count", "traps", 1, 1),
+        # SNMP removed from service KPIs (optional add-on; see Proxmox note).
      ]},
     {"title": "Splunk Core", "desc": "The Splunk server itself (Location 1).",
      "rule": ("role", "splunk"), "depends_on": [], "kpis": [
