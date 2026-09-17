@@ -446,6 +446,10 @@ def main():
     ap.add_argument("--adaptive", action="store_true",
                     help="enable ITSI adaptive/ML thresholding on CPU/mem/disk/latency KPIs "
                          "(premium; needs an ITSI license). Static thresholds otherwise.")
+    ap.add_argument("--wipe", action="store_true",
+                    help="DELETE every existing ITSI service (and its KPIs/scheduled searches) "
+                         "before seeding, for a clean slate. Use after repeated re-seeds have "
+                         "left orphaned KPIs that corrupt the health score.")
     args = ap.parse_args()
 
     if args.dry_run:
@@ -467,6 +471,19 @@ def main():
         sys.stderr.write("ERROR: ITSI REST not reachable (HTTP %s at %s). Is ITE-W installed and "
                          "Splunk restarted? Are the admin creds correct?\n" % (code, args.host))
         return 1
+
+    if args.wipe:
+        print("Wiping ALL existing ITSI services (clean slate) ...")
+        code, res = itsi._call("GET", "%s/itoa_interface/service" % APP_NS,
+                               params={"fields": "_key,title"})
+        if code == 200 and isinstance(res, list):
+            for s in res:
+                k = s.get("_key"); t = s.get("title", "?")
+                dc, _ = itsi._call("DELETE", "%s/itoa_interface/service/%s" % (APP_NS, k))
+                print("  %s service %s" % ("deleted" if dc in (200, 204) else "FAILED", t))
+            print("  wiped %d services. Recreating clean ..." % len(res))
+        else:
+            sys.stderr.write("  WARN: could not list services to wipe (HTTP %s)\n" % code)
 
     print("Seeding ITSI entities ...")
     for host, site, role, desc in ENTITIES:
