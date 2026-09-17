@@ -181,10 +181,10 @@ def main():
         print("  -> ITSI > Configuration > Notable Event Aggregation Policies to review.")
         return 0
 
-    print("  FAILED to %s policy (HTTP %s). Re-run with --verbose to see the error body." % (action, code))
-    if not args.verbose:
-        print("  Note: ITSI's built-in DEFAULT policy still groups the notables into Episodes;")
-        print("  this custom policy only adds per-service splitting + the Webex action.")
+    print("  FAILED to %s policy (HTTP %s)." % (action, code))
+    print("  ERROR BODY: %s" % (res,))     # always show it, so we can fix the schema
+    print("  Note: ITSI's built-in DEFAULT policy still groups the notables into Episodes;")
+    print("  this custom policy only adds per-service splitting + the Webex action.")
     return 1
 
 
