@@ -1,192 +1,258 @@
 <dashboard version="1.1" theme="dark">
   <label>Service Glass Table</label>
-  <description>Service health wall, laid out as the location tree (Berlin / London / Location 1). ITE-W-friendly stand-in for a licensed ITSI glass table — live-colored from the same signals as the ITSI KPIs.</description>
+  <description>Live topology wall - every tile reads the SAME reachability signal as its ITSI KPI (central port probes + UF heartbeats), so the glass table and the Service Analyzer always agree. 100% = reachable (green), 0% = down (red).</description>
 
+  <!-- ================= header ================= -->
   <row>
     <panel>
       <html>
         <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 4px;">
-          <div style="font-size:18px;font-weight:700;color:#e6edf3;">Service Health — Glass Table</div>
+          <div style="font-size:20px;font-weight:700;color:#e6edf3;">Service Health — Glass Table</div>
           <div style="font-size:12px;color:#8b98a5;">
-            <span style="color:#53a051;">●</span> healthy &#160;
-            <span style="color:#f8be34;">●</span> warning &#160;
-            <span style="color:#d93f3c;">●</span> critical &#160; · reflects the last 15 min
+            <span style="color:#53a051;">●</span> reachable (100%) &#160;
+            <span style="color:#d93f3c;">●</span> down (0%) &#160; · last 15 min · click a tile → Root Cause Analysis
           </div>
         </div>
       </html>
     </panel>
   </row>
 
-  <!-- Top of tree -->
+  <!-- ================= top rollup ================= -->
   <row>
     <panel>
       <title>Global IT Operations</title>
       <single>
         <search>
-          <query>index=berlin_metrics sourcetype=linux:metrics host=webapp-berlin earliest=-15m | stats count as wc
-| appendcols [ search index=berlin_metrics sourcetype=linux:metrics host=db-berlin earliest=-15m | stats count as dc ]
-| eval v=if(wc&gt;0 AND dc&gt;0,0,100) | fields v</query>
-          <earliest>-15m</earliest><latest>now</latest>
-        </search>
-        <option name="drilldown">none</option>
-        <option name="colorBy">value</option>
-        <option name="colorMode">block</option>
-        <option name="useColors">1</option>
-        <option name="rangeValues">[50]</option>
-        <option name="rangeColors">["0x53a051","0xd93f3c"]</option>
-        <option name="underLabel">0 = all services available</option>
-      </single>
-    </panel>
-  </row>
-
-  <!-- Berlin branch -->
-  <row>
-    <panel>
-      <html><div style="font-size:14px;font-weight:700;color:#4a90d9;padding:4px 2px;">Berlin</div></html>
-    </panel>
-  </row>
-  <row>
-    <panel>
-      <title>Proxmox Hypervisor</title>
-      <single>
-        <search>
-          <query>index=berlin_proxmox earliest=-15m | stats count as c | eval v=if(c=0,50,0) | fields v</query>
+          <query>| makeresults
+| appendcols [ search index=berlin_web sourcetype=port:probe host=webapp-berlin earliest=-15m | stats count as c latest(open) as o | eval web=if(c&gt;0 AND o=1,1,0) | fields web ]
+| appendcols [ search index=berlin_web sourcetype=port:probe host=db-berlin earliest=-15m | stats count as c latest(open) as o | eval db=if(c&gt;0 AND o=1,1,0) | fields db ]
+| appendcols [ search index=berlin_web sourcetype=port:probe host=proxmox-berlin earliest=-15m | stats count as c latest(open) as o | eval prox=if(c&gt;0 AND o=1,1,0) | fields prox ]
+| appendcols [ search index=berlin_metrics sourcetype=linux:metrics host=ubuntu-berlin earliest=-15m | stats count as c | eval ub=if(c&gt;0,1,0) | fields ub ]
+| appendcols [ search index=london_metrics sourcetype=linux:metrics host=ubuntu-london earliest=-15m | stats count as c | eval ul=if(c&gt;0,1,0) | fields ul ]
+| appendcols [ search index=loc1_metrics sourcetype=linux:metrics earliest=-15m | stats count as c | eval sp=if(c&gt;0,1,0) | fields sp ]
+| eval v=if(web=1 AND db=1 AND prox=1 AND ub=1 AND ul=1 AND sp=1,100,0) | fields v</query>
           <earliest>-15m</earliest><latest>now</latest>
         </search>
         <option name="drilldown">none</option>
         <option name="colorBy">value</option><option name="colorMode">block</option><option name="useColors">1</option>
-        <option name="rangeValues">[1,80]</option>
-        <option name="rangeColors">["0x53a051","0xf8be34","0xd93f3c"]</option>
-        <option name="underLabel">poll freshness</option>
+        <option name="rangeValues">[50]</option>
+        <option name="rangeColors">["0xd93f3c","0x53a051"]</option>
+        <option name="unit">%</option><option name="underLabel">all sites healthy</option>
+      </single>
+    </panel>
+  </row>
+
+  <!-- ================= location rollups ================= -->
+  <row>
+    <panel>
+      <title>Berlin</title>
+      <single>
+        <search>
+          <query>| makeresults
+| appendcols [ search index=berlin_web sourcetype=port:probe host=webapp-berlin earliest=-15m | stats count as c latest(open) as o | eval web=if(c&gt;0 AND o=1,1,0) | fields web ]
+| appendcols [ search index=berlin_web sourcetype=port:probe host=db-berlin earliest=-15m | stats count as c latest(open) as o | eval db=if(c&gt;0 AND o=1,1,0) | fields db ]
+| appendcols [ search index=berlin_web sourcetype=port:probe host=proxmox-berlin earliest=-15m | stats count as c latest(open) as o | eval prox=if(c&gt;0 AND o=1,1,0) | fields prox ]
+| appendcols [ search index=berlin_metrics sourcetype=linux:metrics host=ubuntu-berlin earliest=-15m | stats count as c | eval ub=if(c&gt;0,1,0) | fields ub ]
+| appendcols [ search index=berlin_web sourcetype=port:probe host=cat8kv-berlin earliest=-15m | stats count as c latest(open) as o | eval rb=if(c&gt;0 AND o=1,1,0) | fields rb ]
+| eval v=if(web=1 AND db=1 AND prox=1 AND ub=1 AND rb=1,100,0) | fields v</query>
+          <earliest>-15m</earliest><latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="colorBy">value</option><option name="colorMode">block</option><option name="useColors">1</option>
+        <option name="rangeValues">[50]</option>
+        <option name="rangeColors">["0xd93f3c","0x53a051"]</option>
+        <option name="unit">%</option><option name="underLabel">Berlin site</option>
+      </single>
+    </panel>
+    <panel>
+      <title>London</title>
+      <single>
+        <search>
+          <query>| makeresults
+| appendcols [ search index=london_metrics sourcetype=linux:metrics host=ubuntu-london earliest=-15m | stats count as c | eval ul=if(c&gt;0,1,0) | fields ul ]
+| appendcols [ search index=london_web sourcetype=port:probe host=cat8kv-london earliest=-15m | stats count as c latest(open) as o | eval rl=if(c&gt;0 AND o=1,1,0) | fields rl ]
+| eval v=if(ul=1 AND rl=1,100,0) | fields v</query>
+          <earliest>-15m</earliest><latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="colorBy">value</option><option name="colorMode">block</option><option name="useColors">1</option>
+        <option name="rangeValues">[50]</option>
+        <option name="rangeColors">["0xd93f3c","0x53a051"]</option>
+        <option name="unit">%</option><option name="underLabel">London site</option>
+      </single>
+    </panel>
+    <panel>
+      <title>Location 1</title>
+      <single>
+        <search>
+          <query>index=loc1_metrics sourcetype=linux:metrics earliest=-15m | stats count as c | eval v=if(c&gt;0,100,0) | fields v</query>
+          <earliest>-15m</earliest><latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="colorBy">value</option><option name="colorMode">block</option><option name="useColors">1</option>
+        <option name="rangeValues">[50]</option>
+        <option name="rangeColors">["0xd93f3c","0x53a051"]</option>
+        <option name="unit">%</option><option name="underLabel">Splunk core site</option>
+      </single>
+    </panel>
+  </row>
+
+  <!-- ================= Berlin components ================= -->
+  <row>
+    <panel><html><div style="font-size:14px;font-weight:700;color:#4a90d9;padding:8px 2px 0;">Berlin — Directory App &amp; infrastructure</div></html></panel>
+  </row>
+  <row>
+    <panel>
+      <title>Directory App</title>
+      <single>
+        <search>
+          <query>| makeresults
+| appendcols [ search index=berlin_web sourcetype=port:probe host=webapp-berlin earliest=-15m | stats count as c latest(open) as o | eval web=if(c&gt;0 AND o=1,1,0) | fields web ]
+| appendcols [ search index=berlin_web sourcetype=port:probe host=db-berlin earliest=-15m | stats count as c latest(open) as o | eval db=if(c&gt;0 AND o=1,1,0) | fields db ]
+| eval v=if(web=1 AND db=1,100,0) | fields v</query>
+          <earliest>-15m</earliest><latest>now</latest>
+        </search>
+        <drilldown><link target="_blank">root_cause_analysis</link></drilldown>
+        <option name="colorBy">value</option><option name="colorMode">block</option><option name="useColors">1</option>
+        <option name="rangeValues">[50]</option>
+        <option name="rangeColors">["0xd93f3c","0x53a051"]</option>
+        <option name="unit">%</option><option name="underLabel">web + database</option>
       </single>
     </panel>
     <panel>
       <title>Web Service</title>
       <single>
         <search>
-          <query>index=berlin_metrics sourcetype=linux:metrics host=webapp-berlin earliest=-15m | stats count as c
-| eval v=if(c&gt;0,0,100) | fields v</query>
+          <query>index=berlin_web sourcetype=port:probe host=webapp-berlin earliest=-15m | stats count as c latest(open) as o | eval v=if(c&gt;0 AND o=1,100,0) | fields v</query>
           <earliest>-15m</earliest><latest>now</latest>
         </search>
-        <option name="drilldown">none</option>
+        <drilldown><link target="_blank">root_cause_analysis</link></drilldown>
         <option name="colorBy">value</option><option name="colorMode">block</option><option name="useColors">1</option>
         <option name="rangeValues">[50]</option>
-        <option name="rangeColors">["0x53a051","0xd93f3c"]</option>
-        <option name="underLabel">0 = reachable :8080</option>
+        <option name="rangeColors">["0xd93f3c","0x53a051"]</option>
+        <option name="unit">%</option><option name="underLabel">TCP :8080</option>
       </single>
     </panel>
     <panel>
       <title>Database Service</title>
       <single>
         <search>
-          <query>index=berlin_metrics sourcetype=linux:metrics host=db-berlin earliest=-15m | stats count as c
-| eval v=if(c&gt;0,0,100) | fields v</query>
+          <query>index=berlin_web sourcetype=port:probe host=db-berlin earliest=-15m | stats count as c latest(open) as o | eval v=if(c&gt;0 AND o=1,100,0) | fields v</query>
           <earliest>-15m</earliest><latest>now</latest>
         </search>
-        <option name="drilldown">none</option>
+        <drilldown><link target="_blank">root_cause_analysis</link></drilldown>
         <option name="colorBy">value</option><option name="colorMode">block</option><option name="useColors">1</option>
         <option name="rangeValues">[50]</option>
-        <option name="rangeColors">["0x53a051","0xd93f3c"]</option>
-        <option name="underLabel">0 = reachable :5432</option>
+        <option name="rangeColors">["0xd93f3c","0x53a051"]</option>
+        <option name="unit">%</option><option name="underLabel">TCP :5432</option>
       </single>
     </panel>
+    <panel>
+      <title>Proxmox Hypervisor</title>
+      <single>
+        <search>
+          <query>index=berlin_web sourcetype=port:probe host=proxmox-berlin earliest=-15m | stats count as c latest(open) as o | eval v=if(c&gt;0 AND o=1,100,0) | fields v</query>
+          <earliest>-15m</earliest><latest>now</latest>
+        </search>
+        <drilldown><link target="_blank">root_cause_analysis</link></drilldown>
+        <option name="colorBy">value</option><option name="colorMode">block</option><option name="useColors">1</option>
+        <option name="rangeValues">[50]</option>
+        <option name="rangeColors">["0xd93f3c","0x53a051"]</option>
+        <option name="unit">%</option><option name="underLabel">TCP :8006</option>
+      </single>
+    </panel>
+  </row>
+  <row>
     <panel>
       <title>Ubuntu Berlin</title>
       <single>
         <search>
-          <query>index=berlin_metrics sourcetype=linux:metrics host=ubuntu-berlin earliest=-15m | stats latest(cpu_pct) as v | fields v</query>
+          <query>index=berlin_metrics sourcetype=linux:metrics host=ubuntu-berlin earliest=-15m | stats count as c | eval v=if(c&gt;0,100,0) | fields v</query>
           <earliest>-15m</earliest><latest>now</latest>
         </search>
-        <option name="drilldown">none</option>
+        <drilldown><link target="_blank">root_cause_analysis</link></drilldown>
         <option name="colorBy">value</option><option name="colorMode">block</option><option name="useColors">1</option>
-        <option name="rangeValues">[70,90]</option>
-        <option name="rangeColors">["0x53a051","0xf8be34","0xd93f3c"]</option>
-        <option name="unit">%</option><option name="underLabel">CPU</option>
+        <option name="rangeValues">[50]</option>
+        <option name="rangeColors">["0xd93f3c","0x53a051"]</option>
+        <option name="unit">%</option><option name="underLabel">UF heartbeat</option>
       </single>
     </panel>
     <panel>
       <title>Router Berlin</title>
       <single>
         <search>
-          <query>index=berlin_network ("Connection timed out" OR "Connection refused" OR "No route to host" OR "Unable to negotiate" OR "Permission denied") earliest=-15m
-| stats count as c | eval v=if(c=0,0,100) | fields v</query>
+          <query>index=berlin_web sourcetype=port:probe host=cat8kv-berlin earliest=-15m | stats count as c latest(open) as o | eval v=if(c&gt;0 AND o=1,100,0) | fields v</query>
           <earliest>-15m</earliest><latest>now</latest>
         </search>
-        <option name="drilldown">none</option>
+        <drilldown><link target="_blank">root_cause_analysis</link></drilldown>
         <option name="colorBy">value</option><option name="colorMode">block</option><option name="useColors">1</option>
         <option name="rangeValues">[50]</option>
-        <option name="rangeColors">["0x53a051","0xd93f3c"]</option>
-        <option name="underLabel">0 = reachable</option>
+        <option name="rangeColors">["0xd93f3c","0x53a051"]</option>
+        <option name="unit">%</option><option name="underLabel">TCP :22</option>
       </single>
     </panel>
   </row>
 
-  <!-- London branch -->
+  <!-- ================= London components ================= -->
   <row>
-    <panel>
-      <html><div style="font-size:14px;font-weight:700;color:#4a90d9;padding:4px 2px;">London</div></html>
-    </panel>
+    <panel><html><div style="font-size:14px;font-weight:700;color:#4a90d9;padding:8px 2px 0;">London</div></html></panel>
   </row>
   <row>
     <panel>
       <title>Ubuntu London</title>
       <single>
         <search>
-          <query>index=london_metrics sourcetype=linux:metrics host=ubuntu-london earliest=-15m | stats latest(cpu_pct) as v | fields v</query>
+          <query>index=london_metrics sourcetype=linux:metrics host=ubuntu-london earliest=-15m | stats count as c | eval v=if(c&gt;0,100,0) | fields v</query>
           <earliest>-15m</earliest><latest>now</latest>
         </search>
-        <option name="drilldown">none</option>
+        <drilldown><link target="_blank">root_cause_analysis</link></drilldown>
         <option name="colorBy">value</option><option name="colorMode">block</option><option name="useColors">1</option>
-        <option name="rangeValues">[70,90]</option>
-        <option name="rangeColors">["0x53a051","0xf8be34","0xd93f3c"]</option>
-        <option name="unit">%</option><option name="underLabel">CPU</option>
+        <option name="rangeValues">[50]</option>
+        <option name="rangeColors">["0xd93f3c","0x53a051"]</option>
+        <option name="unit">%</option><option name="underLabel">UF heartbeat</option>
       </single>
     </panel>
     <panel>
       <title>Router London</title>
       <single>
         <search>
-          <query>index=london_network ("Connection timed out" OR "Connection refused" OR "No route to host" OR "Unable to negotiate" OR "Permission denied") earliest=-15m
-| stats count as c | eval v=if(c=0,0,100) | fields v</query>
+          <query>index=london_web sourcetype=port:probe host=cat8kv-london earliest=-15m | stats count as c latest(open) as o | eval v=if(c&gt;0 AND o=1,100,0) | fields v</query>
           <earliest>-15m</earliest><latest>now</latest>
         </search>
-        <option name="drilldown">none</option>
+        <drilldown><link target="_blank">root_cause_analysis</link></drilldown>
         <option name="colorBy">value</option><option name="colorMode">block</option><option name="useColors">1</option>
         <option name="rangeValues">[50]</option>
-        <option name="rangeColors">["0x53a051","0xd93f3c"]</option>
-        <option name="underLabel">0 = reachable</option>
+        <option name="rangeColors">["0xd93f3c","0x53a051"]</option>
+        <option name="unit">%</option><option name="underLabel">TCP :22</option>
       </single>
     </panel>
   </row>
 
-  <!-- Location 1 branch -->
-  <row>
-    <panel>
-      <html><div style="font-size:14px;font-weight:700;color:#4a90d9;padding:4px 2px;">Location 1</div></html>
-    </panel>
-  </row>
+  <!-- ================= Location 1 ================= -->
   <row>
     <panel>
       <title>Splunk Core</title>
       <single>
         <search>
-          <query>index=loc1_metrics sourcetype=linux:metrics earliest=-15m | stats latest(cpu_pct) as v | fields v</query>
+          <query>index=loc1_metrics sourcetype=linux:metrics earliest=-15m | stats count as c | eval v=if(c&gt;0,100,0) | fields v</query>
           <earliest>-15m</earliest><latest>now</latest>
         </search>
-        <option name="drilldown">none</option>
+        <drilldown><link target="_blank">root_cause_analysis</link></drilldown>
         <option name="colorBy">value</option><option name="colorMode">block</option><option name="useColors">1</option>
-        <option name="rangeValues">[70,90]</option>
-        <option name="rangeColors">["0x53a051","0xf8be34","0xd93f3c"]</option>
-        <option name="unit">%</option><option name="underLabel">CPU</option>
+        <option name="rangeValues">[50]</option>
+        <option name="rangeColors">["0xd93f3c","0x53a051"]</option>
+        <option name="unit">%</option><option name="underLabel">UF heartbeat</option>
       </single>
     </panel>
     <panel>
       <html>
         <p style="color:#8b98a5;font-size:12px;line-height:1.5;padding-top:8px;">
-          This is the ITE-W-friendly glass table (native ITSI Glass Tables need an ITSI
-          license). Tiles read the same live signals as the ITSI KPIs, so they move together.
-          Run <code>demo-chaos.sh break-web</code> and watch <b>Web Service</b> → <b>Global</b>
-          turn red here in real time.
+          Every tile reads the <b>same signal as its ITSI KPI</b> - central port probes
+          (containers, hypervisor, routers) and UF heartbeats (Ubuntu, Splunk) - so this wall
+          and the ITSI Service Analyzer move together. Rollups (Directory App, Berlin, London,
+          Global) are red if any child is down. Run <code>demo-chaos.sh break-db</code> and watch
+          <b>Database Service → Directory App → Berlin → Global</b> cascade to red in ~1-2 min;
+          <code>recover</code> brings them back. Click any tile for Root Cause Analysis.
         </p>
       </html>
     </panel>
