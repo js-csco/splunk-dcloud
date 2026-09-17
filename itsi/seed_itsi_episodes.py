@@ -106,25 +106,13 @@ def policy_payload():
             {"type": "pause", "config": {"limit": 7200}},
         ],
     }
-    # When the Episode is created (first notable), post to Webex.
-    rules = [{
-        "_key": rule_key,
-        "title": "Notify Webex on episode open",
-        "description": "Run the Webex alert action when this Episode is created.",
-        "activation_criteria": {
-            "clause_type": "and",
-            "notable_event_count": {"operator": ">=", "limit": 1},
-            "breaking_criteria": {"condition": "OR", "items": []},
-            "duration": {"limit": 0},
-        },
-        "actions": [{
-            "item": "notable_event_execute_action",
-            "config": {
-                "name": "webex_notify",
-                "params": {"message": WEBEX_MSG},
-            },
-        }],
-    }]
+    # No action rules from the seeder: ITSI's action-rule schema is very
+    # version-specific (it rejected our Webex action with "Actions: Missing key
+    # condition"). The per-service SPLIT is the value here; add the Webex action
+    # rule in the UI (Configuration > Notable Event Aggregation Policies > this
+    # policy > Action Rules > run alert action webex_notify) - it persists via
+    # saved lab state.
+    rules = []
 
     return {
         "title": POLICY_TITLE,
