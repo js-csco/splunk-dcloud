@@ -93,7 +93,7 @@ def policy_payload():
             {"type": "clause", "config": {
                 "condition": "OR",
                 "items": [
-                    {"type": "column", "config": {
+                    {"type": "notable_event_field", "config": {
                         "field": "source", "operator": "=", "value": CORRELATION_SOURCE}},
                 ],
             }},
