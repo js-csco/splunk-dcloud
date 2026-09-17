@@ -17,8 +17,7 @@
   },
   "layout": {
     "options": {
-      "showTitleAndDescription": true,
-      "backgroundColor": "#0b0e13"
+      "showTitleAndDescription": true
     },
     "globalInputs": [
       "input_global_trp",
@@ -37,10 +36,19 @@
         "type": "absolute",
         "options": {
           "width": 1920,
-          "height": 820,
-          "backgroundColor": "#0b0e13"
+          "height": 820
         },
         "structure": [
+          {
+            "item": "bg_canvas",
+            "type": "block",
+            "position": {
+              "x": 0,
+              "y": 0,
+              "w": 1920,
+              "h": 820
+            }
+          },
           {
             "item": "zone_berlin",
             "type": "block",
@@ -757,6 +765,15 @@
         "primary": "ds_router_b"
       },
       "title": "Router Berlin"
+    },
+    "bg_canvas": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#0b0e13",
+        "fillOpacity": 1,
+        "strokeColor": "#0b0e13",
+        "strokeWidth": 0
+      }
     }
   },
   "inputs": {
