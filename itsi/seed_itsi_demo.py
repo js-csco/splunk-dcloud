@@ -81,10 +81,9 @@ SERVICES = [
         # Hypervisor up -> open=1 (GREEN); host down -> open=0 (RED). This is the
         # GATING health for the tier the containers run on.
         ("Reachability", "index=berlin_web sourcetype=port:probe host=proxmox-berlin | stats count as c latest(open) as o | eval down=if(c>0 AND o=1,0,100)", "down", "max", "%", 50, 90),
-        # SNMP is NOT a service KPI: SC4SNMP is an optional add-on that's usually
-        # not stood up, so it reads critical/no-data and drags the tree even at low
-        # importance. SNMP lives on the SNMP dashboard instead; re-add here only if
-        # SC4SNMP is a permanent fixture in your lab.
+        # Enrichment (informational; does not gate - Reachability does):
+        ("Proxmox Event Volume", "index=berlin_proxmox", "count", "count", "events", 50000, 200000),
+        # SNMP stays on the SNMP dashboard, not a service KPI (optional add-on).
      ]},
     # ---- app tiers (carry KPIs; depend on the hypervisor they run on) ------
     {"title": "Web Service (Berlin)", "desc": "The Berlin web application container.",
@@ -96,6 +95,11 @@ SERVICES = [
         # open=1 (GREEN); and a crashed app on a still-running container is caught
         # too (port stops answering). latest(open) = the most recent probe result.
         ("Reachability",        "index=berlin_web sourcetype=port:probe host=webapp-berlin | stats count as c latest(open) as o | eval down=if(c>0 AND o=1,0,100)", "down", "max", "%", 50, 90),
+        # Enrichment (informational; Reachability gates). Response Latency is an
+        # averaged metric -> good candidate for adaptive/ML thresholds (--adaptive).
+        ("Response Latency",    "index=berlin_web sourcetype=webapp:probe",              "latency_ms", "avg", "ms", 500, 1500),
+        ("HTTP Request Volume", "index=berlin_web sourcetype=webapp:access",             "count", "count", "req",    20000, 80000),
+        ("HTTP Errors (5xx)",   "index=berlin_web sourcetype=webapp:access status>=500", "count", "count", "errors", 5,     25),
      ]},
     {"title": "Database Service (Berlin)", "desc": "The Berlin PostgreSQL container.",
      "rule": ("role", "database"), "depends_on": ["Proxmox Hypervisor"], "kpis": [
@@ -106,6 +110,10 @@ SERVICES = [
         # because nothing is happening"); Postgres crashed on a live container is
         # caught too. This is a real service check, not an event-volume proxy.
         ("Reachability", "index=berlin_web sourcetype=port:probe host=db-berlin | stats count as c latest(open) as o | eval down=if(c>0 AND o=1,0,100)", "down", "max", "%", 50, 90),
+        # Enrichment (informational; Reachability gates):
+        ("DB Errors",       "index=berlin_db sourcetype=postgres:log (ERROR OR FATAL)", "count", "count", "errors", 1, 10),
+        ("DB Connections",  "index=berlin_db sourcetype=postgres:log \"connection authorized\"", "count", "count", "conns", 5000, 20000),
+        ("DB Log Volume",   "index=berlin_db sourcetype=postgres:log", "count", "count", "events", 20000, 80000),
      ]},
     {"title": "Ubuntu Berlin", "desc": "Ubuntu server host (Berlin).",
      "rule": ("host", "ubuntu-berlin"), "depends_on": [], "kpis": [
@@ -113,6 +121,11 @@ SERVICES = [
         # host up. Works on DHCP (no static IP / SSH needed - the host label is
         # fixed). stats count always returns a row, so host down -> up=0 (RED).
         ("Reachability",       "index=berlin_metrics sourcetype=linux:metrics host=ubuntu-berlin | stats count as c | eval down=if(c>0,0,100)", "down", "max", "%", 50, 90),
+        # Enrichment (informational; Reachability gates). CPU/mem/disk are averaged
+        # metrics -> adaptive/ML thresholds apply with --adaptive.
+        ("CPU Utilization",    "index=berlin_metrics sourcetype=linux:metrics host=ubuntu-berlin", "cpu_pct",       "avg", "%", 70, 90),
+        ("Memory Utilization", "index=berlin_metrics sourcetype=linux:metrics host=ubuntu-berlin", "mem_used_pct",  "avg", "%", 70, 90),
+        ("Disk Usage",         "index=berlin_metrics sourcetype=linux:metrics host=ubuntu-berlin", "disk_used_pct", "avg", "%", 80, 90),
      ]},
     {"title": "Router Berlin", "desc": "Cisco Catalyst 8000v router (Berlin).",
      "rule": ("host", "cat8kv-berlin"), "depends_on": [], "kpis": [
@@ -120,21 +133,26 @@ SERVICES = [
         # server - the gating health. Router down -> open=0 (RED), regardless of
         # whether the SSH poll or SNMP happen to have data.
         ("Reachability", "index=berlin_web sourcetype=port:probe host=cat8kv-berlin | stats count as c latest(open) as o | eval down=if(c>0 AND o=1,0,100)", "down", "max", "%", 50, 90),
-        # SSH poll health (the scripted input) - enrichment only now.
-        # SNMP removed from service KPIs (optional add-on; see Proxmox note). Traps
-        # and poll data remain on the SNMP dashboard.
+        # Enrichment (informational; Reachability gates) - SSH poll health:
+        ("Poll Errors", "index=berlin_network (\"Connection timed out\" OR \"Connection refused\" OR \"No route to host\" OR \"Unable to negotiate\" OR \"Permission denied\" OR \"Could not resolve\")", "count", "count", "errors", 1, 3),
+        ("Poll Volume",  "index=berlin_network", "count", "count", "events", 50000, 200000),
      ]},
     {"title": "Ubuntu London", "desc": "Ubuntu server host (London).",
      "rule": ("host", "ubuntu-london"), "depends_on": [], "kpis": [
         # Reachability via the UF heartbeat (DHCP-safe; see Ubuntu Berlin note).
         ("Reachability",       "index=london_metrics sourcetype=linux:metrics host=ubuntu-london | stats count as c | eval down=if(c>0,0,100)", "down", "max", "%", 50, 90),
+        # Enrichment (informational; Reachability gates). Adaptive on CPU/mem/disk.
+        ("CPU Utilization",    "index=london_metrics sourcetype=linux:metrics host=ubuntu-london", "cpu_pct",       "avg", "%", 70, 90),
+        ("Memory Utilization", "index=london_metrics sourcetype=linux:metrics host=ubuntu-london", "mem_used_pct",  "avg", "%", 70, 90),
+        ("Disk Usage",         "index=london_metrics sourcetype=linux:metrics host=ubuntu-london", "disk_used_pct", "avg", "%", 80, 90),
      ]},
     {"title": "Router London", "desc": "Cisco Catalyst 8000v router (London).",
      "rule": ("host", "cat8kv-london"), "depends_on": [], "kpis": [
         # Reachability %: active TCP probe of the router's SSH port (gating).
         ("Reachability", "index=london_web sourcetype=port:probe host=cat8kv-london | stats count as c latest(open) as o | eval down=if(c>0 AND o=1,0,100)", "down", "max", "%", 50, 90),
-        # SSH poll health - enrichment only.
-        # SNMP removed from service KPIs (optional add-on; see Proxmox note).
+        # Enrichment (informational; Reachability gates) - SSH poll health:
+        ("Poll Errors", "index=london_network (\"Connection timed out\" OR \"Connection refused\" OR \"No route to host\" OR \"Unable to negotiate\" OR \"Permission denied\" OR \"Could not resolve\")", "count", "count", "errors", 1, 3),
+        ("Poll Volume",  "index=london_network", "count", "count", "events", 50000, 200000),
      ]},
     {"title": "Splunk Core", "desc": "The Splunk server itself (Location 1).",
      "rule": ("role", "splunk"), "depends_on": [], "kpis": [
@@ -350,10 +368,12 @@ def kpi_payload(title, base_search, field, agg, unit, medium, critical, adaptive
     if "snmp" in tl or "trap" in tl:
         importance = 1
     elif "reachab" in tl:
-        # Reachability is the SOLE KPI on each leaf now, so it defines the service
-        # health directly - no importance gating needed (and importance 11 was
-        # interfering with ITSI's multi-KPI health math). A normal weight is fine.
-        importance = 5
+        # GATING (importance 11): reachability defines service health. Down -> the
+        # service is critical regardless of the enrichment KPIs; up -> enrichment
+        # only adds detail. This is the correct ITSI use of importance 11 now that
+        # reachability is a down% metric (higher=worse), so a normal gating KPI no
+        # longer inverts the score the way the old up% one did.
+        importance = 11
     elif "poll" in tl or "volume" in tl or "connections" in tl:
         # SSH-poll health + volume/count KPIs: informational color, not gating
         # (the central reachability probe is the gate now).
