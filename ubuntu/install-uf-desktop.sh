@@ -2,7 +2,7 @@
 # ===========================================================================
 # install-uf-desktop.sh - install a Splunk Universal Forwarder on an Ubuntu
 # 24.04 DESKTOP acting as the end-user CLIENT in the Client -> App -> Hypervisor
-# demo (replaces the Windows client). Collects, all with LIVE timestamps:
+# demo. Collects, all with LIVE timestamps:
 #   - host metrics (CPU/mem/disk/load) every 60s   -> london_metrics (linux:metrics)
 #   - logged-on users every 60s                    -> london_linux   (linux:sessions)
 #   - top processes by CPU every 60s               -> london_linux   (linux:ps)
