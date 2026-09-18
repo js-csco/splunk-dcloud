@@ -188,6 +188,12 @@ def build_events(services, days, interval_min, seed=7):
                 ktitle = k.get("title", "kpi")
                 if not kkey:
                     continue
+                # ITSI puts each service's reserved health-score KPI (SHKPI-<key>,
+                # title "ServiceHealthScore") in its `kpis` list. Skip it here - the
+                # aggregate row above already emits the health score; emitting it
+                # again as a "feature" would write a bogus random value under it.
+                if kkey.startswith("SHKPI") or ktitle.lower().replace(" ", "") == "servicehealthscore":
+                    continue
                 v = kpi_value(ktitle, health, incident)
                 klvl, ksev = sev_for_health(100 - v if "reach" in ktitle.lower() else health)
                 lines.append("%s %s" % (iso, kv(
