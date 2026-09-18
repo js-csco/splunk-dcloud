@@ -2,10 +2,12 @@
   <label>Dynamic Correlation</label>
   <description>Start with TWO sources (web app + hypervisor), then add a THIRD live — and watch the same incident line up across all of them, with each tier's error messages.</description>
 
-  <!-- default fragments so the 2-source view renders before any 3rd source is picked -->
+  <!-- default fragments so the 2-source view renders before any 3rd source is picked.
+       Use <eval>…"" so the tokens are DEFINED (empty) on load; the dropdown's default
+       value does NOT fire <change>, and an undefined $c_frag$ would stop the searches. -->
   <init>
-    <set token="c_frag"></set>
-    <set token="c_efrag"></set>
+    <eval token="c_frag">""</eval>
+    <eval token="c_efrag">""</eval>
   </init>
 
   <fieldset submitButton="false" autoRun="true">
@@ -73,6 +75,25 @@
         the DB (<code>demo-chaos.sh break-db</code>) and watch Web 5xx, the hypervisor and the
         DB errors spike <i>at the same minute</i>.</p>
       </html>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
+      <title>Source data check — events in the window (no filters; confirms data is flowing)</title>
+      <table>
+        <search>
+          <query>(index=berlin_web) OR (index=berlin_proxmox) OR (index=berlin_db) OR (index=berlin_network) OR (index=berlin_snmp)
+| stats count as Events, max(_time) as last by index sourcetype
+| eval "Last event"=strftime(last,"%F %T")
+| table index sourcetype Events "Last event"
+| sort - Events</query>
+          <earliest>$tr.earliest$</earliest>
+          <latest>$tr.latest$</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="count">15</option>
+      </table>
     </panel>
   </row>
 
