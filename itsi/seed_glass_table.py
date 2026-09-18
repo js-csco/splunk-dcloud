@@ -489,21 +489,20 @@ class ITSI:
 
 def seed_one(itsi, definition, owner="nobody"):
     title = definition["title"]
-    # The update path (POST .../glass_table/<key>) reads a top-level `owner`
-    # from the payload and 500s with {"message":"'owner'"} if it is absent;
-    # create tolerates only `_owner`. Send both so create and update both work.
     payload = {"title": title, "description": definition["description"],
-               "gt_version": "beta", "owner": owner, "_owner": owner, "_user": owner,
-               "acl": {"sharing": "global", "owner": owner},
-               "definition": definition}
+               "gt_version": "beta", "_owner": owner, "_user": owner,
+               "acl": {"sharing": "global"}, "definition": definition}
     code, res = itsi.call("GET", "%s/itoa_interface/glass_table" % APP_NS,
                           params={"filter": json.dumps({"title": title}), "fields": "_key,title"})
     if code != 200:
         return code, "cannot reach itoa_interface/glass_table"
     key = res[0]["_key"] if isinstance(res, list) and res else None
     if key:
+        # The UPDATE handler reads `owner` from the REQUEST params (not the data
+        # body); without it, itoa_interface 500s with {"message":"'owner'"}. Send
+        # it as a POST form field alongside the JSON `data` payload.
         return itsi.call("POST", "%s/itoa_interface/glass_table/%s" % (APP_NS, key),
-                         body={"data": json.dumps(dict(payload, _key=key))})
+                         body={"data": json.dumps(dict(payload, _key=key)), "owner": owner})
     return itsi.call("POST", "%s/itoa_interface/glass_table" % APP_NS,
                      body={"data": json.dumps(payload)})
 
