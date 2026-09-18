@@ -83,6 +83,17 @@ SERVICES = [
         ("Reachability", "index=berlin_web sourcetype=port:probe host=proxmox-berlin | stats count as c latest(open) as o | eval down=if(c>0 AND o=1,0,100)", "down", "max", "%", 50, 90),
         # Enrichment (informational; does not gate - Reachability does):
         ("Proxmox Event Volume", "index=berlin_proxmox", "count", "count", "events", 50000, 200000),
+        # Node resource KPIs from the API poll (poll_proxmox.py metrics -> proxmox:metrics,
+        # already flowing). Subject is otype=node/oname, NOT host (host=the collector).
+        # avg -> adaptive-thresholding candidates with --adaptive.
+        ("Node CPU %",    "index=berlin_metrics sourcetype=proxmox:metrics otype=node", "cpu_pct",       "avg", "%", 70, 90),
+        ("Node Memory %", "index=berlin_metrics sourcetype=proxmox:metrics otype=node", "mem_used_pct",  "avg", "%", 70, 90),
+        ("Node Disk %",   "index=berlin_metrics sourcetype=proxmox:metrics otype=node", "disk_used_pct", "avg", "%", 80, 90),
+        # Host-UF KPIs (install-uf-proxmox.sh -> linux:ps / linux:services on the Proxmox
+        # host). These read null until that UF is installed; kept as enrichment (importance
+        # 0, gap benign) so an absent host UF never drags the hypervisor's health.
+        ("Host Process Count", "index=berlin_linux sourcetype=linux:ps host=proxmox-berlin event=process", "pid", "dc", "procs", 800, 2000),
+        ("PVE Services Down",  "index=berlin_linux sourcetype=linux:services host=proxmox-berlin unit IN (\"pveproxy.service\",\"pvedaemon.service\",\"pve-cluster.service\") | eval bad=if(sub==\"running\",0,100)", "bad", "max", "%", 50, 90),
         # SNMP stays on the SNMP dashboard, not a service KPI (optional add-on).
      ]},
     # ---- app tiers (carry KPIs; depend on the hypervisor they run on) ------
