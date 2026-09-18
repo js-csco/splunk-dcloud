@@ -502,18 +502,35 @@ def main():
     ap.add_argument("--verbose", action="store_true")
     args = ap.parse_args()
 
-    # --write is the default; always emit the files.
-    os.makedirs(OUT_DIR, exist_ok=True)
+    # --write is the default; emit the files when the checkout is writable.
+    # Seeding only needs the in-memory definitions, so a read-only checkout
+    # (e.g. run as the splunk user against a root-owned /opt/dcloud-splunk clone)
+    # is a warning, not a failure.
+    try:
+        os.makedirs(OUT_DIR, exist_ok=True)
+    except OSError:
+        pass
     defs = {}
+    wrote_any = False
     for fname, builder in BUILDERS.items():
         d = builder()
         defs[fname] = d
         path = os.path.join(OUT_DIR, fname)
-        with open(path, "w") as fh:
-            json.dump(d, fh, indent=2)
-        print("wrote %s  (%s)" % (path, d["title"]))
+        try:
+            with open(path, "w") as fh:
+                json.dump(d, fh, indent=2)
+            wrote_any = True
+            print("wrote %s  (%s)" % (path, d["title"]))
+        except OSError as exc:
+            sys.stderr.write("note: could not write %s (%s) - continuing with the "
+                             "in-memory definition\n" % (path, exc))
 
     if not args.seed:
+        if not wrote_any:
+            sys.stderr.write("Nothing written (read-only checkout) and --seed not given. "
+                             "Re-run with --seed to POST via the API, or make %s writable "
+                             "(chown to the splunk user) to regenerate the files.\n" % OUT_DIR)
+            return 1
         print("\nImport: ITSI -> Glass Tables -> Create -> Source (</>) -> paste a file's contents.")
         print("Or re-run with --user/--password --seed to POST them via the API.")
         return 0
