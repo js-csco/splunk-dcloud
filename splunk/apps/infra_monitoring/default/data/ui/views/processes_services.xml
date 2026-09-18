@@ -1,0 +1,149 @@
+<form version="1.1" theme="dark">
+  <label>Processes &amp; Services</label>
+  <description>Running processes and systemd services per Linux host — Ubuntu boxes, the desktop client, the Proxmox host, and the containers. Collected by the UF (TA-dcloud-host). RBAC-scoped: you only see hosts in indexes your role can read.</description>
+
+  <fieldset submitButton="false" autoRun="true">
+    <input type="time" token="tr">
+      <label>Time range</label>
+      <default><earliest>-30m</earliest><latest>now</latest></default>
+    </input>
+    <input type="dropdown" token="host">
+      <label>Host</label>
+      <search>
+        <query>index=* (sourcetype=linux:ps OR sourcetype=linux:services) | stats count by host | sort host</query>
+        <earliest>$tr.earliest$</earliest>
+        <latest>$tr.latest$</latest>
+      </search>
+      <fieldForLabel>host</fieldForLabel>
+      <fieldForValue>host</fieldForValue>
+      <choice value="*">All hosts</choice>
+      <default>*</default>
+    </input>
+    <input type="text" token="filter">
+      <label>Filter (process comm / service unit contains)</label>
+      <default>*</default>
+      <initialValue>*</initialValue>
+    </input>
+  </fieldset>
+
+  <row>
+    <panel>
+      <html>
+        <p style="color:#8b98a5;margin:6px 0;">Pick a host (or <b>All hosts</b>) and optionally type a filter
+        (e.g. <code>postgres</code>, <code>apache</code>, <code>pve</code>, <code>ssh</code>). Processes come
+        from <code>sourcetype=linux:ps</code> (full snapshot every 60s); services from
+        <code>sourcetype=linux:services</code> (systemd units every 5 min). No forwarder on a host yet? Install
+        the UF: Ubuntu boxes <code>install-uf.sh &lt;site&gt;</code>, desktop <code>install-uf-desktop.sh</code>,
+        Proxmox host <code>install-uf-proxmox.sh</code>.</p>
+      </html>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
+      <title>Hosts reporting</title>
+      <single>
+        <search>
+          <query>index=* (sourcetype=linux:ps OR sourcetype=linux:services) host=$host$ | stats dc(host) as hosts</query>
+          <earliest>$tr.earliest$</earliest><latest>$tr.latest$</latest>
+        </search>
+        <option name="drilldown">none</option>
+      </single>
+    </panel>
+    <panel>
+      <title>Running processes (latest snapshot)</title>
+      <single>
+        <search>
+          <query>index=* sourcetype=linux:ps event=process host=$host$
+| where _time &gt;= relative_time(now(),"-3m")
+| stats dc(pid) as procs by host | stats sum(procs) as "Processes"</query>
+          <earliest>$tr.earliest$</earliest><latest>$tr.latest$</latest>
+        </search>
+        <option name="drilldown">none</option>
+      </single>
+    </panel>
+    <panel>
+      <title>Running services (active/running)</title>
+      <single>
+        <search>
+          <query>index=* sourcetype=linux:services event=service active=active sub=running host=$host$
+| dedup host, unit | stats count as running_services</query>
+          <earliest>$tr.earliest$</earliest><latest>$tr.latest$</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="colorBy">value</option>
+      </single>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
+      <title>Running services — $host$</title>
+      <table>
+        <search>
+          <query>index=* sourcetype=linux:services event=service host=$host$ unit=*$filter$*
+| stats latest(active) as active latest(sub) as sub latest(desc) as description latest(_time) as t by host unit
+| where active="active"
+| eval "last seen"=strftime(t,"%F %T")
+| table host unit sub description "last seen"
+| sort host unit</query>
+          <earliest>$tr.earliest$</earliest><latest>$tr.latest$</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="count">25</option>
+        <format type="color" field="sub"><colorPalette type="map">{"running":#53a051,"exited":#c8a21a,"dead":#d93f3c,"failed":#d93f3c}</colorPalette></format>
+      </table>
+    </panel>
+    <panel>
+      <title>Failed / not-running services — $host$</title>
+      <table>
+        <search>
+          <query>index=* sourcetype=linux:services event=service host=$host$ unit=*$filter$*
+| stats latest(active) as active latest(sub) as sub latest(desc) as description by host unit
+| where active!="active" OR sub="failed"
+| table host unit active sub description
+| sort host unit</query>
+          <earliest>$tr.earliest$</earliest><latest>$tr.latest$</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="count">25</option>
+        <format type="color" field="active"><colorPalette type="map">{"failed":#d93f3c,"inactive":#8b98a5}</colorPalette></format>
+      </table>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
+      <title>Processes (latest snapshot) — $host$ — sorted by CPU</title>
+      <table>
+        <search>
+          <query>index=* sourcetype=linux:ps event=process host=$host$ comm=*$filter$*
+| stats latest(pcpu) as "CPU %" latest(pmem) as "Mem %" latest(rss_kb) as rss_kb latest(user) as user latest(ppid) as ppid latest(_time) as t by host comm pid
+| where t &gt;= relative_time(now(),"-3m")
+| eval "RSS (MB)"=round(rss_kb/1024,1)
+| table host pid ppid user comm "CPU %" "Mem %" "RSS (MB)"
+| sort - "CPU %"</query>
+          <earliest>$tr.earliest$</earliest><latest>$tr.latest$</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="count">50</option>
+      </table>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
+      <title>Top processes by CPU over time — $host$</title>
+      <chart>
+        <search>
+          <query>index=* sourcetype=linux:ps event=process host=$host$ comm=*$filter$*
+| timechart span=1m limit=8 useother=f avg(pcpu) by comm</query>
+          <earliest>$tr.earliest$</earliest><latest>$tr.latest$</latest>
+        </search>
+        <option name="charting.chart">line</option>
+        <option name="charting.legend.placement">bottom</option>
+        <option name="charting.axisTitleY.text">CPU %</option>
+      </chart>
+    </panel>
+  </row>
+</form>

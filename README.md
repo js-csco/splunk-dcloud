@@ -561,10 +561,20 @@ outbound calls work — unlike the search sandbox).
 | Syslog | rsyslog → per-location ports | ✅ live |
 | Metrics (host) | UF `collect_host_metrics.sh` → `*_metrics` (key=value events, timechart) every 60s | ✅ live (loc1 always; london/berlin after `install-uf.sh`) |
 | File monitor | UF tails `/var/log` → `*_linux` | ✅ live after `install-uf.sh` |
+| Processes & services | UF `collect_processes.sh` (all processes, `linux:ps`) + `collect_services.sh` (systemd units, `linux:services`) → `*_linux` | ✅ live after `install-uf.sh` / `install-uf-desktop.sh` / `install-uf-proxmox.sh` |
 | REST / API (Proxmox) | UF on ubuntu-berlin polls the local Proxmox API every 60s → `berlin_proxmox` (events) + `berlin_metrics` (metrics) | ✅ live after `install-uf.sh berlin` |
 | SSH (Cisco Catalyst) | scripted input SSHes in, runs show commands → `london_network`/`berlin_network` | ✅ live |
 | SNMP | Splunk Connect for SNMP (SC4SNMP), dedicated VM → HEC → `berlin_snmp` | ✅ live after `snmp/setup-sc4snmp.sh` |
 | SOAP | XML web service | ⏸ parked |
+
+**Processes & services** flow from the same UF: `collect_processes.sh` emits a full
+process snapshot (`linux:ps`) every 60s and `collect_services.sh` lists systemd units +
+state (`linux:services`) every 5 min, into each host's `*_linux` index (so the RBAC wall
+holds). View them in **Infrastructure Monitoring → Processes & Services** (host picker +
+filter, running/failed services, process table, CPU-over-time). Install the collectors
+with `install-uf.sh <site>` (Ubuntu servers), `install-uf-desktop.sh` (desktop client),
+and `install-uf-proxmox.sh` (the **Proxmox host** itself — Debian; run as root, host id
+`proxmox-berlin`). The Proxmox host's process list also shows the LXC container processes.
 
 The app also has an **Indexes and Sourcetypes** dashboard (a live `| tstats` table of every
 index, its sourcetypes and event counts, RBAC-aware, click-a-row-to-search) and a **Data
@@ -797,5 +807,6 @@ splunk/apps/
 - [x] ITSI / ITE-W: install path (URL or Splunkbase), demo seeders, episodes + glass tables
 - [x] ITSI Predictive Analytics: MLTK + PSC install path + synthetic `itsi_summary` history backfill so a model can train on a reset lab
 - [ ] Real ITSI (premium): heavy on a reset-each-session VM — free ITE-W preferred unless licensed
+- [x] Processes & services: full `linux:ps` + `linux:services` (systemd) from every UF incl. a UF on the Proxmox host, with a Processes & Services dashboard
 - [ ] SOAP sender (parked)
 ```
