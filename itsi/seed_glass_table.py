@@ -497,14 +497,27 @@ def seed_one(itsi, definition, owner="nobody"):
     if code != 200:
         return code, "cannot reach itoa_interface/glass_table"
     key = res[0]["_key"] if isinstance(res, list) and res else None
-    if key:
-        # The UPDATE handler reads `owner` from the REQUEST params (not the data
-        # body); without it, itoa_interface 500s with {"message":"'owner'"}. Send
-        # it as a POST form field alongside the JSON `data` payload.
-        return itsi.call("POST", "%s/itoa_interface/glass_table/%s" % (APP_NS, key),
-                         body={"data": json.dumps(dict(payload, _key=key)), "owner": owner})
-    return itsi.call("POST", "%s/itoa_interface/glass_table" % APP_NS,
-                     body={"data": json.dumps(payload)})
+
+    def create():
+        # The proven path: the first seed of each table succeeds via create.
+        return itsi.call("POST", "%s/itoa_interface/glass_table" % APP_NS,
+                         body={"data": json.dumps(payload)})
+
+    if not key:
+        return create()
+
+    # An existing table -> try to update it in place. The update handler reads
+    # `owner` from the REQUEST params (not the data body); without it,
+    # itoa_interface 500s with {"message":"'owner'"}, so send it as a form field.
+    ucode, ures = itsi.call("POST", "%s/itoa_interface/glass_table/%s" % (APP_NS, key),
+                            body={"data": json.dumps(dict(payload, _key=key)), "owner": owner})
+    if ucode in (200, 201):
+        return ucode, ures
+    # Update rejected (version-dependent quirk) -> delete the existing object and
+    # recreate it, which is idempotent by title and uses the proven create path.
+    itsi.call("DELETE", "%s/itoa_interface/glass_table/%s" % (APP_NS, key),
+              params={"owner": owner})
+    return create()
 
 
 def main():
