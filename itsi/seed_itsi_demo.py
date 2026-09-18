@@ -82,7 +82,7 @@ SERVICES = [
         # GATING health for the tier the containers run on.
         ("Not Reachable", "index=berlin_web sourcetype=port:probe host=proxmox-berlin | stats count as c latest(open) as o | eval down=if(c>0 AND o=1,0,100)", "down", "max", "%", 50, 90),
         # Enrichment (informational; does not gate - Reachability does):
-        ("Proxmox Event Volume", "index=berlin_proxmox", "count", "count", "events", 50000, 200000),
+        ("Proxmox Event Volume", "index=berlin_proxmox", "count", "count", "events", 0, 0),
         # Node resource KPIs from the API poll (poll_proxmox.py metrics -> proxmox:metrics,
         # already flowing). Subject is otype=node/oname, NOT host (host=the collector).
         # avg -> adaptive-thresholding candidates with --adaptive.
@@ -92,7 +92,7 @@ SERVICES = [
         # Host-UF KPIs (install-uf-proxmox.sh -> linux:ps / linux:services on the Proxmox
         # host). These read null until that UF is installed; kept as enrichment (importance
         # 0, gap benign) so an absent host UF never drags the hypervisor's health.
-        ("Host Process Count", "index=berlin_linux sourcetype=linux:ps host=proxmox-berlin event=process", "pid", "dc", "procs", 800, 2000),
+        ("Host Process Count", "index=berlin_linux sourcetype=linux:ps host=proxmox-berlin event=process", "pid", "dc", "procs", 0, 0),
         ("PVE Services Down",  "index=berlin_linux sourcetype=linux:services host=proxmox-berlin unit IN (\"pveproxy.service\",\"pvedaemon.service\",\"pve-cluster.service\") | eval bad=if(sub==\"running\",0,100)", "bad", "max", "%", 50, 90),
         # SNMP stays on the SNMP dashboard, not a service KPI (optional add-on).
      ]},
@@ -109,7 +109,7 @@ SERVICES = [
         # Enrichment (informational; Reachability gates). Response Latency is an
         # averaged metric -> good candidate for adaptive/ML thresholds (--adaptive).
         ("Response Latency",    "index=berlin_web sourcetype=webapp:probe",              "latency_ms", "avg", "ms", 500, 1500),
-        ("HTTP Request Volume", "index=berlin_web sourcetype=webapp:access",             "count", "count", "req",    20000, 80000),
+        ("HTTP Request Volume", "index=berlin_web sourcetype=webapp:access",             "count", "count", "req",    0, 0),
         ("HTTP Errors (5xx)",   "index=berlin_web sourcetype=webapp:access status>=500", "count", "count", "errors", 5,     25),
      ]},
     {"title": "Database Service (Berlin)", "desc": "The Berlin PostgreSQL container.",
@@ -123,8 +123,8 @@ SERVICES = [
         ("Not Reachable", "index=berlin_web sourcetype=port:probe host=db-berlin | stats count as c latest(open) as o | eval down=if(c>0 AND o=1,0,100)", "down", "max", "%", 50, 90),
         # Enrichment (informational; Reachability gates):
         ("DB Errors",       "index=berlin_db sourcetype=postgres:log (ERROR OR FATAL)", "count", "count", "errors", 1, 10),
-        ("DB Connections",  "index=berlin_db sourcetype=postgres:log \"connection authorized\"", "count", "count", "conns", 5000, 20000),
-        ("DB Log Volume",   "index=berlin_db sourcetype=postgres:log", "count", "count", "events", 20000, 80000),
+        ("DB Connections",  "index=berlin_db sourcetype=postgres:log \"connection authorized\"", "count", "count", "conns", 0, 0),
+        ("DB Log Volume",   "index=berlin_db sourcetype=postgres:log", "count", "count", "events", 0, 0),
      ]},
     {"title": "Ubuntu Berlin", "desc": "Ubuntu server host (Berlin).",
      "rule": ("host", "ubuntu-berlin"), "depends_on": [], "kpis": [
@@ -146,7 +146,7 @@ SERVICES = [
         ("Not Reachable", "index=berlin_web sourcetype=port:probe host=cat8kv-berlin | stats count as c latest(open) as o | eval down=if(c>0 AND o=1,0,100)", "down", "max", "%", 50, 90),
         # Enrichment (informational; Reachability gates) - SSH poll health:
         ("Poll Errors", "index=berlin_network (\"Connection timed out\" OR \"Connection refused\" OR \"No route to host\" OR \"Unable to negotiate\" OR \"Permission denied\" OR \"Could not resolve\")", "count", "count", "errors", 1, 3),
-        ("Poll Volume",  "index=berlin_network", "count", "count", "events", 50000, 200000),
+        ("Poll Volume",  "index=berlin_network", "count", "count", "events", 0, 0),
      ]},
     {"title": "Ubuntu London", "desc": "Ubuntu server host (London).",
      "rule": ("host", "ubuntu-london"), "depends_on": [], "kpis": [
@@ -163,7 +163,7 @@ SERVICES = [
         ("Not Reachable", "index=london_web sourcetype=port:probe host=cat8kv-london | stats count as c latest(open) as o | eval down=if(c>0 AND o=1,0,100)", "down", "max", "%", 50, 90),
         # Enrichment (informational; Reachability gates) - SSH poll health:
         ("Poll Errors", "index=london_network (\"Connection timed out\" OR \"Connection refused\" OR \"No route to host\" OR \"Unable to negotiate\" OR \"Permission denied\" OR \"Could not resolve\")", "count", "count", "errors", 1, 3),
-        ("Poll Volume",  "index=london_network", "count", "count", "events", 50000, 200000),
+        ("Poll Volume",  "index=london_network", "count", "count", "events", 0, 0),
      ]},
     {"title": "Splunk Core", "desc": "The Splunk server itself (Location 1).",
      "rule": ("role", "splunk"), "depends_on": [], "kpis": [
@@ -172,13 +172,27 @@ SERVICES = [
         ("CPU Utilization",       "index=loc1_metrics sourcetype=linux:metrics", "cpu_pct",       "avg",   "%",      70, 90),
         ("Memory Utilization",    "index=loc1_metrics sourcetype=linux:metrics", "mem_used_pct",  "avg",   "%",      70, 90),
         ("Disk Usage",            "index=loc1_metrics sourcetype=linux:metrics", "disk_used_pct", "avg",   "%",      80, 90),
-        ("Internal Event Volume", "index=_internal",                             "count",         "count", "events", 800000, 2000000),
+        ("Internal Event Volume", "index=_internal",                             "count",         "count", "events", 0, 0),
      ]},
     # ---- mid-level branches ----------------------------------------------
     # The Directory App is the SERVICE the business cares about; it summarises the
     # Web + DB tiers (which in turn depend on the Proxmox hypervisor below them).
     {"title": "Directory App", "desc": "The employee directory service (web tier + database tier).",
-     "rule": None, "depends_on": ["Web Service (Berlin)", "Database Service (Berlin)"], "kpis": []},
+     "rule": None, "depends_on": ["Web Service (Berlin)", "Database Service (Berlin)"], "kpis": [
+        # END-TO-END synthetic check (the business-service KPI): the ubuntu-berlin UF
+        # hits the app's /healthz every 60s (check_webapp.sh -> webapp:probe). /healthz
+        # returns 200 ONLY if the web app is up AND it can reach PostgreSQL, so this one
+        # signal validates the WHOLE Directory App chain (web + DB) from the user's side.
+        # GATING (title contains "reachab"): a down% metric, 0 = up/green, 100 = down/red.
+        ("Not Reachable", "index=berlin_web sourcetype=webapp:probe | stats count as c latest(reachable) as r | eval down=if(c>0 AND r=1,0,100)", "down", "max", "%", 50, 90),
+        # Business error rate: % of app requests returning 5xx (incl. /healthz 503 when
+        # the DB is down). Continuous - /healthz alone gives a steady stream. Higher=worse.
+        ("App Error Rate %", "index=berlin_web sourcetype=webapp:access | eval err=if(status>=500,100,0)", "err", "avg", "%", 5, 20),
+        # Business transaction: % of add-employee writes that FAILED (the web->DB write
+        # path). Sparse (only when someone adds a person) so enrichment - and a great live
+        # demo: add an employee while the DB is down and this jumps to 100%.
+        ("Directory Writes Failing %", "index=berlin_web sourcetype=webapp:access action=add_employee | eval fail=if(ok=\"true\",0,100)", "fail", "avg", "%", 10, 50),
+     ]},
     {"title": "Berlin Infrastructure", "desc": "Berlin site hosts and network.",
      "rule": None, "depends_on": ["Ubuntu Berlin", "Router Berlin"], "kpis": []},
     {"title": "London Infrastructure", "desc": "London site hosts and network.",
