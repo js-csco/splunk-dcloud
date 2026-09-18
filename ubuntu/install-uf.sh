@@ -100,6 +100,20 @@ sourcetype = linux:syslog
 host = ubuntu-${SITE}
 disabled = 0
 whitelist = (syslog|auth\.log|kern\.log|dpkg\.log|ufw\.log|messages)$
+
+[script://./bin/collect_processes.sh]
+index = ${LINUX_INDEX}
+sourcetype = linux:ps
+host = ubuntu-${SITE}
+interval = 60
+disabled = 0
+
+[script://./bin/collect_services.sh]
+index = ${LINUX_INDEX}
+sourcetype = linux:services
+host = ubuntu-${SITE}
+interval = 300
+disabled = 0
 EOF
 run_root chmod +x "${UF_HOME}/etc/apps/TA-dcloud-host/bin/"*.sh 2>/dev/null || true
 
