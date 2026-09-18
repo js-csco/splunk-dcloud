@@ -176,12 +176,13 @@
         <option name="drilldown">none</option>
       </table>
       <table>
-        <title>Recent DB writes (button clicks → PostgreSQL)</title>
+        <title>Recent DB writes (add-employee → PostgreSQL)</title>
         <search>
-          <query>index=berlin_web sourcetype=webapp:access action=db_write
+          <query>index=berlin_web sourcetype=webapp:access action=add_employee
 | sort - _time | head 10
-| eval t=strftime(_time,"%F %T"), result=if(db_ok=="true" OR db_ok==1,"ok","FAILED")
-| table t src_ip name note result db_rows</query>
+| eval t=strftime(_time,"%F %T"), result=if(ok=="true","ok","FAILED"), detail=coalesce(error, reason, "")
+| rename employee as name, team_id as team
+| table t src_ip name title team result detail</query>
           <earliest>$tr.earliest$</earliest><latest>$tr.latest$</latest>
         </search>
         <option name="drilldown">none</option>
