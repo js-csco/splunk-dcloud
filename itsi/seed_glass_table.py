@@ -63,9 +63,9 @@ IC = {"global": "\U0001F310", "site": "\U0001F4CD", "app": "\U0001F310",
       "db": "\U0001F5C4️", "hv": "\U0001F9F1", "srv": "\U0001F5A5️",
       "net": "\U0001F500", "splunk": "▸"}
 
-# Wordmark shown on each table. Rendered via a splunk.image viz (NOT markdown):
-# Dashboard Studio's markdown component sanitizes inline HTML and strips `style`,
-# so a styled <div> wordmark renders as plain text. An image URL renders reliably.
+# Wordmark URL shown on each table, rendered as a Markdown image (see mark_img).
+# A styled <div> gets sanitized (style stripped) and a splunk.image viz is rejected
+# by the glass_table endpoint (HTTP 500); ![](url) inside splunk.markdown works.
 # raw.githubusercontent.com serves .svg as image/svg+xml with CORS *, so the SVG
 # in itsi/glass_tables/assets/ loads directly. Override with GLASS_MARK_URL.
 MARK_URL = os.environ.get(
@@ -178,8 +178,11 @@ def md(text):
     return {"type": "splunk.markdown", "options": {"markdown": text}}
 
 
-def image(src, sizing="contain"):
-    return {"type": "splunk.image", "options": {"src": src, "sizing": sizing}}
+def mark_img(src):
+    # Wordmark as a Markdown image inside a splunk.markdown viz. The ITSI
+    # glass_table endpoint rejects a splunk.image viz (HTTP 500), but the
+    # markdown viz round-trips fine and renders ![](url) as an <img>.
+    return md("![splunk](%s)" % src)
 
 
 def rect(fill=PANEL, opacity=1.0, stroke=None, sw=0, rounding=0):
@@ -239,7 +242,7 @@ def build_noc():
     viz["hdr"] = md("<div style='font:800 26px Inter,sans-serif;color:%s'>GLOBAL IT OPERATIONS</div>"
                     "<div style='font:600 13px monospace;color:%s;letter-spacing:.14em'>SERVICE HEALTH WALL &middot; refresh 60s</div>" % (INK, DIM))
     st.append(pos("hdr", 60, 40, 900, 90))
-    viz["mark"] = image(MARK_URL)
+    viz["mark"] = mark_img(MARK_URL)
     st.append(pos("mark", 1420, 55, 440, 60))
 
     # hero global score
@@ -366,7 +369,7 @@ def build_topology():
               g["cx"] - g["w"] // 2, g["y"], g["w"], g["h"], font=font)
 
     # splunk watermark (image, not markdown - see MARK_URL note)
-    viz["mark"] = image(MARK_URL)
+    viz["mark"] = mark_img(MARK_URL)
     st.append(pos("mark", 40, 760, 300, 40))
 
     return wrap("dCloud - Service Topology",
@@ -388,7 +391,7 @@ def build_exec():
     viz["hdr"] = md("<div style='font:800 24px Inter,sans-serif;color:%s'>Business Service Overview</div>"
                     "<div style='font:500 14px Inter,sans-serif;color:%s;margin-top:6px'>Berlin &middot; London &middot; Location 1 &mdash; live KPI rollup</div>" % (INK, DIM))
     st.append(pos("hdr", 60, 44, 1000, 100))
-    viz["mark"] = image(MARK_URL)
+    viz["mark"] = mark_img(MARK_URL)
     st.append(pos("mark", 1420, 55, 440, 60))
 
     # global health hero (ring-like rounded tile)
@@ -553,8 +556,9 @@ def main():
             print("seeded: '%s'" % d["title"])
         else:
             rc = 1
-            sys.stderr.write("FAILED to seed '%s' (HTTP %s). The files from --write still "
-                             "import by hand.\n" % (d["title"], code))
+            sys.stderr.write("FAILED to seed '%s' (HTTP %s): %s\n"
+                             "  -> the files from --write still import by hand.\n"
+                             % (d["title"], code, str(res)[:700]))
     return rc
 
 
