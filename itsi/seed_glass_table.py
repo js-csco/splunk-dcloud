@@ -489,9 +489,13 @@ class ITSI:
 
 def seed_one(itsi, definition, owner="nobody"):
     title = definition["title"]
+    # The update path (POST .../glass_table/<key>) reads a top-level `owner`
+    # from the payload and 500s with {"message":"'owner'"} if it is absent;
+    # create tolerates only `_owner`. Send both so create and update both work.
     payload = {"title": title, "description": definition["description"],
-               "gt_version": "beta", "_owner": owner, "_user": owner,
-               "acl": {"sharing": "global"}, "definition": definition}
+               "gt_version": "beta", "owner": owner, "_owner": owner, "_user": owner,
+               "acl": {"sharing": "global", "owner": owner},
+               "definition": definition}
     code, res = itsi.call("GET", "%s/itoa_interface/glass_table" % APP_NS,
                           params={"filter": json.dumps({"title": title}), "fields": "_key,title"})
     if code != 200:
