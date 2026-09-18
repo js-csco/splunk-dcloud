@@ -1,0 +1,206 @@
+<form version="1.1" theme="dark">
+  <label>Dynamic Correlation</label>
+  <description>Start with TWO sources (web app + hypervisor), then add a THIRD live — and watch the same incident line up across all of them, with each tier's error messages.</description>
+
+  <!-- default fragments so the 2-source view renders before any 3rd source is picked -->
+  <init>
+    <set token="c_frag"></set>
+    <set token="c_efrag"></set>
+  </init>
+
+  <fieldset submitButton="false" autoRun="true">
+    <input type="time" token="tr">
+      <label>Time range</label>
+      <default><earliest>-60m</earliest><latest>now</latest></default>
+    </input>
+    <input type="dropdown" token="srcC">
+      <label>Add a 3rd source (live)</label>
+      <choice value="none">— none (2 sources: Web + Hypervisor) —</choice>
+      <choice value="db">Database — PostgreSQL (berlin_db)</choice>
+      <choice value="net">Network — routers (berlin_network)</choice>
+      <choice value="snmp">SNMP — SC4SNMP (berlin_snmp)</choice>
+      <default>none</default>
+      <change>
+        <condition value="db">
+          <set token="c_on">true</set>
+          <set token="c_name">Database (PostgreSQL)</set>
+          <set token="c_frag"> OR (index=berlin_db sourcetype=postgres:log)</set>
+          <set token="c_efrag"> OR (index=berlin_db sourcetype=postgres:log (ERROR OR FATAL))</set>
+          <set token="c_err_query">index=berlin_db sourcetype=postgres:log (ERROR OR FATAL) | table _time host _raw | head 25</set>
+        </condition>
+        <condition value="net">
+          <set token="c_on">true</set>
+          <set token="c_name">Network (routers)</set>
+          <set token="c_frag"> OR (index=berlin_network)</set>
+          <set token="c_efrag"> OR (index=berlin_network ("Connection timed out" OR "Connection refused" OR "No route to host" OR "%LINK" OR "%LINEPROTO" OR down))</set>
+          <set token="c_err_query">index=berlin_network ("Connection timed out" OR "Connection refused" OR "No route to host" OR "%LINK" OR "%LINEPROTO" OR down) | table _time host _raw | head 25</set>
+        </condition>
+        <condition value="snmp">
+          <set token="c_on">true</set>
+          <set token="c_name">SNMP (SC4SNMP)</set>
+          <set token="c_frag"> OR (index=berlin_snmp)</set>
+          <set token="c_efrag"> OR (index=berlin_snmp (linkDown OR down OR error OR trap))</set>
+          <set token="c_err_query">index=berlin_snmp (linkDown OR down OR error OR trap) | table _time host _raw | head 25</set>
+        </condition>
+        <condition value="none">
+          <unset token="c_on"/>
+          <unset token="c_name"/>
+          <unset token="c_err_query"/>
+          <set token="c_frag"></set>
+          <set token="c_efrag"></set>
+        </condition>
+      </change>
+      <default>none</default>
+    </input>
+  </fieldset>
+
+  <row>
+    <panel>
+      <html>
+        <h2>One incident, many sources</h2>
+        <p>The <b>Directory App</b> is a two-tier service — a <b>web app</b> container and a
+        <b>PostgreSQL</b> container — both running on the <b>Proxmox hypervisor</b>. When
+        something breaks, the evidence is scattered across separate logs. Correlation lines
+        them up <b>on time</b> so one screen tells the whole story.</p>
+        <ul>
+          <li><b>Source A — Web app</b>: <code>index=berlin_web sourcetype=webapp:access</code> (every HTTP request; 5xx = trouble).</li>
+          <li><b>Source B — Hypervisor</b>: <code>index=berlin_proxmox sourcetype=proxmox:api</code> (container / node state).</li>
+          <li><b>Source C — add live</b>: pick one above (Database / Network / SNMP). Adding a
+          source = adding one <code>OR (index=…)</code> clause — that is all correlation is.</li>
+        </ul>
+        <p style="color:#8b98a5;">Live demo idea: start on <b>2 sources</b>, then change the
+        dropdown to <b>Database</b> — the DB series and its error panel appear instantly. Break
+        the DB (<code>demo-chaos.sh break-db</code>) and watch Web 5xx, the hypervisor and the
+        DB errors spike <i>at the same minute</i>.</p>
+      </html>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
+      <title>Activity timeline — all selected sources (events / min)</title>
+      <chart>
+        <search>
+          <query>(index=berlin_web sourcetype=webapp:access) OR (index=berlin_proxmox sourcetype=proxmox:api)$c_frag$
+| eval tier=case(index=="berlin_web","Web app", index=="berlin_proxmox","Hypervisor", index=="berlin_db","Database", index=="berlin_network","Network", index=="berlin_snmp","SNMP", 1==1,"other")
+| timechart span=1m count by tier</query>
+          <earliest>$tr.earliest$</earliest>
+          <latest>$tr.latest$</latest>
+        </search>
+        <option name="charting.chart">line</option>
+        <option name="charting.legend.placement">bottom</option>
+        <option name="charting.axisTitleY.text">Events / min</option>
+        <option name="charting.chart.nullValueMode">zero</option>
+      </chart>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
+      <title>ERROR timeline — problems per tier (events / min)</title>
+      <chart>
+        <search>
+          <query>(index=berlin_web sourcetype=webapp:access status&gt;=500) OR (index=berlin_proxmox sourcetype=proxmox:api (status="error" OR status="not_configured"))$c_efrag$
+| eval tier=case(index=="berlin_web","Web 5xx", index=="berlin_proxmox","Hypervisor error", index=="berlin_db","DB error", index=="berlin_network","Network error", index=="berlin_snmp","SNMP alert", 1==1,"other")
+| timechart span=1m count by tier</query>
+          <earliest>$tr.earliest$</earliest>
+          <latest>$tr.latest$</latest>
+        </search>
+        <option name="charting.chart">column</option>
+        <option name="charting.chart.stackMode">stacked</option>
+        <option name="charting.legend.placement">bottom</option>
+        <option name="charting.axisTitleY.text">Errors / min</option>
+        <option name="charting.chart.nullValueMode">zero</option>
+      </chart>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
+      <title>Correlation footprint — events &amp; errors per tier in the window</title>
+      <table>
+        <search>
+          <query>(index=berlin_web sourcetype=webapp:access) OR (index=berlin_proxmox sourcetype=proxmox:api)$c_frag$
+| eval tier=case(index=="berlin_web","Web app", index=="berlin_proxmox","Hypervisor", index=="berlin_db","Database", index=="berlin_network","Network", index=="berlin_snmp","SNMP", 1==1,"other")
+| eval is_err=case(index=="berlin_web" AND status&gt;=500,1, index=="berlin_proxmox" AND (status=="error" OR status=="not_configured"),1, index=="berlin_db" AND match(_raw,"(?i)ERROR|FATAL"),1, index=="berlin_network" AND match(_raw,"(?i)timed out|refused|no route|%LINK|down"),1, 1==1,0)
+| stats count as Events, sum(is_err) as Errors, min(_time) as f, max(_time) as l by tier
+| eval Window=strftime(f,"%H:%M:%S")." – ".strftime(l,"%H:%M:%S")
+| table tier Events Errors Window
+| rename tier as Tier
+| sort - Errors</query>
+          <earliest>$tr.earliest$</earliest>
+          <latest>$tr.latest$</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <format type="color" field="Errors">
+          <colorPalette type="minMidMax" maxColor="#d4342c" midColor="#c8a21a" minColor="#53a051"></colorPalette>
+          <scale type="minMidMax"></scale>
+        </format>
+      </table>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
+      <title>Web app — error messages (HTTP 5xx / failed requests)</title>
+      <table>
+        <search>
+          <query>index=berlin_web sourcetype=webapp:access status&gt;=500
+| eval message=coalesce(error, action)
+| table _time src_ip method path status message
+| sort - _time | head 25</query>
+          <earliest>$tr.earliest$</earliest>
+          <latest>$tr.latest$</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="count">10</option>
+      </table>
+    </panel>
+    <panel>
+      <title>Hypervisor — error / not-configured API responses</title>
+      <table>
+        <search>
+          <query>index=berlin_proxmox sourcetype=proxmox:api (status="error" OR status="not_configured")
+| table _time endpoint name status
+| sort - _time | head 25</query>
+          <earliest>$tr.earliest$</earliest>
+          <latest>$tr.latest$</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="count">10</option>
+      </table>
+    </panel>
+  </row>
+
+  <row depends="$c_on$">
+    <panel>
+      <title>$c_name$ — error messages (the 3rd source you added)</title>
+      <table>
+        <search>
+          <query>$c_err_query$</query>
+          <earliest>$tr.earliest$</earliest>
+          <latest>$tr.latest$</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="count">10</option>
+      </table>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
+      <title>The SPL behind this — adding a source is adding one clause</title>
+      <html>
+        <pre style="white-space:pre-wrap;background:#11151a;padding:12px;border-radius:6px;color:#cdd9e5;">  (index=berlin_web sourcetype=webapp:access)          &#42; Source A — web app
+| OR (index=berlin_proxmox sourcetype=proxmox:api)     &#42; Source B — hypervisor
+| OR (index=berlin_db sourcetype=postgres:log)         &#42; Source C — add the DB here
+| eval tier=case(index=="berlin_web","Web app",
+                 index=="berlin_proxmox","Hypervisor",
+                 index=="berlin_db","Database", 1==1,"other")
+| timechart span=1m count by tier                      &#42; one timeline, all tiers</pre>
+        <p style="color:#8b98a5;">To add a 4th source you add another <code>OR (index=…)</code>
+        and one <code>case()</code> line — nothing about the technique changes.</p>
+      </html>
+    </panel>
+  </row>
+</form>

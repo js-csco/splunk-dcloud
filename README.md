@@ -263,13 +263,18 @@ every session.
 
 Plus the other apps: **Alerts**, **Infrastructure Monitoring** (*Data Onboarding
 Overview*, *Host & Infra Metrics*, *Asset Configuration*), **Correlation**
-(*Correlation 2/3 Sources*, *Client → Hypervisor → App*, *Root Cause Analysis*), and
-**Get Data In** (ingestion methods, *Indexes and Sourcetypes*, *Data Model & Pivot*).
+(*Correlation 2/3 Sources*, *Dynamic Correlation*, *Client → Hypervisor → App*, *Root
+Cause Analysis*), and **Get Data In** (ingestion methods, *Indexes and Sourcetypes*,
+*Data Model & Pivot*).
 
 The **Correlation 2/3 Sources** views teach the canonical
 `stats count(eval(source=A)) … by key` technique — pick sources and a correlation key
 (service / user / host) and find the same entity across separate sources in a time
-window, with the SPL shown on-screen and a plain-language explainer.
+window, with the SPL shown on-screen and a plain-language explainer. **Dynamic
+Correlation** tells the Directory App story end-to-end — web app + hypervisor always on,
+a dropdown to **add a 3rd source live** (Database / Network / SNMP), per-tier error
+messages, and a time-overlay that lines an incident up across tiers. There's a full
+customer-demo script in [`docs/demo-dynamic-correlation.md`](docs/demo-dynamic-correlation.md).
 
 ## Host & infrastructure metrics
 
