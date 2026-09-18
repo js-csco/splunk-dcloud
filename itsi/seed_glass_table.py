@@ -63,7 +63,14 @@ IC = {"global": "\U0001F310", "site": "\U0001F4CD", "app": "\U0001F310",
       "db": "\U0001F5C4️", "hv": "\U0001F9F1", "srv": "\U0001F5A5️",
       "net": "\U0001F500", "splunk": "▸"}
 
-SPLUNK_MARK = "<div style='text-align:right;font:800 22px Inter,sans-serif;color:%s'>splunk<span style='color:%s'>&gt;</span> <span style='font:600 12px monospace;color:%s'>ITSI &middot; dCloud</span></div>" % (INK, LIME, DIM)
+# Wordmark shown on each table. Rendered via a splunk.image viz (NOT markdown):
+# Dashboard Studio's markdown component sanitizes inline HTML and strips `style`,
+# so a styled <div> wordmark renders as plain text. An image URL renders reliably.
+# raw.githubusercontent.com serves .svg as image/svg+xml with CORS *, so the SVG
+# in itsi/glass_tables/assets/ loads directly. Override with GLASS_MARK_URL.
+MARK_URL = os.environ.get(
+    "GLASS_MARK_URL",
+    "https://raw.githubusercontent.com/js-csco/splunk-dcloud/main/itsi/glass_tables/assets/splunk_mark.svg")
 
 
 # ---------------------------------------------------------------------------
@@ -171,6 +178,10 @@ def md(text):
     return {"type": "splunk.markdown", "options": {"markdown": text}}
 
 
+def image(src, sizing="contain"):
+    return {"type": "splunk.image", "options": {"src": src, "sizing": sizing}}
+
+
 def rect(fill=PANEL, opacity=1.0, stroke=None, sw=0, rounding=0):
     o = {"fillColor": fill, "fillOpacity": opacity,
          "strokeColor": stroke or fill, "strokeWidth": sw}
@@ -228,7 +239,7 @@ def build_noc():
     viz["hdr"] = md("<div style='font:800 26px Inter,sans-serif;color:%s'>GLOBAL IT OPERATIONS</div>"
                     "<div style='font:600 13px monospace;color:%s;letter-spacing:.14em'>SERVICE HEALTH WALL &middot; refresh 60s</div>" % (INK, DIM))
     st.append(pos("hdr", 60, 40, 900, 90))
-    viz["mark"] = md(SPLUNK_MARK)
+    viz["mark"] = image(MARK_URL)
     st.append(pos("mark", 1420, 55, 440, 60))
 
     # hero global score
@@ -354,10 +365,9 @@ def build_topology():
         _node(viz, st, "viz_%s" % k, label, dsid, ctx,
               g["cx"] - g["w"] // 2, g["y"], g["w"], g["h"], font=font)
 
-    # splunk watermark
-    viz["mark"] = md("<div style='font:800 20px Inter,sans-serif;color:%s'>splunk<span style='color:%s'>&gt;</span> "
-                     "<span style='font:600 11px monospace;color:#4a5a72'>ITSI &middot; dCloud service topology</span></div>" % (LIME, LIME))
-    st.append(pos("mark", 40, 760, 700, 40))
+    # splunk watermark (image, not markdown - see MARK_URL note)
+    viz["mark"] = image(MARK_URL)
+    st.append(pos("mark", 40, 760, 300, 40))
 
     return wrap("dCloud - Service Topology",
                 "Service dependency map - node color is live reachability; edges show blast radius.",
@@ -378,7 +388,7 @@ def build_exec():
     viz["hdr"] = md("<div style='font:800 24px Inter,sans-serif;color:%s'>Business Service Overview</div>"
                     "<div style='font:500 14px Inter,sans-serif;color:%s;margin-top:6px'>Berlin &middot; London &middot; Location 1 &mdash; live KPI rollup</div>" % (INK, DIM))
     st.append(pos("hdr", 60, 44, 1000, 100))
-    viz["mark"] = md(SPLUNK_MARK)
+    viz["mark"] = image(MARK_URL)
     st.append(pos("mark", 1420, 55, 440, 60))
 
     # global health hero (ring-like rounded tile)

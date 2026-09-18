@@ -498,9 +498,10 @@
       }
     },
     "mark": {
-      "type": "splunk.markdown",
+      "type": "splunk.image",
       "options": {
-        "markdown": "<div style='text-align:right;font:800 22px Inter,sans-serif;color:#e8edf5'>splunk<span style='color:#65a637'>&gt;</span> <span style='font:600 12px monospace;color:#9fb0c6'>ITSI &middot; dCloud</span></div>"
+        "src": "https://raw.githubusercontent.com/js-csco/splunk-dcloud/main/itsi/glass_tables/assets/splunk_mark.svg",
+        "sizing": "contain"
       }
     },
     "hero_ring": {

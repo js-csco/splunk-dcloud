@@ -565,7 +565,7 @@
             "position": {
               "x": 40,
               "y": 760,
-              "w": 700,
+              "w": 300,
               "h": 40
             }
           }
@@ -1481,9 +1481,10 @@
       "title": "\u25b8 Splunk Core"
     },
     "mark": {
-      "type": "splunk.markdown",
+      "type": "splunk.image",
       "options": {
-        "markdown": "<div style='font:800 20px Inter,sans-serif;color:#65a637'>splunk<span style='color:#65a637'>&gt;</span> <span style='font:600 11px monospace;color:#4a5a72'>ITSI &middot; dCloud service topology</span></div>"
+        "src": "https://raw.githubusercontent.com/js-csco/splunk-dcloud/main/itsi/glass_tables/assets/splunk_mark.svg",
+        "sizing": "contain"
       }
     }
   },
