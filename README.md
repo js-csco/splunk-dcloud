@@ -692,6 +692,55 @@ sudo -u splunk /opt/splunk/bin/splunk cmd python3 \
 > versions, so `--verbose` prints any rejection to tune `itsi/seed_itsi_demo.py`. KPIs take
 > a few scheduled runs to show values.
 
+## ITSI Predictive Analytics (MLTK + PSC)
+
+ITSI's **Predictive Analytics** page (predicts a service's health score 30 min ahead) runs on
+the **Machine Learning Toolkit (MLTK)**, which needs its scientific-Python runtime, the
+**Python for Scientific Computing (PSC)** add-on. Without them the page errors with *"Failed
+to find Python for Scientific Computing Add-on (`Splunk_SA_Scientific_Python_linux_x86_64`)"*.
+Install both via the same opt-in Splunkbase path as the MCP server:
+
+```bash
+sudo SPLUNKBASE_USERNAME='you@splunk.com' SPLUNKBASE_PASSWORD='...' \
+     SPLUNKBASE_APP_IDS="2890 2882" bash /opt/dcloud-splunk/apply.sh
+#   2890 = Machine Learning Toolkit   2882 = Python for Scientific Computing (Linux 64-bit)
+```
+
+> Verify PSC landed as the **Linux** build (MLTK needs exactly this folder), then confirm the
+> runtime works with a one-line `fit`:
+> ```bash
+> ls /opt/splunk/etc/apps | grep -Ei 'Splunk_ML_Toolkit|Scientific_Python'
+> #   want: Splunk_ML_Toolkit  AND  Splunk_SA_Scientific_Python_linux_x86_64
+> # in Search:  | makeresults count=20 | streamstats count as x | eval y=x*3+5 | fit LinearRegression y from x
+> ```
+> Install the MLTK release that supports Splunk **10.4**, plus the PSC version that MLTK
+> requires — a mismatched MLTK/PSC pair is the usual reason `listmodels` still fails.
+> A 403 on download means the splunk.com account must accept the app's terms once in a browser
+> ([2890](https://splunkbase.splunk.com/app/2890) · [2882](https://splunkbase.splunk.com/app/2882)).
+
+**Getting a trained model (the reset-lab catch).** Predictive Analytics only lists a model
+once you **train one**, and training reads the service's **historical** health score + KPI
+values from `index=itsi_summary` (ITSI wants ~14 days). This lab wipes each session, so that
+history — and any trained model — does not persist; on a fresh session training hits
+*"insufficient data"*. To make it demoable **now**, backfill synthetic history after seeding
+the services, then train:
+
+```bash
+sudo -u splunk /opt/splunk/bin/splunk cmd python3 \
+  /opt/dcloud-splunk/itsi/seed_predictive_history.py --user admin --password C1sco12345 --days 14
+#   preview only:  ... --dry-run    |   one service:  ... --only "Web Service (Berlin)"
+```
+
+It reads the real service/KPI keys from the ITSI REST API and streams backdated per-KPI +
+aggregate `ServiceHealthScore` rows into `index=itsi_summary`. Then in **ITSI → Predictive
+Analytics** pick a service and train/create a model — it now has history to learn from.
+
+> Best-effort and version-sensitive: the exact `itsi_summary` fields ITSI trains on shift
+> between versions. If training still says no data, compare the script's fields against a real
+> row (`index=itsi_summary is_service_aggregate=1 | head 1`) and adjust — it only appends
+> events, nothing destructive. Treat Predictive Analytics as a **concept/architecture** demo
+> here (the ML dependency chain and the 30-min-ahead UI), not a guaranteed live-green panel.
+
 ## Repo layout
 
 ```
@@ -705,7 +754,7 @@ routers/                      # versioned Cisco Cat8kv baseline configs
 snmp/                         # enable-snmpd + SC4SNMP setup
 ubuntu/                       # forwarders, containers, chaos + activity generators
 webapp/                       # stdlib Python org-chart app (Directory App web tier)
-itsi/                         # ITSI/ITE-W + glass-table seeders and JSON
+itsi/                         # ITSI/ITE-W seeders: demo services/KPIs, glass tables, predictive-history backfill
 splunk/uf-apps/               # TA-dcloud-host, TA-dcloud-proxmox (Universal Forwarder TAs)
 splunk/apps/
   dcloud_lab/                 # "Lab Overview": indexes, dashboards, datamodel, Save-to-GitHub
@@ -741,6 +790,7 @@ splunk/apps/
 - [x] Splunk MCP Server: opt-in Splunkbase install at boot + "MCP Server & Claude Desktop" how-to dashboard
 - [x] SNMP via SC4SNMP (dedicated VM → HEC → `berlin_snmp`)
 - [x] ITSI / ITE-W: install path (URL or Splunkbase), demo seeders, episodes + glass tables
+- [x] ITSI Predictive Analytics: MLTK + PSC install path + synthetic `itsi_summary` history backfill so a model can train on a reset lab
 - [ ] Real ITSI (premium): heavy on a reset-each-session VM — free ITE-W preferred unless licensed
 - [ ] SOAP sender (parked)
 ```
