@@ -80,7 +80,7 @@ SERVICES = [
         # the Splunk server (probe_ports.sh) - always present, no agent needed.
         # Hypervisor up -> open=1 (GREEN); host down -> open=0 (RED). This is the
         # GATING health for the tier the containers run on.
-        ("Not Reachable", "index=berlin_web sourcetype=port:probe host=proxmox-berlin | stats count as c latest(open) as o | eval down=if(c>0 AND o=1,0,100)", "down", "max", "%", 50, 90),
+        ("Reachability", "index=berlin_web sourcetype=port:probe host=proxmox-berlin | stats count as c latest(open) as o | eval up=if(c>0 AND o=1,100,0)", "up", "max", "%", 50, 90),
         # Enrichment (informational; does not gate - Reachability does):
         ("Proxmox Event Volume", "index=berlin_proxmox", "count", "count", "events", 0, 0),
         # Node resource KPIs from the API poll (poll_proxmox.py metrics -> proxmox:metrics,
@@ -105,7 +105,7 @@ SERVICES = [
         # (RED), not a data gap that ITSI paints amber; an idle-but-up app reads
         # open=1 (GREEN); and a crashed app on a still-running container is caught
         # too (port stops answering). latest(open) = the most recent probe result.
-        ("Not Reachable",        "index=berlin_web sourcetype=port:probe host=webapp-berlin | stats count as c latest(open) as o | eval down=if(c>0 AND o=1,0,100)", "down", "max", "%", 50, 90),
+        ("Reachability",        "index=berlin_web sourcetype=port:probe host=webapp-berlin | stats count as c latest(open) as o | eval up=if(c>0 AND o=1,100,0)", "up", "max", "%", 50, 90),
         # Enrichment (informational; Reachability gates). Response Latency is an
         # averaged metric -> good candidate for adaptive/ML thresholds (--adaptive).
         ("Response Latency",    "index=berlin_web sourcetype=webapp:probe",              "latency_ms", "avg", "ms", 500, 1500),
@@ -120,7 +120,7 @@ SERVICES = [
         # amber gap); idle-but-healthy DB -> open=1 (GREEN, the fix for "low just
         # because nothing is happening"); Postgres crashed on a live container is
         # caught too. This is a real service check, not an event-volume proxy.
-        ("Not Reachable", "index=berlin_web sourcetype=port:probe host=db-berlin | stats count as c latest(open) as o | eval down=if(c>0 AND o=1,0,100)", "down", "max", "%", 50, 90),
+        ("Reachability", "index=berlin_web sourcetype=port:probe host=db-berlin | stats count as c latest(open) as o | eval up=if(c>0 AND o=1,100,0)", "up", "max", "%", 50, 90),
         # Enrichment (informational; Reachability gates):
         ("DB Errors",       "index=berlin_db sourcetype=postgres:log (ERROR OR FATAL)", "count", "count", "errors", 1, 10),
         ("DB Connections",  "index=berlin_db sourcetype=postgres:log \"connection authorized\"", "count", "count", "conns", 0, 0),
@@ -131,7 +131,7 @@ SERVICES = [
         # Reachability %: the UF ships linux:metrics every 60s, so recent data =
         # host up. Works on DHCP (no static IP / SSH needed - the host label is
         # fixed). stats count always returns a row, so host down -> up=0 (RED).
-        ("Not Reachable",       "index=berlin_metrics sourcetype=linux:metrics host=ubuntu-berlin | stats count as c | eval down=if(c>0,0,100)", "down", "max", "%", 50, 90),
+        ("Reachability",       "index=berlin_metrics sourcetype=linux:metrics host=ubuntu-berlin | stats count as c | eval up=if(c>0,100,0)", "up", "max", "%", 50, 90),
         # Enrichment (informational; Reachability gates). CPU/mem/disk are averaged
         # metrics -> adaptive/ML thresholds apply with --adaptive.
         ("CPU Utilization",    "index=berlin_metrics sourcetype=linux:metrics host=ubuntu-berlin", "cpu_pct",       "avg", "%", 70, 90),
@@ -143,7 +143,7 @@ SERVICES = [
         # Reachability %: active TCP probe of the router's SSH port from the Splunk
         # server - the gating health. Router down -> open=0 (RED), regardless of
         # whether the SSH poll or SNMP happen to have data.
-        ("Not Reachable", "index=berlin_web sourcetype=port:probe host=cat8kv-berlin | stats count as c latest(open) as o | eval down=if(c>0 AND o=1,0,100)", "down", "max", "%", 50, 90),
+        ("Reachability", "index=berlin_web sourcetype=port:probe host=cat8kv-berlin | stats count as c latest(open) as o | eval up=if(c>0 AND o=1,100,0)", "up", "max", "%", 50, 90),
         # Enrichment (informational; Reachability gates) - SSH poll health:
         ("Poll Errors", "index=berlin_network (\"Connection timed out\" OR \"Connection refused\" OR \"No route to host\" OR \"Unable to negotiate\" OR \"Permission denied\" OR \"Could not resolve\")", "count", "count", "errors", 1, 3),
         ("Poll Volume",  "index=berlin_network", "count", "count", "events", 0, 0),
@@ -151,7 +151,7 @@ SERVICES = [
     {"title": "Ubuntu London", "desc": "Ubuntu server host (London).",
      "rule": ("host", "ubuntu-london"), "depends_on": [], "kpis": [
         # Reachability via the UF heartbeat (DHCP-safe; see Ubuntu Berlin note).
-        ("Not Reachable",       "index=london_metrics sourcetype=linux:metrics host=ubuntu-london | stats count as c | eval down=if(c>0,0,100)", "down", "max", "%", 50, 90),
+        ("Reachability",       "index=london_metrics sourcetype=linux:metrics host=ubuntu-london | stats count as c | eval up=if(c>0,100,0)", "up", "max", "%", 50, 90),
         # Enrichment (informational; Reachability gates). Adaptive on CPU/mem/disk.
         ("CPU Utilization",    "index=london_metrics sourcetype=linux:metrics host=ubuntu-london", "cpu_pct",       "avg", "%", 70, 90),
         ("Memory Utilization", "index=london_metrics sourcetype=linux:metrics host=ubuntu-london", "mem_used_pct",  "avg", "%", 70, 90),
@@ -160,7 +160,7 @@ SERVICES = [
     {"title": "Router London", "desc": "Cisco Catalyst 8000v router (London).",
      "rule": ("host", "cat8kv-london"), "depends_on": [], "kpis": [
         # Reachability %: active TCP probe of the router's SSH port (gating).
-        ("Not Reachable", "index=london_web sourcetype=port:probe host=cat8kv-london | stats count as c latest(open) as o | eval down=if(c>0 AND o=1,0,100)", "down", "max", "%", 50, 90),
+        ("Reachability", "index=london_web sourcetype=port:probe host=cat8kv-london | stats count as c latest(open) as o | eval up=if(c>0 AND o=1,100,0)", "up", "max", "%", 50, 90),
         # Enrichment (informational; Reachability gates) - SSH poll health:
         ("Poll Errors", "index=london_network (\"Connection timed out\" OR \"Connection refused\" OR \"No route to host\" OR \"Unable to negotiate\" OR \"Permission denied\" OR \"Could not resolve\")", "count", "count", "errors", 1, 3),
         ("Poll Volume",  "index=london_network", "count", "count", "events", 0, 0),
@@ -168,7 +168,7 @@ SERVICES = [
     {"title": "Splunk Core", "desc": "The Splunk server itself (Location 1).",
      "rule": ("role", "splunk"), "depends_on": [], "kpis": [
         # Gating: the Splunk box ships loc1_metrics every 30-60s; recent data = up.
-        ("Not Reachable",          "index=loc1_metrics sourcetype=linux:metrics | stats count as c | eval down=if(c>0,0,100)", "down", "max", "%", 50, 90),
+        ("Reachability",          "index=loc1_metrics sourcetype=linux:metrics | stats count as c | eval up=if(c>0,100,0)", "up", "max", "%", 50, 90),
         ("CPU Utilization",       "index=loc1_metrics sourcetype=linux:metrics", "cpu_pct",       "avg",   "%",      70, 90),
         ("Memory Utilization",    "index=loc1_metrics sourcetype=linux:metrics", "mem_used_pct",  "avg",   "%",      70, 90),
         ("Disk Usage",            "index=loc1_metrics sourcetype=linux:metrics", "disk_used_pct", "avg",   "%",      80, 90),
@@ -184,7 +184,7 @@ SERVICES = [
         # returns 200 ONLY if the web app is up AND it can reach PostgreSQL, so this one
         # signal validates the WHOLE Directory App chain (web + DB) from the user's side.
         # GATING (title contains "reachab"): a down% metric, 0 = up/green, 100 = down/red.
-        ("Not Reachable", "index=berlin_web sourcetype=webapp:probe | stats count as c latest(reachable) as r | eval down=if(c>0 AND r=1,0,100)", "down", "max", "%", 50, 90),
+        ("Reachability", "index=berlin_web sourcetype=webapp:probe | stats count as c latest(reachable) as r | eval up=if(c>0 AND r=1,100,0)", "up", "max", "%", 50, 90),
         # Business error rate: % of app requests returning 5xx (incl. /healthz 503 when
         # the DB is down). Continuous - /healthz alone gives a steady stream. Higher=worse.
         ("App Error Rate %", "index=berlin_web sourcetype=webapp:access | eval err=if(status>=500,100,0)", "err", "avg", "%", 5, 20),
@@ -374,12 +374,19 @@ def kpi_payload(title, base_search, field, agg, unit, medium, critical, adaptive
     # Adaptive (ML) thresholding only makes sense on continuous averaged metrics
     # (CPU/mem/disk/latency), not on event counts.
     use_adaptive = adaptive and agg == "avg"
+    is_reach = "reachab" in title.lower()
     if use_adaptive:
         thr = adaptive_thresholds(field)
+    elif is_reach:
+        # Reachability is a TRUE up% metric (100 = up, 0 = down). up_thresholds makes
+        # it read intuitively: >=50 -> normal/GREEN, <50 -> critical/RED. So 100% is
+        # green and 0% is red. ITSI's health score is driven by the KPI's SEVERITY
+        # (not the raw value direction), so a down host (0% -> critical) still drags
+        # the service red - the gating behaviour is unchanged, it just reads right.
+        thr = up_thresholds(field)
     else:
-        # Everything (incl. Reachability, now a "down" metric where 0=up/good and
-        # 100=down/bad) uses STANDARD ascending thresholds - the same direction as
-        # CPU/mem/disk, which ITSI's health score scores correctly (higher=worse).
+        # Everything else (CPU/mem/disk, errors, latency, down%) uses standard
+        # ascending thresholds - higher = worse, which ITSI scores correctly.
         thr = thresholds(field, medium, critical)
     # Importance drives the service health score:
     #   11 = GATING - the active Reachability probe. Down => service red,
