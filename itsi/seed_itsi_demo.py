@@ -94,6 +94,9 @@ SERVICES = [
         # 0, gap benign) so an absent host UF never drags the hypervisor's health.
         ("Host Process Count", "index=berlin_linux sourcetype=linux:ps host=proxmox-berlin event=process", "pid", "dc", "procs", 0, 0),
         ("PVE Services Down",  "index=berlin_linux sourcetype=linux:services host=proxmox-berlin unit IN (\"pveproxy.service\",\"pvedaemon.service\",\"pve-cluster.service\") | eval bad=if(sub==\"running\",0,100)", "bad", "max", "%", 50, 90),
+        # Host load from the Proxmox host UF (install-uf-proxmox.sh); the API node
+        # metrics have CPU/mem but not load average. Enrichment, reads null until the UF.
+        ("Host Load (1m)",     "index=berlin_metrics sourcetype=linux:metrics host=proxmox-berlin", "load1", "avg", "", 4, 8),
         # SNMP stays on the SNMP dashboard, not a service KPI (optional add-on).
      ]},
     # ---- app tiers (carry KPIs; depend on the hypervisor they run on) ------
@@ -111,6 +114,12 @@ SERVICES = [
         ("Response Latency",    "index=berlin_web sourcetype=webapp:probe",              "latency_ms", "avg", "ms", 500, 1500),
         ("HTTP Request Volume", "index=berlin_web sourcetype=webapp:access",             "count", "count", "req",    0, 0),
         ("HTTP Errors (5xx)",   "index=berlin_web sourcetype=webapp:access status>=500", "count", "count", "errors", 5,     25),
+        # Container resources (the webapp-berlin LXC's own view, from its in-container
+        # UF -> linux:metrics host=webapp-berlin). Enrichment; avg -> adaptive-capable.
+        ("CPU Utilization",    "index=berlin_metrics sourcetype=linux:metrics host=webapp-berlin", "cpu_pct",       "avg", "%", 70, 90),
+        ("Memory Utilization", "index=berlin_metrics sourcetype=linux:metrics host=webapp-berlin", "mem_used_pct",  "avg", "%", 70, 90),
+        ("Disk Usage",         "index=berlin_metrics sourcetype=linux:metrics host=webapp-berlin", "disk_used_pct", "avg", "%", 80, 90),
+        ("Load Average (1m)",  "index=berlin_metrics sourcetype=linux:metrics host=webapp-berlin", "load1",         "avg", "",  4,  8),
      ]},
     {"title": "Database Service (Berlin)", "desc": "The Berlin PostgreSQL container.",
      "rule": ("role", "database"), "depends_on": ["Proxmox Hypervisor"], "kpis": [
@@ -125,6 +134,11 @@ SERVICES = [
         ("DB Errors",       "index=berlin_db sourcetype=postgres:log (ERROR OR FATAL)", "count", "count", "errors", 1, 10),
         ("DB Connections",  "index=berlin_db sourcetype=postgres:log \"connection authorized\"", "count", "count", "conns", 0, 0),
         ("DB Log Volume",   "index=berlin_db sourcetype=postgres:log", "count", "count", "events", 0, 0),
+        # Container resources (the db-berlin LXC's own view, from its in-container UF).
+        ("CPU Utilization",    "index=berlin_metrics sourcetype=linux:metrics host=db-berlin", "cpu_pct",       "avg", "%", 70, 90),
+        ("Memory Utilization", "index=berlin_metrics sourcetype=linux:metrics host=db-berlin", "mem_used_pct",  "avg", "%", 70, 90),
+        ("Disk Usage",         "index=berlin_metrics sourcetype=linux:metrics host=db-berlin", "disk_used_pct", "avg", "%", 80, 90),
+        ("Load Average (1m)",  "index=berlin_metrics sourcetype=linux:metrics host=db-berlin", "load1",         "avg", "",  4,  8),
      ]},
     {"title": "Ubuntu Berlin", "desc": "Ubuntu server host (Berlin).",
      "rule": ("host", "ubuntu-berlin"), "depends_on": [], "kpis": [
@@ -137,6 +151,7 @@ SERVICES = [
         ("CPU Utilization",    "index=berlin_metrics sourcetype=linux:metrics host=ubuntu-berlin", "cpu_pct",       "avg", "%", 70, 90),
         ("Memory Utilization", "index=berlin_metrics sourcetype=linux:metrics host=ubuntu-berlin", "mem_used_pct",  "avg", "%", 70, 90),
         ("Disk Usage",         "index=berlin_metrics sourcetype=linux:metrics host=ubuntu-berlin", "disk_used_pct", "avg", "%", 80, 90),
+        ("Load Average (1m)",  "index=berlin_metrics sourcetype=linux:metrics host=ubuntu-berlin", "load1", "avg", "", 4, 8),
      ]},
     {"title": "Router Berlin", "desc": "Cisco Catalyst 8000v router (Berlin).",
      "rule": ("host", "cat8kv-berlin"), "depends_on": [], "kpis": [
@@ -156,6 +171,7 @@ SERVICES = [
         ("CPU Utilization",    "index=london_metrics sourcetype=linux:metrics host=ubuntu-london", "cpu_pct",       "avg", "%", 70, 90),
         ("Memory Utilization", "index=london_metrics sourcetype=linux:metrics host=ubuntu-london", "mem_used_pct",  "avg", "%", 70, 90),
         ("Disk Usage",         "index=london_metrics sourcetype=linux:metrics host=ubuntu-london", "disk_used_pct", "avg", "%", 80, 90),
+        ("Load Average (1m)",  "index=london_metrics sourcetype=linux:metrics host=ubuntu-london", "load1", "avg", "", 4, 8),
      ]},
     {"title": "Router London", "desc": "Cisco Catalyst 8000v router (London).",
      "rule": ("host", "cat8kv-london"), "depends_on": [], "kpis": [
@@ -172,6 +188,7 @@ SERVICES = [
         ("CPU Utilization",       "index=loc1_metrics sourcetype=linux:metrics", "cpu_pct",       "avg",   "%",      70, 90),
         ("Memory Utilization",    "index=loc1_metrics sourcetype=linux:metrics", "mem_used_pct",  "avg",   "%",      70, 90),
         ("Disk Usage",            "index=loc1_metrics sourcetype=linux:metrics", "disk_used_pct", "avg",   "%",      80, 90),
+        ("Load Average (1m)",     "index=loc1_metrics sourcetype=linux:metrics", "load1",         "avg",   "",       4,  8),
         ("Internal Event Volume", "index=_internal",                             "count",         "count", "events", 0, 0),
      ]},
     # ---- mid-level branches ----------------------------------------------
