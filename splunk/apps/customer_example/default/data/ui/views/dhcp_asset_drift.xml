@@ -49,6 +49,33 @@
 
   <row>
     <panel>
+      <title>Reserved/static assets monitored</title>
+      <single>
+        <search><query>| makeresults | eval v=142</query></search>
+        <option name="drilldown">none</option>
+      </single>
+    </panel>
+    <panel>
+      <title>Unexpected DHCP re-assignments (7d)</title>
+      <single>
+        <search><query>| makeresults | eval v=1</query></search>
+        <option name="drilldown">none</option>
+        <option name="colorBy">value</option>
+        <option name="rangeColors">["0x53a051","0xd93f3c"]</option>
+        <option name="rangeValues">[1]</option>
+      </single>
+    </panel>
+    <panel>
+      <title>Time to detect — before vs. with Splunk</title>
+      <single>
+        <search><query>| makeresults | eval v="4h+ -&gt; &lt;5 min"</query></search>
+        <option name="drilldown">none</option>
+      </single>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
       <title>Example: unexpected DHCP lease change on a reserved medical device</title>
       <table>
         <search>

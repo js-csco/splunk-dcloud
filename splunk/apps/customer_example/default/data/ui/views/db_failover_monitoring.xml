@@ -50,6 +50,30 @@
 
   <row>
     <panel>
+      <title>Failovers (30 days)</title>
+      <single>
+        <search><query>| makeresults | eval v=2</query></search>
+        <option name="drilldown">none</option>
+      </single>
+    </panel>
+    <panel>
+      <title>Nodes monitored</title>
+      <single>
+        <search><query>| makeresults | eval v=6</query></search>
+        <option name="drilldown">none</option>
+      </single>
+    </panel>
+    <panel>
+      <title>Time to root cause — before vs. with Splunk</title>
+      <single>
+        <search><query>| makeresults | eval v="Hours -&gt; Minutes"</query></search>
+        <option name="drilldown">none</option>
+      </single>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
       <title>Example: what caused this failover?</title>
       <table>
         <search>

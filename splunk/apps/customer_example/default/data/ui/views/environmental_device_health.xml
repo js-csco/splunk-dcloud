@@ -48,6 +48,33 @@
 
   <row>
     <panel>
+      <title>Devices with environmental monitoring</title>
+      <single>
+        <search><query>| makeresults | eval v=64</query></search>
+        <option name="drilldown">none</option>
+      </single>
+    </panel>
+    <panel>
+      <title>Rooms over rated temperature now</title>
+      <single>
+        <search><query>| makeresults | eval v=1</query></search>
+        <option name="drilldown">none</option>
+        <option name="colorBy">value</option>
+        <option name="rangeColors">["0x53a051","0xd93f3c"]</option>
+        <option name="rangeValues">[1]</option>
+      </single>
+    </panel>
+    <panel>
+      <title>Failures caught before they happened (90d)</title>
+      <single>
+        <search><query>| makeresults | eval v=3</query></search>
+        <option name="drilldown">none</option>
+      </single>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
       <title>Example: room temperature vs. printer errors (7 days)</title>
       <chart>
         <search>

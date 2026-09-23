@@ -84,6 +84,29 @@
 
   <row>
     <panel>
+      <title>Egress volume by processing region (24h)</title>
+      <chart>
+        <search>
+          <query>| makeresults count=24
+| streamstats count as i
+| eval Hour=strftime(relative_time(now(), "-".(24-i)."h"), "%H:00")
+| eval "Switzerland"=70+(i%10)
+| eval "Other region (flagged)"=if(i=15,4,0)
+| table Hour "Switzerland" "Other region (flagged)"</query>
+          <earliest>$tr.earliest$</earliest>
+          <latest>$tr.latest$</latest>
+        </search>
+        <option name="charting.chart">column</option>
+        <option name="charting.chart.stackMode">stacked</option>
+        <option name="charting.seriesColors">[0x53a051,0xd93f3c]</option>
+        <option name="charting.legend.placement">bottom</option>
+        <option name="drilldown">none</option>
+      </chart>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
       <title>Example: cloud egress events by processing region and classification</title>
       <table>
         <search>

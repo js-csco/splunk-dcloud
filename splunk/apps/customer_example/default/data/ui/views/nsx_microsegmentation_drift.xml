@@ -50,6 +50,33 @@
 
   <row>
     <panel>
+      <title>DFW / port-group changes (7 days)</title>
+      <single>
+        <search><query>| makeresults | eval v=12</query></search>
+        <option name="drilldown">none</option>
+      </single>
+    </panel>
+    <panel>
+      <title>Changes that caused an outage</title>
+      <single>
+        <search><query>| makeresults | eval v=5</query></search>
+        <option name="drilldown">none</option>
+        <option name="colorBy">value</option>
+        <option name="rangeColors">["0x53a051","0xd93f3c"]</option>
+        <option name="rangeValues">[1]</option>
+      </single>
+    </panel>
+    <panel>
+      <title>Time to root cause — before vs. with Splunk</title>
+      <single>
+        <search><query>| makeresults | eval v="Guesswork -&gt; 1 correlated event"</query></search>
+        <option name="drilldown">none</option>
+      </single>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
       <title>Example: rule change immediately followed by an app outage</title>
       <table>
         <search>

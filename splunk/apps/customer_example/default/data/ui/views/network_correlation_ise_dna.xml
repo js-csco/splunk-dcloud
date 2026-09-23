@@ -49,6 +49,30 @@
 
   <row>
     <panel>
+      <title>Correlated incidents (7 days)</title>
+      <single>
+        <search><query>| makeresults | eval v=9</query></search>
+        <option name="drilldown">none</option>
+      </single>
+    </panel>
+    <panel>
+      <title>Auth failures linked to a network-health drop</title>
+      <single>
+        <search><query>| makeresults | eval v=4</query></search>
+        <option name="drilldown">none</option>
+      </single>
+    </panel>
+    <panel>
+      <title>Mean time to correlate — before vs. with Splunk</title>
+      <single>
+        <search><query>| makeresults | eval v="3 consoles -&gt; 1 timeline"</query></search>
+        <option name="drilldown">none</option>
+      </single>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
       <title>Example: one incident, three consoles</title>
       <table>
         <search>
