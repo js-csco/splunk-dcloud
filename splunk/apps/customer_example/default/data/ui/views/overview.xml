@@ -1,65 +1,1447 @@
-<dashboard version="1.1" theme="dark">
+<dashboard version="2" theme="dark">
   <label>Customer Example — Overview</label>
-  <description>Nine pain points captured in a customer discovery workshop, each turned into a dashboard: a worked example plus the data sources needed to build it for real.</description>
-
-  <row>
-    <panel>
-      <html>
-        <h1 style="margin:0 0 6px;">Customer Example</h1>
-        <p style="color:#cdd9e5;max-width:900px;">
-          Nine pain points from one customer conversation, each turned into a dashboard with
-          a worked example and the data sources needed to build it for real.
-          <span style="color:#8b98a5;">(Sample data — these source systems aren't part of this lab.)</span>
-        </p>
-      </html>
-    </panel>
-  </row>
-
-  <row>
-    <panel>
-      <html>
-        <div style="font-size:12px;letter-spacing:1px;color:#8b98a5;text-transform:uppercase;margin-bottom:8px;">Jump to a use case</div>
-        <div style="display:flex;flex-wrap:wrap;gap:8px;">
-          <a href="/app/customer_example/dhcp_asset_drift" style="text-decoration:none;background:#16a3b0;color:#fff;padding:10px 14px;border-radius:8px;font-weight:600;font-size:13px;">1. Röntgengerät / DHCP drift</a>
-          <a href="/app/customer_example/db_failover_monitoring" style="text-decoration:none;background:#16a3b0;color:#fff;padding:10px 14px;border-radius:8px;font-weight:600;font-size:13px;">2. DB failover monitoring</a>
-          <a href="/app/customer_example/iot_proactive_monitoring" style="text-decoration:none;background:#16a3b0;color:#fff;padding:10px 14px;border-radius:8px;font-weight:600;font-size:13px;">3. IoT proactive monitoring</a>
-          <a href="/app/customer_example/network_correlation_ise_dna" style="text-decoration:none;background:#16a3b0;color:#fff;padding:10px 14px;border-radius:8px;font-weight:600;font-size:13px;">4. Network correlation (ISE/DNA)</a>
-          <a href="/app/customer_example/environmental_device_health" style="text-decoration:none;background:#16a3b0;color:#fff;padding:10px 14px;border-radius:8px;font-weight:600;font-size:13px;">5. Etikettendrucker / Temperatur</a>
-          <a href="/app/customer_example/nsx_microsegmentation_drift" style="text-decoration:none;background:#16a3b0;color:#fff;padding:10px 14px;border-radius:8px;font-weight:600;font-size:13px;">6. VMware/NSX microsegmentation</a>
-          <a href="/app/customer_example/bed_occupancy" style="text-decoration:none;background:#16a3b0;color:#fff;padding:10px 14px;border-radius:8px;font-weight:600;font-size:13px;">7. Bettenauslastung</a>
-          <a href="/app/customer_example/data_residency_compliance" style="text-decoration:none;background:#16a3b0;color:#fff;padding:10px 14px;border-radius:8px;font-weight:600;font-size:13px;">8. Swiss data residency</a>
-          <a href="/app/customer_example/ai_observability" style="text-decoration:none;background:#16a3b0;color:#fff;padding:10px 14px;border-radius:8px;font-weight:600;font-size:13px;">9. AI Observability</a>
-        </div>
-      </html>
-    </panel>
-  </row>
-
-  <row>
-    <panel>
-      <title>The nine use cases, at a glance</title>
-      <html>
-        <table style="border-collapse:collapse;width:100%;font-size:13px;">
-          <thead>
-            <tr style="background:#1b2430;color:#cdd9e5;text-align:left;">
-              <th style="padding:8px;border:1px solid #2b3a4a;">#</th>
-              <th style="padding:8px;border:1px solid #2b3a4a;">What they said</th>
-              <th style="padding:8px;border:1px solid #2b3a4a;">Splunk angle</th>
-              <th style="padding:8px;border:1px solid #2b3a4a;">Key data sources</th>
-            </tr>
-          </thead>
-          <tbody style="color:#e6edf3;">
-            <tr><td style="padding:8px;border:1px solid #2b3a4a;">1</td><td style="padding:8px;border:1px solid #2b3a4a;">X-ray machine — DHCP re-assigned its IP</td><td style="padding:8px;border:1px solid #2b3a4a;">Alert on unexpected lease changes</td><td style="padding:8px;border:1px solid #2b3a4a;">DHCP, CMDB, switch/CDP, ISE</td></tr>
-            <tr><td style="padding:8px;border:1px solid #2b3a4a;">2</td><td style="padding:8px;border:1px solid #2b3a4a;">Redundant DB servers barely monitored</td><td style="padding:8px;border:1px solid #2b3a4a;">Correlate cluster events + host/network heartbeat</td><td style="padding:8px;border:1px solid #2b3a4a;">DB/cluster logs, OS metrics, VIP logs</td></tr>
-            <tr><td style="padding:8px;border:1px solid #2b3a4a;">3</td><td style="padding:8px;border:1px solid #2b3a4a;">IoT is 99% reactive, run by an MSP</td><td style="padding:8px;border:1px solid #2b3a4a;">Proactive alerting shared with the MSP</td><td style="padding:8px;border:1px solid #2b3a4a;">IoT/MQTT telemetry, WLAN logs, MSP API</td></tr>
-            <tr><td style="padding:8px;border:1px solid #2b3a4a;">4</td><td style="padding:8px;border:1px solid #2b3a4a;">No correlation across ISE, DNA Center, network</td><td style="padding:8px;border:1px solid #2b3a4a;">One timeline instead of three consoles</td><td style="padding:8px;border:1px solid #2b3a4a;">Cisco ISE, DNA Center, switch syslog, WLC</td></tr>
-            <tr><td style="padding:8px;border:1px solid #2b3a4a;">5</td><td style="padding:8px;border:1px solid #2b3a4a;">Label printer failed from rising heat</td><td style="padding:8px;border:1px solid #2b3a4a;">Correlate room temp with device errors</td><td style="padding:8px;border:1px solid #2b3a4a;">Environmental sensors, printer SNMP, asset data</td></tr>
-            <tr><td style="padding:8px;border:1px solid #2b3a4a;">6</td><td style="padding:8px;border:1px solid #2b3a4a;">NSX changes silently break connectivity</td><td style="padding:8px;border:1px solid #2b3a4a;">Correlate rule changes with outages</td><td style="padding:8px;border:1px solid #2b3a4a;">NSX Manager, vCenter, change mgmt/CMDB</td></tr>
-            <tr><td style="padding:8px;border:1px solid #2b3a4a;">7</td><td style="padding:8px;border:1px solid #2b3a4a;">Bed occupancy — interesting for GL</td><td style="padding:8px;border:1px solid #2b3a4a;">Executive KPI view by ward + trend</td><td style="padding:8px;border:1px solid #2b3a4a;">Bed mgmt/RTLS, ADT (HL7), nurse call</td></tr>
-            <tr><td style="padding:8px;border:1px solid #2b3a4a;">8</td><td style="padding:8px;border:1px solid #2b3a4a;">"Processed in CH may go to the cloud"</td><td style="padding:8px;border:1px solid #2b3a4a;">Prove residency compliance on every egress</td><td style="padding:8px;border:1px solid #2b3a4a;">Proxy/CASB logs, DLP tags, cloud audit logs</td></tr>
-            <tr><td style="padding:8px;border:1px solid #2b3a4a;">9</td><td style="padding:8px;border:1px solid #2b3a4a;">AI adoption stalled — GL uncertainty</td><td style="padding:8px;border:1px solid #2b3a4a;">Governance-first: cost, latency, guardrail hits</td><td style="padding:8px;border:1px solid #2b3a4a;">LLM/API gateway logs, guardrail/DLP logs</td></tr>
-          </tbody>
-        </table>
-      </html>
-    </panel>
-  </row>
+  <description>Nine challenges from the discovery workshop, the dashboard for each, and the data Splunk needs.</description>
+  <definition><![CDATA[
+{
+  "title": "Customer Example — Overview",
+  "description": "Nine challenges from the discovery workshop, the dashboard for each, and the data Splunk needs.",
+  "inputs": {},
+  "defaults": {},
+  "visualizations": {
+    "bg_001": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#161B22",
+        "strokeColor": "#262C36",
+        "strokeWidth": 1,
+        "rx": 12
+      }
+    },
+    "bg_002": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#16A3B0",
+        "strokeColor": "#16A3B0",
+        "strokeWidth": 1,
+        "rx": 3
+      }
+    },
+    "md_003": {
+      "type": "splunk.markdown",
+      "options": {
+        "markdown": "SPITAL AARWALD  ·  SPLUNK USE CASES  ·  SAMPLE DATA",
+        "fontColor": "#16A3B0",
+        "fontSize": "custom",
+        "customFontSize": 12
+      }
+    },
+    "md_004": {
+      "type": "splunk.markdown",
+      "options": {
+        "markdown": "# What Splunk can do for Spital Aarwald",
+        "fontColor": "#E6EDF3"
+      }
+    },
+    "md_005": {
+      "type": "splunk.markdown",
+      "options": {
+        "markdown": "Nine challenges from our workshop — each with a dashboard, and the data it needs.",
+        "fontColor": "#9AA4B2",
+        "fontSize": "custom",
+        "customFontSize": 15
+      }
+    },
+    "bg_006": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#161B22",
+        "strokeColor": "#262C36",
+        "strokeWidth": 1,
+        "rx": 12
+      }
+    },
+    "bg_007": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#12343A",
+        "strokeColor": "#16A3B0",
+        "strokeWidth": 1,
+        "rx": 20
+      }
+    },
+    "md_008": {
+      "type": "splunk.markdown",
+      "options": {
+        "markdown": "**1**",
+        "fontColor": "#16A3B0",
+        "fontSize": "custom",
+        "customFontSize": 16
+      }
+    },
+    "md_009": {
+      "type": "splunk.markdown",
+      "options": {
+        "markdown": "**Medical Device IP Drift**",
+        "fontColor": "#E6EDF3",
+        "fontSize": "custom",
+        "customFontSize": 17
+      }
+    },
+    "md_010": {
+      "type": "splunk.markdown",
+      "options": {
+        "markdown": "X-ray unit lost its reserved IP to DHCP",
+        "fontColor": "#9AA4B2",
+        "fontSize": "custom",
+        "customFontSize": 13
+      }
+    },
+    "md_011": {
+      "type": "splunk.markdown",
+      "options": {
+        "markdown": "[Open dashboard →](/app/customer_example/dhcp_asset_drift)",
+        "fontColor": "#E6EDF3",
+        "fontSize": "custom",
+        "customFontSize": 13
+      }
+    },
+    "bg_012": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#161B22",
+        "strokeColor": "#262C36",
+        "strokeWidth": 1,
+        "rx": 12
+      }
+    },
+    "bg_013": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#12343A",
+        "strokeColor": "#16A3B0",
+        "strokeWidth": 1,
+        "rx": 20
+      }
+    },
+    "md_014": {
+      "type": "splunk.markdown",
+      "options": {
+        "markdown": "**2**",
+        "fontColor": "#16A3B0",
+        "fontSize": "custom",
+        "customFontSize": 16
+      }
+    },
+    "md_015": {
+      "type": "splunk.markdown",
+      "options": {
+        "markdown": "**Database Failover Insight**",
+        "fontColor": "#E6EDF3",
+        "fontSize": "custom",
+        "customFontSize": 17
+      }
+    },
+    "md_016": {
+      "type": "splunk.markdown",
+      "options": {
+        "markdown": "Redundant DB failed over — nobody knew why",
+        "fontColor": "#9AA4B2",
+        "fontSize": "custom",
+        "customFontSize": 13
+      }
+    },
+    "md_017": {
+      "type": "splunk.markdown",
+      "options": {
+        "markdown": "[Open dashboard →](/app/customer_example/db_failover_monitoring)",
+        "fontColor": "#E6EDF3",
+        "fontSize": "custom",
+        "customFontSize": 13
+      }
+    },
+    "bg_018": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#161B22",
+        "strokeColor": "#262C36",
+        "strokeWidth": 1,
+        "rx": 12
+      }
+    },
+    "bg_019": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#12343A",
+        "strokeColor": "#16A3B0",
+        "strokeWidth": 1,
+        "rx": 20
+      }
+    },
+    "md_020": {
+      "type": "splunk.markdown",
+      "options": {
+        "markdown": "**3**",
+        "fontColor": "#16A3B0",
+        "fontSize": "custom",
+        "customFontSize": 16
+      }
+    },
+    "md_021": {
+      "type": "splunk.markdown",
+      "options": {
+        "markdown": "**IoT Fleet Health**",
+        "fontColor": "#E6EDF3",
+        "fontSize": "custom",
+        "customFontSize": 17
+      }
+    },
+    "md_022": {
+      "type": "splunk.markdown",
+      "options": {
+        "markdown": "IoT is 99% reactive, run by a partner",
+        "fontColor": "#9AA4B2",
+        "fontSize": "custom",
+        "customFontSize": 13
+      }
+    },
+    "md_023": {
+      "type": "splunk.markdown",
+      "options": {
+        "markdown": "[Open dashboard →](/app/customer_example/iot_proactive_monitoring)",
+        "fontColor": "#E6EDF3",
+        "fontSize": "custom",
+        "customFontSize": 13
+      }
+    },
+    "bg_024": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#161B22",
+        "strokeColor": "#262C36",
+        "strokeWidth": 1,
+        "rx": 12
+      }
+    },
+    "bg_025": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#12343A",
+        "strokeColor": "#16A3B0",
+        "strokeWidth": 1,
+        "rx": 20
+      }
+    },
+    "md_026": {
+      "type": "splunk.markdown",
+      "options": {
+        "markdown": "**4**",
+        "fontColor": "#16A3B0",
+        "fontSize": "custom",
+        "customFontSize": 16
+      }
+    },
+    "md_027": {
+      "type": "splunk.markdown",
+      "options": {
+        "markdown": "**Network Correlation**",
+        "fontColor": "#E6EDF3",
+        "fontSize": "custom",
+        "customFontSize": 17
+      }
+    },
+    "md_028": {
+      "type": "splunk.markdown",
+      "options": {
+        "markdown": "No correlation across ISE, DNA & switching",
+        "fontColor": "#9AA4B2",
+        "fontSize": "custom",
+        "customFontSize": 13
+      }
+    },
+    "md_029": {
+      "type": "splunk.markdown",
+      "options": {
+        "markdown": "[Open dashboard →](/app/customer_example/network_correlation_ise_dna)",
+        "fontColor": "#E6EDF3",
+        "fontSize": "custom",
+        "customFontSize": 13
+      }
+    },
+    "bg_030": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#161B22",
+        "strokeColor": "#262C36",
+        "strokeWidth": 1,
+        "rx": 12
+      }
+    },
+    "bg_031": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#12343A",
+        "strokeColor": "#16A3B0",
+        "strokeWidth": 1,
+        "rx": 20
+      }
+    },
+    "md_032": {
+      "type": "splunk.markdown",
+      "options": {
+        "markdown": "**5**",
+        "fontColor": "#16A3B0",
+        "fontSize": "custom",
+        "customFontSize": 16
+      }
+    },
+    "md_033": {
+      "type": "splunk.markdown",
+      "options": {
+        "markdown": "**Environmental Device Health**",
+        "fontColor": "#E6EDF3",
+        "fontSize": "custom",
+        "customFontSize": 17
+      }
+    },
+    "md_034": {
+      "type": "splunk.markdown",
+      "options": {
+        "markdown": "Label printer failed from rising heat",
+        "fontColor": "#9AA4B2",
+        "fontSize": "custom",
+        "customFontSize": 13
+      }
+    },
+    "md_035": {
+      "type": "splunk.markdown",
+      "options": {
+        "markdown": "[Open dashboard →](/app/customer_example/environmental_device_health)",
+        "fontColor": "#E6EDF3",
+        "fontSize": "custom",
+        "customFontSize": 13
+      }
+    },
+    "bg_036": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#161B22",
+        "strokeColor": "#262C36",
+        "strokeWidth": 1,
+        "rx": 12
+      }
+    },
+    "bg_037": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#12343A",
+        "strokeColor": "#16A3B0",
+        "strokeWidth": 1,
+        "rx": 20
+      }
+    },
+    "md_038": {
+      "type": "splunk.markdown",
+      "options": {
+        "markdown": "**6**",
+        "fontColor": "#16A3B0",
+        "fontSize": "custom",
+        "customFontSize": 16
+      }
+    },
+    "md_039": {
+      "type": "splunk.markdown",
+      "options": {
+        "markdown": "**Microsegmentation Change Impact**",
+        "fontColor": "#E6EDF3",
+        "fontSize": "custom",
+        "customFontSize": 17
+      }
+    },
+    "md_040": {
+      "type": "splunk.markdown",
+      "options": {
+        "markdown": "One click in NSX breaks the other side",
+        "fontColor": "#9AA4B2",
+        "fontSize": "custom",
+        "customFontSize": 13
+      }
+    },
+    "md_041": {
+      "type": "splunk.markdown",
+      "options": {
+        "markdown": "[Open dashboard →](/app/customer_example/nsx_microsegmentation_drift)",
+        "fontColor": "#E6EDF3",
+        "fontSize": "custom",
+        "customFontSize": 13
+      }
+    },
+    "bg_042": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#161B22",
+        "strokeColor": "#262C36",
+        "strokeWidth": 1,
+        "rx": 12
+      }
+    },
+    "bg_043": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#12343A",
+        "strokeColor": "#16A3B0",
+        "strokeWidth": 1,
+        "rx": 20
+      }
+    },
+    "md_044": {
+      "type": "splunk.markdown",
+      "options": {
+        "markdown": "**7**",
+        "fontColor": "#16A3B0",
+        "fontSize": "custom",
+        "customFontSize": 16
+      }
+    },
+    "md_045": {
+      "type": "splunk.markdown",
+      "options": {
+        "markdown": "**Bed Occupancy**",
+        "fontColor": "#E6EDF3",
+        "fontSize": "custom",
+        "customFontSize": 17
+      }
+    },
+    "md_046": {
+      "type": "splunk.markdown",
+      "options": {
+        "markdown": "Occupancy view for the executive board",
+        "fontColor": "#9AA4B2",
+        "fontSize": "custom",
+        "customFontSize": 13
+      }
+    },
+    "md_047": {
+      "type": "splunk.markdown",
+      "options": {
+        "markdown": "[Open dashboard →](/app/customer_example/bed_occupancy)",
+        "fontColor": "#E6EDF3",
+        "fontSize": "custom",
+        "customFontSize": 13
+      }
+    },
+    "bg_048": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#161B22",
+        "strokeColor": "#262C36",
+        "strokeWidth": 1,
+        "rx": 12
+      }
+    },
+    "bg_049": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#12343A",
+        "strokeColor": "#16A3B0",
+        "strokeWidth": 1,
+        "rx": 20
+      }
+    },
+    "md_050": {
+      "type": "splunk.markdown",
+      "options": {
+        "markdown": "**8**",
+        "fontColor": "#16A3B0",
+        "fontSize": "custom",
+        "customFontSize": 16
+      }
+    },
+    "md_051": {
+      "type": "splunk.markdown",
+      "options": {
+        "markdown": "**Swiss Data Residency**",
+        "fontColor": "#E6EDF3",
+        "fontSize": "custom",
+        "customFontSize": 17
+      }
+    },
+    "md_052": {
+      "type": "splunk.markdown",
+      "options": {
+        "markdown": "Cloud OK if processed in Switzerland",
+        "fontColor": "#9AA4B2",
+        "fontSize": "custom",
+        "customFontSize": 13
+      }
+    },
+    "md_053": {
+      "type": "splunk.markdown",
+      "options": {
+        "markdown": "[Open dashboard →](/app/customer_example/data_residency_compliance)",
+        "fontColor": "#E6EDF3",
+        "fontSize": "custom",
+        "customFontSize": 13
+      }
+    },
+    "bg_054": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#161B22",
+        "strokeColor": "#262C36",
+        "strokeWidth": 1,
+        "rx": 12
+      }
+    },
+    "bg_055": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#12343A",
+        "strokeColor": "#16A3B0",
+        "strokeWidth": 1,
+        "rx": 20
+      }
+    },
+    "md_056": {
+      "type": "splunk.markdown",
+      "options": {
+        "markdown": "**9**",
+        "fontColor": "#16A3B0",
+        "fontSize": "custom",
+        "customFontSize": 16
+      }
+    },
+    "md_057": {
+      "type": "splunk.markdown",
+      "options": {
+        "markdown": "**AI Observability & Governance**",
+        "fontColor": "#E6EDF3",
+        "fontSize": "custom",
+        "customFontSize": 17
+      }
+    },
+    "md_058": {
+      "type": "splunk.markdown",
+      "options": {
+        "markdown": "AI on hold due to uncertainty",
+        "fontColor": "#9AA4B2",
+        "fontSize": "custom",
+        "customFontSize": 13
+      }
+    },
+    "md_059": {
+      "type": "splunk.markdown",
+      "options": {
+        "markdown": "[Open dashboard →](/app/customer_example/ai_observability)",
+        "fontColor": "#E6EDF3",
+        "fontSize": "custom",
+        "customFontSize": 13
+      }
+    },
+    "bg_060": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#161B22",
+        "strokeColor": "#262C36",
+        "strokeWidth": 1,
+        "rx": 12
+      }
+    },
+    "viz_061": {
+      "type": "splunk.column",
+      "options": {
+        "backgroundColor": "#161B22",
+        "legendDisplay": "off",
+        "xAxisTitleVisibility": "hide",
+        "seriesColors": [
+          "#16A3B0"
+        ],
+        "yAxisTitleVisibility": "hide",
+        "dataValuesDisplay": "all"
+      },
+      "dataSources": {
+        "primary": "ds_062"
+      },
+      "title": "Data sources needed per use case"
+    },
+    "bg_063": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#161B22",
+        "strokeColor": "#262C36",
+        "strokeWidth": 1,
+        "rx": 12
+      }
+    },
+    "viz_064": {
+      "type": "splunk.pie",
+      "options": {
+        "backgroundColor": "#161B22",
+        "showDonutHole": true,
+        "labelDisplay": "valuesAndPercentage",
+        "legendDisplay": "off",
+        "seriesColors": [
+          "#3987E5",
+          "#D95926",
+          "#199E70",
+          "#C98500",
+          "#D55181",
+          "#008300",
+          "#9085E9",
+          "#E66767"
+        ]
+      },
+      "dataSources": {
+        "primary": "ds_065"
+      },
+      "title": "25 data sources by category"
+    },
+    "bg_066": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#161B22",
+        "strokeColor": "#262C36",
+        "strokeWidth": 1,
+        "rx": 12
+      }
+    },
+    "viz_067": {
+      "type": "splunk.table",
+      "options": {
+        "backgroundColor": "#161B22",
+        "headerVisibility": "fixed",
+        "fontSize": "small",
+        "count": 25,
+        "columnFormat": {
+          "1 IP drift": {
+            "rowColors": "> table | seriesByName(\"1 IP drift\") | matchValue(dot)",
+            "rowBackgroundColors": "> table | seriesByName(\"1 IP drift\") | matchValue(dotBg)",
+            "align": "center",
+            "headerAlign": "center",
+            "width": 96
+          },
+          "2 DB": {
+            "rowColors": "> table | seriesByName(\"2 DB\") | matchValue(dot)",
+            "rowBackgroundColors": "> table | seriesByName(\"2 DB\") | matchValue(dotBg)",
+            "align": "center",
+            "headerAlign": "center",
+            "width": 96
+          },
+          "3 IoT": {
+            "rowColors": "> table | seriesByName(\"3 IoT\") | matchValue(dot)",
+            "rowBackgroundColors": "> table | seriesByName(\"3 IoT\") | matchValue(dotBg)",
+            "align": "center",
+            "headerAlign": "center",
+            "width": 96
+          },
+          "4 Network": {
+            "rowColors": "> table | seriesByName(\"4 Network\") | matchValue(dot)",
+            "rowBackgroundColors": "> table | seriesByName(\"4 Network\") | matchValue(dotBg)",
+            "align": "center",
+            "headerAlign": "center",
+            "width": 96
+          },
+          "5 Climate": {
+            "rowColors": "> table | seriesByName(\"5 Climate\") | matchValue(dot)",
+            "rowBackgroundColors": "> table | seriesByName(\"5 Climate\") | matchValue(dotBg)",
+            "align": "center",
+            "headerAlign": "center",
+            "width": 96
+          },
+          "6 NSX": {
+            "rowColors": "> table | seriesByName(\"6 NSX\") | matchValue(dot)",
+            "rowBackgroundColors": "> table | seriesByName(\"6 NSX\") | matchValue(dotBg)",
+            "align": "center",
+            "headerAlign": "center",
+            "width": 96
+          },
+          "7 Beds": {
+            "rowColors": "> table | seriesByName(\"7 Beds\") | matchValue(dot)",
+            "rowBackgroundColors": "> table | seriesByName(\"7 Beds\") | matchValue(dotBg)",
+            "align": "center",
+            "headerAlign": "center",
+            "width": 96
+          },
+          "8 Cloud": {
+            "rowColors": "> table | seriesByName(\"8 Cloud\") | matchValue(dot)",
+            "rowBackgroundColors": "> table | seriesByName(\"8 Cloud\") | matchValue(dotBg)",
+            "align": "center",
+            "headerAlign": "center",
+            "width": 96
+          },
+          "9 AI": {
+            "rowColors": "> table | seriesByName(\"9 AI\") | matchValue(dot)",
+            "rowBackgroundColors": "> table | seriesByName(\"9 AI\") | matchValue(dotBg)",
+            "align": "center",
+            "headerAlign": "center",
+            "width": 96
+          },
+          "Data source": {
+            "width": 300
+          },
+          "Category": {
+            "width": 190,
+            "rowColors": "> table | seriesByName(\"Category\") | matchValue(muted)"
+          }
+        }
+      },
+      "dataSources": {
+        "primary": "ds_068"
+      },
+      "title": "Data sources needed in Splunk — and the use cases each one serves",
+      "context": {
+        "dot": [
+          {
+            "match": "✓",
+            "value": "#5FE3EE"
+          }
+        ],
+        "dotBg": [
+          {
+            "match": "✓",
+            "value": "#12343A"
+          }
+        ],
+        "muted": [
+          {
+            "match": "Applications",
+            "value": "#9AA4B2"
+          },
+          {
+            "match": "Clinical & facility",
+            "value": "#9AA4B2"
+          },
+          {
+            "match": "Cloud / security / AI",
+            "value": "#9AA4B2"
+          },
+          {
+            "match": "IT service management",
+            "value": "#9AA4B2"
+          },
+          {
+            "match": "Network",
+            "value": "#9AA4B2"
+          },
+          {
+            "match": "Servers & virtualization",
+            "value": "#9AA4B2"
+          }
+        ]
+      }
+    }
+  },
+  "dataSources": {
+    "ds_062": {
+      "type": "ds.search",
+      "name": "ds_062",
+      "options": {
+        "query": "| makeresults format=csv data=\"Use case,Data sources\n1 · IP drift,5\n2 · DB,4\n3 · IoT,4\n4 · Network,6\n5 · Climate,4\n6 · NSX,5\n7 · Beds,2\n8 · Cloud,5\n9 · AI,5\"\n| table \"Use case\" \"Data sources\"",
+        "queryParameters": {
+          "earliest": "-15m",
+          "latest": "now"
+        }
+      }
+    },
+    "ds_065": {
+      "type": "ds.search",
+      "name": "ds_065",
+      "options": {
+        "query": "| makeresults format=csv data=\"Category,Sources\nNetwork,7\nServers & virtualization,5\nApplications,2\nClinical & facility,4\nIT service management,2\nCloud / security / AI,5\"\n| table Category Sources",
+        "queryParameters": {
+          "earliest": "-15m",
+          "latest": "now"
+        }
+      }
+    },
+    "ds_068": {
+      "type": "ds.search",
+      "name": "ds_068",
+      "options": {
+        "query": "| makeresults format=csv data=\"Data source,Category,1 IP drift,2 DB,3 IoT,4 Network,5 Climate,6 NSX,7 Beds,8 Cloud,9 AI\nDHCP server logs,Network,✓,,,✓,,,,,\nSwitch & router syslog,Network,✓,,,✓,,,,,\nSNMP (interfaces & devices),Network,,,,✓,✓,,,,\nCisco ISE,Network,✓,,,✓,,,,,\nCatalyst Center (DNA) Assurance,Network,,,,✓,,,,,\nWireless LAN controller,Network,,,✓,✓,,,,,\nFirewall / proxy egress logs,Network,,,,,,,,✓,\nDatabase & cluster logs,Servers & virtualization,,✓,,,,,,,\nOS metrics (Windows / Linux),Servers & virtualization,,✓,,,,,,,\nStorage / SAN logs,Servers & virtualization,,✓,,,,,,,\nVMware NSX Manager (DFW),Servers & virtualization,,,,,,✓,,,\nVMware vCenter events,Servers & virtualization,,,,,,✓,,,\nApplication logs & health checks,Applications,,✓,,,,✓,,,✓\nPACS / DICOM gateway logs,Applications,✓,,,,,,,,\nIoT platform / gateway,Clinical & facility,,,✓,,✓,,,,\nBuilding management (BMS),Clinical & facility,,,,,✓,,,,\nHospital information system (ADT / HL7),Clinical & facility,,,,,,,✓,,\nBed management system,Clinical & facility,,,,,,,✓,,\nCMDB / asset inventory,IT service management,✓,,✓,,✓,✓,,,\nServiceNow tickets & changes,IT service management,,,✓,,,✓,,,\nCASB / secure web gateway,Cloud / security / AI,,,,,,,,✓,\nDLP / data classification,Cloud / security / AI,,,,,,,,✓,✓\nCloud audit logs (Azure / AWS / M365),Cloud / security / AI,,,,,,,,✓,✓\nIdentity (Entra ID / AD),Cloud / security / AI,,,,,,,,✓,✓\nAI gateway / LLM proxy logs,Cloud / security / AI,,,,,,,,,✓\"\n| table \"Data source\" Category \"1 IP drift\" \"2 DB\" \"3 IoT\" \"4 Network\" \"5 Climate\" \"6 NSX\" \"7 Beds\" \"8 Cloud\" \"9 AI\"",
+        "queryParameters": {
+          "earliest": "-15m",
+          "latest": "now"
+        }
+      }
+    }
+  },
+  "layout": {
+    "globalInputs": [],
+    "tabs": {
+      "items": [
+        {
+          "layoutId": "layout_1",
+          "label": "Dashboard"
+        }
+      ]
+    },
+    "layoutDefinitions": {
+      "layout_1": {
+        "type": "absolute",
+        "options": {
+          "width": 1440,
+          "height": 1726,
+          "display": "auto-scale",
+          "backgroundColor": "#0E1116"
+        },
+        "structure": [
+          {
+            "item": "bg_001",
+            "type": "block",
+            "position": {
+              "x": 24,
+              "y": 20,
+              "w": 1392,
+              "h": 116
+            }
+          },
+          {
+            "item": "bg_002",
+            "type": "block",
+            "position": {
+              "x": 24,
+              "y": 20,
+              "w": 6,
+              "h": 116
+            }
+          },
+          {
+            "item": "md_003",
+            "type": "block",
+            "position": {
+              "x": 52,
+              "y": 34,
+              "w": 820,
+              "h": 22
+            }
+          },
+          {
+            "item": "md_004",
+            "type": "block",
+            "position": {
+              "x": 52,
+              "y": 56,
+              "w": 880,
+              "h": 44
+            }
+          },
+          {
+            "item": "md_005",
+            "type": "block",
+            "position": {
+              "x": 52,
+              "y": 100,
+              "w": 880,
+              "h": 28
+            }
+          },
+          {
+            "item": "bg_006",
+            "type": "block",
+            "position": {
+              "x": 24,
+              "y": 152,
+              "w": 453,
+              "h": 112
+            }
+          },
+          {
+            "item": "bg_007",
+            "type": "block",
+            "position": {
+              "x": 42,
+              "y": 172,
+              "w": 40,
+              "h": 40
+            }
+          },
+          {
+            "item": "md_008",
+            "type": "block",
+            "position": {
+              "x": 52,
+              "y": 180,
+              "w": 24,
+              "h": 24
+            }
+          },
+          {
+            "item": "md_009",
+            "type": "block",
+            "position": {
+              "x": 96,
+              "y": 168,
+              "w": 365,
+              "h": 28
+            }
+          },
+          {
+            "item": "md_010",
+            "type": "block",
+            "position": {
+              "x": 96,
+              "y": 196,
+              "w": 365,
+              "h": 24
+            }
+          },
+          {
+            "item": "md_011",
+            "type": "block",
+            "position": {
+              "x": 96,
+              "y": 226,
+              "w": 365,
+              "h": 24
+            }
+          },
+          {
+            "item": "bg_012",
+            "type": "block",
+            "position": {
+              "x": 493,
+              "y": 152,
+              "w": 453,
+              "h": 112
+            }
+          },
+          {
+            "item": "bg_013",
+            "type": "block",
+            "position": {
+              "x": 511,
+              "y": 172,
+              "w": 40,
+              "h": 40
+            }
+          },
+          {
+            "item": "md_014",
+            "type": "block",
+            "position": {
+              "x": 521,
+              "y": 180,
+              "w": 24,
+              "h": 24
+            }
+          },
+          {
+            "item": "md_015",
+            "type": "block",
+            "position": {
+              "x": 565,
+              "y": 168,
+              "w": 365,
+              "h": 28
+            }
+          },
+          {
+            "item": "md_016",
+            "type": "block",
+            "position": {
+              "x": 565,
+              "y": 196,
+              "w": 365,
+              "h": 24
+            }
+          },
+          {
+            "item": "md_017",
+            "type": "block",
+            "position": {
+              "x": 565,
+              "y": 226,
+              "w": 365,
+              "h": 24
+            }
+          },
+          {
+            "item": "bg_018",
+            "type": "block",
+            "position": {
+              "x": 962,
+              "y": 152,
+              "w": 453,
+              "h": 112
+            }
+          },
+          {
+            "item": "bg_019",
+            "type": "block",
+            "position": {
+              "x": 980,
+              "y": 172,
+              "w": 40,
+              "h": 40
+            }
+          },
+          {
+            "item": "md_020",
+            "type": "block",
+            "position": {
+              "x": 990,
+              "y": 180,
+              "w": 24,
+              "h": 24
+            }
+          },
+          {
+            "item": "md_021",
+            "type": "block",
+            "position": {
+              "x": 1034,
+              "y": 168,
+              "w": 365,
+              "h": 28
+            }
+          },
+          {
+            "item": "md_022",
+            "type": "block",
+            "position": {
+              "x": 1034,
+              "y": 196,
+              "w": 365,
+              "h": 24
+            }
+          },
+          {
+            "item": "md_023",
+            "type": "block",
+            "position": {
+              "x": 1034,
+              "y": 226,
+              "w": 365,
+              "h": 24
+            }
+          },
+          {
+            "item": "bg_024",
+            "type": "block",
+            "position": {
+              "x": 24,
+              "y": 280,
+              "w": 453,
+              "h": 112
+            }
+          },
+          {
+            "item": "bg_025",
+            "type": "block",
+            "position": {
+              "x": 42,
+              "y": 300,
+              "w": 40,
+              "h": 40
+            }
+          },
+          {
+            "item": "md_026",
+            "type": "block",
+            "position": {
+              "x": 52,
+              "y": 308,
+              "w": 24,
+              "h": 24
+            }
+          },
+          {
+            "item": "md_027",
+            "type": "block",
+            "position": {
+              "x": 96,
+              "y": 296,
+              "w": 365,
+              "h": 28
+            }
+          },
+          {
+            "item": "md_028",
+            "type": "block",
+            "position": {
+              "x": 96,
+              "y": 324,
+              "w": 365,
+              "h": 24
+            }
+          },
+          {
+            "item": "md_029",
+            "type": "block",
+            "position": {
+              "x": 96,
+              "y": 354,
+              "w": 365,
+              "h": 24
+            }
+          },
+          {
+            "item": "bg_030",
+            "type": "block",
+            "position": {
+              "x": 493,
+              "y": 280,
+              "w": 453,
+              "h": 112
+            }
+          },
+          {
+            "item": "bg_031",
+            "type": "block",
+            "position": {
+              "x": 511,
+              "y": 300,
+              "w": 40,
+              "h": 40
+            }
+          },
+          {
+            "item": "md_032",
+            "type": "block",
+            "position": {
+              "x": 521,
+              "y": 308,
+              "w": 24,
+              "h": 24
+            }
+          },
+          {
+            "item": "md_033",
+            "type": "block",
+            "position": {
+              "x": 565,
+              "y": 296,
+              "w": 365,
+              "h": 28
+            }
+          },
+          {
+            "item": "md_034",
+            "type": "block",
+            "position": {
+              "x": 565,
+              "y": 324,
+              "w": 365,
+              "h": 24
+            }
+          },
+          {
+            "item": "md_035",
+            "type": "block",
+            "position": {
+              "x": 565,
+              "y": 354,
+              "w": 365,
+              "h": 24
+            }
+          },
+          {
+            "item": "bg_036",
+            "type": "block",
+            "position": {
+              "x": 962,
+              "y": 280,
+              "w": 453,
+              "h": 112
+            }
+          },
+          {
+            "item": "bg_037",
+            "type": "block",
+            "position": {
+              "x": 980,
+              "y": 300,
+              "w": 40,
+              "h": 40
+            }
+          },
+          {
+            "item": "md_038",
+            "type": "block",
+            "position": {
+              "x": 990,
+              "y": 308,
+              "w": 24,
+              "h": 24
+            }
+          },
+          {
+            "item": "md_039",
+            "type": "block",
+            "position": {
+              "x": 1034,
+              "y": 296,
+              "w": 365,
+              "h": 28
+            }
+          },
+          {
+            "item": "md_040",
+            "type": "block",
+            "position": {
+              "x": 1034,
+              "y": 324,
+              "w": 365,
+              "h": 24
+            }
+          },
+          {
+            "item": "md_041",
+            "type": "block",
+            "position": {
+              "x": 1034,
+              "y": 354,
+              "w": 365,
+              "h": 24
+            }
+          },
+          {
+            "item": "bg_042",
+            "type": "block",
+            "position": {
+              "x": 24,
+              "y": 408,
+              "w": 453,
+              "h": 112
+            }
+          },
+          {
+            "item": "bg_043",
+            "type": "block",
+            "position": {
+              "x": 42,
+              "y": 428,
+              "w": 40,
+              "h": 40
+            }
+          },
+          {
+            "item": "md_044",
+            "type": "block",
+            "position": {
+              "x": 52,
+              "y": 436,
+              "w": 24,
+              "h": 24
+            }
+          },
+          {
+            "item": "md_045",
+            "type": "block",
+            "position": {
+              "x": 96,
+              "y": 424,
+              "w": 365,
+              "h": 28
+            }
+          },
+          {
+            "item": "md_046",
+            "type": "block",
+            "position": {
+              "x": 96,
+              "y": 452,
+              "w": 365,
+              "h": 24
+            }
+          },
+          {
+            "item": "md_047",
+            "type": "block",
+            "position": {
+              "x": 96,
+              "y": 482,
+              "w": 365,
+              "h": 24
+            }
+          },
+          {
+            "item": "bg_048",
+            "type": "block",
+            "position": {
+              "x": 493,
+              "y": 408,
+              "w": 453,
+              "h": 112
+            }
+          },
+          {
+            "item": "bg_049",
+            "type": "block",
+            "position": {
+              "x": 511,
+              "y": 428,
+              "w": 40,
+              "h": 40
+            }
+          },
+          {
+            "item": "md_050",
+            "type": "block",
+            "position": {
+              "x": 521,
+              "y": 436,
+              "w": 24,
+              "h": 24
+            }
+          },
+          {
+            "item": "md_051",
+            "type": "block",
+            "position": {
+              "x": 565,
+              "y": 424,
+              "w": 365,
+              "h": 28
+            }
+          },
+          {
+            "item": "md_052",
+            "type": "block",
+            "position": {
+              "x": 565,
+              "y": 452,
+              "w": 365,
+              "h": 24
+            }
+          },
+          {
+            "item": "md_053",
+            "type": "block",
+            "position": {
+              "x": 565,
+              "y": 482,
+              "w": 365,
+              "h": 24
+            }
+          },
+          {
+            "item": "bg_054",
+            "type": "block",
+            "position": {
+              "x": 962,
+              "y": 408,
+              "w": 453,
+              "h": 112
+            }
+          },
+          {
+            "item": "bg_055",
+            "type": "block",
+            "position": {
+              "x": 980,
+              "y": 428,
+              "w": 40,
+              "h": 40
+            }
+          },
+          {
+            "item": "md_056",
+            "type": "block",
+            "position": {
+              "x": 990,
+              "y": 436,
+              "w": 24,
+              "h": 24
+            }
+          },
+          {
+            "item": "md_057",
+            "type": "block",
+            "position": {
+              "x": 1034,
+              "y": 424,
+              "w": 365,
+              "h": 28
+            }
+          },
+          {
+            "item": "md_058",
+            "type": "block",
+            "position": {
+              "x": 1034,
+              "y": 452,
+              "w": 365,
+              "h": 24
+            }
+          },
+          {
+            "item": "md_059",
+            "type": "block",
+            "position": {
+              "x": 1034,
+              "y": 482,
+              "w": 365,
+              "h": 24
+            }
+          },
+          {
+            "item": "bg_060",
+            "type": "block",
+            "position": {
+              "x": 24,
+              "y": 536,
+              "w": 904,
+              "h": 300
+            }
+          },
+          {
+            "item": "viz_061",
+            "type": "block",
+            "position": {
+              "x": 30,
+              "y": 542,
+              "w": 892,
+              "h": 288
+            }
+          },
+          {
+            "item": "bg_063",
+            "type": "block",
+            "position": {
+              "x": 944,
+              "y": 536,
+              "w": 472,
+              "h": 300
+            }
+          },
+          {
+            "item": "viz_064",
+            "type": "block",
+            "position": {
+              "x": 950,
+              "y": 542,
+              "w": 460,
+              "h": 288
+            }
+          },
+          {
+            "item": "bg_066",
+            "type": "block",
+            "position": {
+              "x": 24,
+              "y": 852,
+              "w": 1392,
+              "h": 850
+            }
+          },
+          {
+            "item": "viz_067",
+            "type": "block",
+            "position": {
+              "x": 30,
+              "y": 858,
+              "w": 1380,
+              "h": 838
+            }
+          }
+        ]
+      }
+    }
+  }
+}
+  ]]></definition>
+  <meta type="hiddenElements"><![CDATA[
+{"hideEdit": false, "hideOpenInSearch": false, "hideExport": false}
+  ]]></meta>
 </dashboard>

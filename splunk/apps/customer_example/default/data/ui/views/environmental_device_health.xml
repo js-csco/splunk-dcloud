@@ -1,126 +1,1022 @@
-<form version="1.1" theme="dark">
-  <label>5. Etikettendrucker — Environmental Device Health</label>
-  <description>Catch equipment failing from environmental conditions (heat, humidity) before it fails, by correlating room sensors with device error logs.</description>
-
-  <fieldset submitButton="false" autoRun="true">
-    <input type="time" token="tr">
-      <label>Time range</label>
-      <default><earliest>-7d</earliest><latest>now</latest></default>
-    </input>
-  </fieldset>
-
-  <row>
-    <panel>
-      <html>
-        <p style="margin:0;color:#8b98a5;font-style:italic;">"…Etikettendrucker der dieses Jahr aufgrund steigender Temperaturen nicht mehr funktioniert hat."
-        <span style="color:#cdd9e5;font-style:normal;"> — nobody was watching room temperature and the device log together.</span></p>
-      </html>
-    </panel>
-  </row>
-
-  <row>
-    <panel>
-      <title>Devices with environmental monitoring</title>
-      <single>
-        <search><query>| makeresults | eval v=64</query></search>
-        <option name="drilldown">none</option>
-      </single>
-    </panel>
-    <panel>
-      <title>Rooms over rated temperature now</title>
-      <single>
-        <search><query>| makeresults | eval v=1</query></search>
-        <option name="drilldown">none</option>
-        <option name="colorBy">value</option>
-        <option name="rangeColors">["0x53a051","0xd93f3c"]</option>
-        <option name="rangeValues">[1]</option>
-      </single>
-    </panel>
-    <panel>
-      <title>Rooms within safe range</title>
-      <chart>
-        <search><query>| makeresults | eval v=94</query></search>
-        <option name="charting.chart">radialGauge</option>
-        <option name="charting.chart.rangeValues">[0,60,85,100]</option>
-        <option name="drilldown">none</option>
-      </chart>
-    </panel>
-  </row>
-
-  <row>
-    <panel>
-      <title>Room temperature vs. printer errors (7 days)</title>
-      <chart>
-        <search>
-          <query>| makeresults count=7
-| streamstats count as i
-| eval Day=strftime(relative_time(now(), "-".(7-i)."d"), "%m-%d")
-| eval "Room temp (°C, Storage-2)"=case(i&lt;=4, 22+i, i=5, 31, i=6, 34, i=7, 29)
-| eval "Printer error count"=case(i&lt;=4, 0, i=5, 2, i=6, 9, i=7, 1)
-| table Day "Room temp (°C, Storage-2)" "Printer error count"</query>
-          <earliest>$tr.earliest$</earliest>
-          <latest>$tr.latest$</latest>
-        </search>
-        <option name="charting.chart">line</option>
-        <option name="charting.chart.nullValueMode">connect</option>
-        <option name="charting.legend.placement">bottom</option>
-        <option name="drilldown">none</option>
-      </chart>
-    </panel>
-    <panel>
-      <title>Devices by status</title>
-      <chart>
-        <search>
-          <query>| makeresults count=3
-| streamstats count as i
-| eval Category=case(i=1,"Within range",i=2,"Near limit",i=3,"Over limit")
-| eval Count=case(i=1,61,i=2,2,i=3,1)
-| table Category Count</query>
-          <earliest>$tr.earliest$</earliest>
-          <latest>$tr.latest$</latest>
-        </search>
-        <option name="charting.chart">pie</option>
-        <option name="charting.legend.placement">right</option>
-        <option name="drilldown">none</option>
-      </chart>
-    </panel>
-  </row>
-
-  <row>
-    <panel>
-      <title>Devices currently trending outside their rated operating range</title>
-      <table>
-        <search>
-          <query>| makeresults count=3
-| streamstats count as i
-| eval Device=case(i=1,"Label-Printer-Storage-2",i=2,"Network-Cabinet-B12",i=3,"UPS-Ward4")
-| eval Location=case(i=1,"Storage room 2, Bldg B",i=2,"IDF closet B12",i=3,"Ward 4 electrical room")
-| eval "Current temp"=case(i=1,"34°C",i=2,"27°C",i=3,"24°C")
-| eval "Rated max"=case(i=1,"30°C",i=2,"35°C",i=3,"40°C")
-| eval Status=case(i=1,"Over limit",i=2,"Within range",i=3,"Within range")
-| table Device Location "Current temp" "Rated max" Status</query>
-          <earliest>$tr.earliest$</earliest>
-          <latest>$tr.latest$</latest>
-        </search>
-        <option name="drilldown">none</option>
-        <format type="color" field="Status">
-          <colorPalette type="map">{"Over limit":#d93f3c,"Within range":#53a051}</colorPalette>
-        </format>
-      </table>
-    </panel>
-  </row>
-
-  <row>
-    <panel>
-      <title>Data sources needed</title>
-      <html>
-        <div style="display:flex;flex-wrap:wrap;gap:6px;">
-          <span style="background:#1b2430;color:#cdd9e5;padding:4px 10px;border-radius:12px;font-size:12px;border:1px solid #2b3a4a;">Environmental sensors (BMS)</span>
-          <span style="background:#1b2430;color:#cdd9e5;padding:4px 10px;border-radius:12px;font-size:12px;border:1px solid #2b3a4a;">Printer / device SNMP logs</span>
-          <span style="background:#1b2430;color:#cdd9e5;padding:4px 10px;border-radius:12px;font-size:12px;border:1px solid #2b3a4a;">Asset &amp; location data</span>
-          <span style="background:#1b2430;color:#cdd9e5;padding:4px 10px;border-radius:12px;font-size:12px;border:1px solid #2b3a4a;">HVAC / facilities alarms</span>
-        </div>
-      </html>
-    </panel>
-  </row>
-</form>
+<dashboard version="2" theme="dark">
+  <label>5 · Environmental Device Health</label>
+  <description>Correlate room temperature with device errors to prevent heat-related failures.</description>
+  <definition><![CDATA[
+{
+  "title": "5 · Environmental Device Health",
+  "description": "Correlate room temperature with device errors to prevent heat-related failures.",
+  "inputs": {},
+  "defaults": {},
+  "visualizations": {
+    "bg_001": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#161B22",
+        "strokeColor": "#262C36",
+        "strokeWidth": 1,
+        "rx": 12
+      }
+    },
+    "bg_002": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#16A3B0",
+        "strokeColor": "#16A3B0",
+        "strokeWidth": 1,
+        "rx": 3
+      }
+    },
+    "md_003": {
+      "type": "splunk.markdown",
+      "options": {
+        "markdown": "USE CASE 5 OF 9  ·  SPITAL AARWALD  ·  SAMPLE DATA",
+        "fontColor": "#16A3B0",
+        "fontSize": "custom",
+        "customFontSize": 12
+      }
+    },
+    "md_004": {
+      "type": "splunk.markdown",
+      "options": {
+        "markdown": "# Environmental Device Health",
+        "fontColor": "#E6EDF3"
+      }
+    },
+    "md_005": {
+      "type": "splunk.markdown",
+      "options": {
+        "markdown": "A label printer failed from heat. Splunk joins room climate with device errors and warns early.",
+        "fontColor": "#9AA4B2",
+        "fontSize": "custom",
+        "customFontSize": 15
+      }
+    },
+    "bg_006": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#11161D",
+        "strokeColor": "#262C36",
+        "strokeWidth": 1,
+        "rx": 8
+      }
+    },
+    "md_007": {
+      "type": "splunk.markdown",
+      "options": {
+        "markdown": "WHAT WE HEARD",
+        "fontColor": "#6E7681",
+        "fontSize": "custom",
+        "customFontSize": 11
+      }
+    },
+    "md_008": {
+      "type": "splunk.markdown",
+      "options": {
+        "markdown": "*“Etikettendrucker, der dieses Jahr aufgrund steigender Temperaturen nicht mehr funktioniert hat.”*",
+        "fontColor": "#9AA4B2",
+        "fontSize": "custom",
+        "customFontSize": 13
+      }
+    },
+    "bg_009": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#161B22",
+        "strokeColor": "#262C36",
+        "strokeWidth": 1,
+        "rx": 12
+      }
+    },
+    "viz_010": {
+      "type": "splunk.singlevalue",
+      "options": {
+        "backgroundColor": "#161B22",
+        "majorColor": "#E6EDF3",
+        "numberPrecision": 0,
+        "shouldUseThousandSeparators": true,
+        "majorFontSize": 42,
+        "trendFontSize": 15,
+        "trendDisplay": "absolute",
+        "sparklineDisplay": "below",
+        "showSparklineAreaGraph": true,
+        "sparklineStrokeColor": "#16A3B0",
+        "sparklineAreaColor": "#16A3B0",
+        "underLabel": "labs · pharmacy · IT rooms · storage",
+        "underLabelColor": "#9AA4B2",
+        "underLabelFontSize": 13
+      },
+      "dataSources": {
+        "primary": "ds_011"
+      },
+      "title": "Rooms monitored"
+    },
+    "bg_012": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#161B22",
+        "strokeColor": "#262C36",
+        "strokeWidth": 1,
+        "rx": 12
+      }
+    },
+    "viz_013": {
+      "type": "splunk.singlevalue",
+      "options": {
+        "backgroundColor": "#161B22",
+        "majorColor": "> majorValue | rangeValue(majorColorConfig)",
+        "numberPrecision": 0,
+        "shouldUseThousandSeparators": true,
+        "majorFontSize": 42,
+        "trendFontSize": 15,
+        "trendDisplay": "absolute",
+        "sparklineDisplay": "off",
+        "underLabel": "C1-104 · B1-012",
+        "underLabelColor": "#9AA4B2",
+        "underLabelFontSize": 13,
+        "trendColor": "> trendValue | rangeValue(trendColorConfig)"
+      },
+      "dataSources": {
+        "primary": "ds_014"
+      },
+      "title": "Rooms above limit now",
+      "context": {
+        "trendColorConfig": [
+          {
+            "to": -0.0001,
+            "value": "#0CA30C"
+          },
+          {
+            "from": -0.0001,
+            "to": 0.0001,
+            "value": "#9AA4B2"
+          },
+          {
+            "from": 0.0001,
+            "value": "#D03B3B"
+          }
+        ],
+        "majorColorConfig": [
+          {
+            "to": 1,
+            "value": "#0CA30C"
+          },
+          {
+            "from": 1,
+            "value": "#D03B3B"
+          }
+        ]
+      }
+    },
+    "bg_015": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#161B22",
+        "strokeColor": "#262C36",
+        "strokeWidth": 1,
+        "rx": 12
+      }
+    },
+    "viz_016": {
+      "type": "splunk.singlevalue",
+      "options": {
+        "backgroundColor": "#161B22",
+        "majorColor": "> majorValue | rangeValue(majorColorConfig)",
+        "numberPrecision": 0,
+        "shouldUseThousandSeparators": true,
+        "majorFontSize": 42,
+        "trendFontSize": 15,
+        "trendDisplay": "absolute",
+        "sparklineDisplay": "below",
+        "showSparklineAreaGraph": true,
+        "sparklineStrokeColor": "#16A3B0",
+        "sparklineAreaColor": "#16A3B0",
+        "underLabel": "rolling 7-day count",
+        "underLabelColor": "#9AA4B2",
+        "underLabelFontSize": 13,
+        "trendColor": "> trendValue | rangeValue(trendColorConfig)"
+      },
+      "dataSources": {
+        "primary": "ds_017"
+      },
+      "title": "Label printer errors (7 days)",
+      "context": {
+        "trendColorConfig": [
+          {
+            "to": -0.0001,
+            "value": "#0CA30C"
+          },
+          {
+            "from": -0.0001,
+            "to": 0.0001,
+            "value": "#9AA4B2"
+          },
+          {
+            "from": 0.0001,
+            "value": "#D03B3B"
+          }
+        ],
+        "majorColorConfig": [
+          {
+            "to": 20,
+            "value": "#E6EDF3"
+          },
+          {
+            "from": 20,
+            "value": "#FAB219"
+          }
+        ]
+      }
+    },
+    "bg_018": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#161B22",
+        "strokeColor": "#262C36",
+        "strokeWidth": 1,
+        "rx": 12
+      }
+    },
+    "viz_019": {
+      "type": "splunk.singlevalue",
+      "options": {
+        "backgroundColor": "#161B22",
+        "majorColor": "> majorValue | rangeValue(majorColorConfig)",
+        "numberPrecision": 1,
+        "shouldUseThousandSeparators": true,
+        "majorFontSize": 42,
+        "trendFontSize": 15,
+        "trendDisplay": "absolute",
+        "sparklineDisplay": "below",
+        "showSparklineAreaGraph": true,
+        "sparklineStrokeColor": "#16A3B0",
+        "sparklineAreaColor": "#16A3B0",
+        "unit": "°C",
+        "unitPosition": "after",
+        "underLabel": "Lab storage C1-104 (printer room)",
+        "underLabelColor": "#9AA4B2",
+        "underLabelFontSize": 13,
+        "trendColor": "> trendValue | rangeValue(trendColorConfig)"
+      },
+      "dataSources": {
+        "primary": "ds_020"
+      },
+      "title": "Hottest room now",
+      "context": {
+        "trendColorConfig": [
+          {
+            "to": -0.0001,
+            "value": "#0CA30C"
+          },
+          {
+            "from": -0.0001,
+            "to": 0.0001,
+            "value": "#9AA4B2"
+          },
+          {
+            "from": 0.0001,
+            "value": "#D03B3B"
+          }
+        ],
+        "majorColorConfig": [
+          {
+            "to": 28,
+            "value": "#0CA30C"
+          },
+          {
+            "from": 28,
+            "to": 30,
+            "value": "#FAB219"
+          },
+          {
+            "from": 30,
+            "value": "#D03B3B"
+          }
+        ]
+      }
+    },
+    "bg_021": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#161B22",
+        "strokeColor": "#262C36",
+        "strokeWidth": 1,
+        "rx": 12
+      }
+    },
+    "viz_022": {
+      "type": "splunk.line",
+      "options": {
+        "backgroundColor": "#161B22",
+        "legendDisplay": "bottom",
+        "xAxisTitleVisibility": "hide",
+        "nullValueDisplay": "connect",
+        "lineWidth": 2,
+        "seriesColors": [
+          "#D95926",
+          "#3987E5",
+          "#199E70",
+          "#6E7681"
+        ],
+        "yAxisTitleVisibility": "hide",
+        "lineDashStylesByField": {
+          "Printer max. rating": "dash"
+        }
+      },
+      "dataSources": {
+        "primary": "ds_023"
+      },
+      "title": "Room temperature (°C) — last 7 days"
+    },
+    "bg_024": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#161B22",
+        "strokeColor": "#262C36",
+        "strokeWidth": 1,
+        "rx": 12
+      }
+    },
+    "viz_025": {
+      "type": "splunk.markergauge",
+      "options": {
+        "backgroundColor": "#161B22",
+        "orientation": "horizontal",
+        "majorTickInterval": 5,
+        "gaugeRanges": [
+          {
+            "from": 15,
+            "to": 26,
+            "value": "#0CA30C"
+          },
+          {
+            "from": 26,
+            "to": 30,
+            "value": "#FAB219"
+          },
+          {
+            "from": 30,
+            "to": 40,
+            "value": "#D03B3B"
+          }
+        ]
+      },
+      "dataSources": {
+        "primary": "ds_026"
+      },
+      "title": "Lab storage C1-104 — now (°C)"
+    },
+    "bg_027": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#161B22",
+        "strokeColor": "#262C36",
+        "strokeWidth": 1,
+        "rx": 12
+      }
+    },
+    "viz_028": {
+      "type": "splunk.table",
+      "options": {
+        "backgroundColor": "#161B22",
+        "headerVisibility": "fixed",
+        "fontSize": "small",
+        "columnFormat": {
+          "Device": {
+            "width": 105
+          },
+          "Type": {
+            "width": 140
+          },
+          "Room": {
+            "width": 170
+          },
+          "Temp now": {
+            "width": 90
+          },
+          "Rated max": {
+            "width": 90
+          },
+          "Errors today": {
+            "width": 100
+          },
+          "Status": {
+            "width": 95,
+            "rowBackgroundColors": "> table | seriesByName(\"Status\") | matchValue(c0Bg)",
+            "rowColors": "> table | seriesByName(\"Status\") | matchValue(c0Fg)"
+          }
+        }
+      },
+      "dataSources": {
+        "primary": "ds_029"
+      },
+      "title": "Devices vs. their rated operating range",
+      "context": {
+        "c0Bg": [
+          {
+            "match": "Over limit",
+            "value": "#3F1D20"
+          },
+          {
+            "match": "Near limit",
+            "value": "#3A2E12"
+          },
+          {
+            "match": "OK",
+            "value": "#12301B"
+          }
+        ],
+        "c0Fg": [
+          {
+            "match": "Over limit",
+            "value": "#FF8A80"
+          },
+          {
+            "match": "Near limit",
+            "value": "#E3B341"
+          },
+          {
+            "match": "OK",
+            "value": "#56D364"
+          }
+        ]
+      }
+    },
+    "bg_030": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#161B22",
+        "strokeColor": "#262C36",
+        "strokeWidth": 1,
+        "rx": 12
+      }
+    },
+    "viz_031": {
+      "type": "splunk.column",
+      "options": {
+        "backgroundColor": "#161B22",
+        "legendDisplay": "bottom",
+        "xAxisTitleVisibility": "hide",
+        "seriesColors": [
+          "#D95926",
+          "#3987E5",
+          "#9085E9"
+        ],
+        "stackMode": "stacked",
+        "yAxisTitleVisibility": "hide"
+      },
+      "dataSources": {
+        "primary": "ds_032"
+      },
+      "title": "Label printer errors per day"
+    },
+    "bg_033": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#161B22",
+        "strokeColor": "#262C36",
+        "strokeWidth": 1,
+        "rx": 12
+      }
+    },
+    "md_034": {
+      "type": "splunk.markdown",
+      "options": {
+        "markdown": "DATA SOURCES NEEDED IN SPLUNK",
+        "fontColor": "#16A3B0",
+        "fontSize": "custom",
+        "customFontSize": 12
+      }
+    },
+    "bg_035": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#1C2530",
+        "strokeColor": "#2D3A48",
+        "strokeWidth": 1,
+        "rx": 17
+      }
+    },
+    "md_036": {
+      "type": "splunk.markdown",
+      "options": {
+        "markdown": "SNMP (interfaces & devices)",
+        "fontColor": "#E6EDF3",
+        "fontSize": "custom",
+        "customFontSize": 13
+      }
+    },
+    "bg_037": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#1C2530",
+        "strokeColor": "#2D3A48",
+        "strokeWidth": 1,
+        "rx": 17
+      }
+    },
+    "md_038": {
+      "type": "splunk.markdown",
+      "options": {
+        "markdown": "IoT platform / gateway",
+        "fontColor": "#E6EDF3",
+        "fontSize": "custom",
+        "customFontSize": 13
+      }
+    },
+    "bg_039": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#1C2530",
+        "strokeColor": "#2D3A48",
+        "strokeWidth": 1,
+        "rx": 17
+      }
+    },
+    "md_040": {
+      "type": "splunk.markdown",
+      "options": {
+        "markdown": "Building management (BMS)",
+        "fontColor": "#E6EDF3",
+        "fontSize": "custom",
+        "customFontSize": 13
+      }
+    },
+    "bg_041": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#1C2530",
+        "strokeColor": "#2D3A48",
+        "strokeWidth": 1,
+        "rx": 17
+      }
+    },
+    "md_042": {
+      "type": "splunk.markdown",
+      "options": {
+        "markdown": "CMDB / asset inventory",
+        "fontColor": "#E6EDF3",
+        "fontSize": "custom",
+        "customFontSize": 13
+      }
+    }
+  },
+  "dataSources": {
+    "ds_011": {
+      "type": "ds.search",
+      "name": "ds_011",
+      "options": {
+        "query": "| makeresults format=csv data=\"ago,n\n29,64\n28,64\n27,65\n26,66\n25,67\n24,67\n23,68\n22,69\n21,70\n20,70\n19,71\n18,72\n17,73\n16,73\n15,74\n14,75\n13,76\n12,76\n11,77\n10,78\n9,79\n8,79\n7,80\n6,81\n5,82\n4,82\n3,83\n2,84\n1,85\n0,85\"\n| eval _time=relative_time(now(), \"@d\") - ago*86400\n| sort 0 _time\n| table _time n",
+        "queryParameters": {
+          "earliest": "-15m",
+          "latest": "now"
+        }
+      }
+    },
+    "ds_014": {
+      "type": "ds.search",
+      "name": "ds_014",
+      "options": {
+        "query": "| makeresults format=csv data=\"ago,n\n1,1\n0,2\"\n| eval _time=relative_time(now(), \"@h\") - ago*3600\n| sort 0 _time\n| table _time n",
+        "queryParameters": {
+          "earliest": "-15m",
+          "latest": "now"
+        }
+      }
+    },
+    "ds_017": {
+      "type": "ds.search",
+      "name": "ds_017",
+      "options": {
+        "query": "| makeresults format=csv data=\"ago,n\n13,6\n12,5\n11,7\n10,6\n9,8\n8,9\n7,12\n6,15\n5,21\n4,27\n3,33\n2,38\n1,44\n0,47\"\n| eval _time=relative_time(now(), \"@d\") - ago*86400\n| sort 0 _time\n| table _time n",
+        "queryParameters": {
+          "earliest": "-15m",
+          "latest": "now"
+        }
+      }
+    },
+    "ds_020": {
+      "type": "ds.search",
+      "name": "ds_020",
+      "options": {
+        "query": "| makeresults format=csv data=\"ago,t\n23,28.96\n22,29.14\n21,29.29\n20,29.49\n19,29.51\n18,29.72\n17,29.39\n16,29.73\n15,30.1\n14,30.07\n13,30.32\n12,30.05\n11,30.35\n10,30.36\n9,30.63\n8,30.76\n7,30.6\n6,30.83\n5,30.98\n4,31.42\n3,31.47\n2,31.29\n1,31.73\n0,31.8\"\n| eval _time=relative_time(now(), \"@h\") - ago*3600\n| sort 0 _time\n| table _time t",
+        "queryParameters": {
+          "earliest": "-15m",
+          "latest": "now"
+        }
+      }
+    },
+    "ds_023": {
+      "type": "ds.search",
+      "name": "ds_023",
+      "options": {
+        "query": "| makeresults format=csv data=\"cyc,slot,Lab storage C1-104,Pharmacy B1-012,Server room A0-001,Printer max. rating\n0,0,24.9,23.8,21.1,30\n0,1,24.5,23.6,21.1,30\n0,2,24.3,23.5,21.5,30\n0,3,24.2,23.3,21.3,30\n0,4,24.3,23.1,21.6,30\n0,5,24.3,23.3,21.5,30\n0,6,24.4,23.3,21.1,30\n0,7,24.6,23.4,21.2,30\n0,8,25.1,23.6,21.4,30\n0,9,25.4,24.0,21.5,30\n0,10,25.9,24.3,21.3,30\n0,11,26.5,24.6,21.6,30\n0,12,26.6,25.1,21.5,30\n0,13,27.0,25.4,21.2,30\n0,14,27.5,25.3,21.0,30\n0,15,27.5,25.7,21.1,30\n0,16,27.8,25.8,21.6,30\n0,17,27.6,25.6,21.3,30\n0,18,27.6,25.4,21.4,30\n0,19,27.3,25.4,21.0,30\n0,20,27.0,24.9,21.2,30\n0,21,26.4,24.8,21.2,30\n0,22,26.1,24.4,21.2,30\n0,23,25.4,24.0,21.0,30\n0,24,24.9,23.8,21.6,30\n0,25,24.6,23.4,21.6,30\n0,26,24.4,23.3,21.1,30\n0,27,24.3,23.3,21.3,30\n0,28,24.2,23.0,21.5,30\n0,29,24.1,23.2,21.5,30\n0,30,24.3,23.4,21.6,30\n0,31,24.8,23.6,21.1,30\n0,32,25.0,23.7,21.5,30\n0,33,25.4,24.1,21.6,30\n0,34,26.1,24.5,21.3,30\n0,35,26.4,24.8,21.3,30\n0,36,26.7,25.0,21.1,30\n0,37,27.1,25.4,21.6,30\n0,38,27.5,25.5,21.2,30\n0,39,27.5,25.5,21.5,30\n0,40,27.8,25.6,21.5,30\n0,41,27.8,25.7,21.4,30\n0,42,27.6,25.4,21.4,30\n0,43,27.1,25.3,21.5,30\n0,44,26.9,25.0,21.6,30\n0,45,26.5,24.7,21.0,30\n0,46,26.0,24.3,21.4,30\n0,47,25.5,24.2,21.4,30\n0,48,25.2,23.7,21.4,30\n0,49,24.8,23.6,21.2,30\n0,50,24.6,23.4,21.4,30\n0,51,24.5,23.3,21.3,30\n0,52,24.2,23.0,21.5,30\n0,53,24.4,23.2,21.4,30\n0,54,24.5,23.4,21.1,30\n0,55,24.8,23.5,21.4,30\n0,56,25.0,23.8,21.5,30\n0,57,25.6,24.1,21.0,30\n0,58,25.8,24.4,21.4,30\n0,59,26.3,24.8,21.4,30\n0,60,26.6,25.0,21.1,30\n0,61,27.0,25.2,21.2,30\n0,62,27.3,25.4,21.0,30\n0,63,27.6,25.6,21.4,30\n0,64,27.7,25.6,21.5,30\n0,65,27.4,25.6,21.2,30\n0,66,27.4,25.4,21.5,30\n0,67,27.1,25.1,21.4,30\n0,68,26.7,25.0,21.2,30\n0,69,26.4,24.9,21.5,30\n0,70,25.9,24.5,21.4,30\n0,71,25.4,24.0,21.4,30\n0,72,25.1,23.9,21.6,30\n0,73,24.8,23.5,21.5,30\n0,74,24.2,23.2,21.3,30\n0,75,24.3,23.1,21.4,30\n0,76,24.4,23.1,21.3,30\n0,77,24.2,23.1,21.6,30\n0,78,24.4,23.5,21.5,30\n0,79,24.8,23.4,21.6,30\n0,80,25.1,23.7,21.2,30\n0,81,25.7,24.1,21.2,30\n0,82,25.9,24.3,21.4,30\n0,83,26.4,24.7,21.5,30\n0,84,27.0,24.9,21.3,30\n0,85,27.1,25.4,21.5,30\n0,86,27.4,25.4,21.1,30\n0,87,27.8,25.5,21.4,30\n0,88,27.7,25.7,21.4,30\n0,89,27.7,25.5,21.5,30\n0,90,27.4,25.5,21.2,30\n0,91,27.1,25.3,21.3,30\n0,92,26.8,25.1,21.4,30\n0,93,26.2,24.6,21.3,30\n0,94,26.1,24.5,21.3,30\n0,95,25.3,24.2,21.3,30\n0,96,25.1,23.8,21.4,30\n0,97,24.7,23.6,21.2,30\n0,98,24.4,23.4,21.1,30\n0,99,24.2,23.3,21.0,30\n0,100,24.3,23.2,21.3,30\n0,101,24.2,23.3,21.5,30\n0,102,24.3,23.3,21.3,30\n0,103,24.7,23.5,21.1,30\n0,104,25.1,23.9,21.0,30\n0,105,25.4,24.2,21.5,30\n0,106,26.0,24.3,21.4,30\n0,107,26.6,24.9,21.4,30\n0,108,26.6,25.1,21.1,30\n0,109,27.2,25.4,21.4,30\n0,110,27.3,25.4,21.6,30\n0,111,27.5,25.6,21.2,30\n0,112,27.6,25.7,21.0,30\n0,113,27.5,25.6,21.0,30\n0,114,27.3,25.5,21.4,30\n0,115,27.3,25.2,21.3,30\n0,116,26.8,25.1,21.3,30\n0,117,26.6,24.7,21.0,30\n0,118,26.0,24.3,21.4,30\n0,119,25.5,24.2,21.3,30\n0,120,25.1,23.7,21.3,30\n0,121,24.6,23.6,21.3,30\n0,122,24.3,23.2,21.2,30\n0,123,24.4,23.1,21.4,30\n0,124,24.3,23.0,21.4,30\n0,125,24.1,23.1,21.4,30\n0,126,24.3,23.4,21.3,30\n0,127,24.6,23.6,21.0,30\n0,128,25.2,23.6,21.1,30\n0,129,25.7,24.1,21.1,30\n0,130,25.8,24.5,21.4,30\n0,131,26.5,24.6,21.4,30\n0,132,26.8,24.9,21.2,30\n0,133,27.2,25.2,21.2,30\n0,134,27.3,25.6,21.4,30\n0,135,27.8,25.6,21.5,30\n0,136,27.7,25.7,21.3,30\n0,137,27.7,25.6,21.1,30\n0,138,27.3,25.4,21.0,30\n0,139,27.3,25.3,21.5,30\n0,140,26.6,25.0,21.5,30\n0,141,26.5,24.7,21.3,30\n0,142,25.8,24.3,21.1,30\n0,143,25.4,24.0,21.5,30\n0,144,24.9,23.7,21.2,30\n0,145,24.6,23.5,21.1,30\n0,146,24.4,23.2,21.6,30\n0,147,24.2,23.3,21.4,30\n0,148,24.3,23.1,21.6,30\n0,149,24.1,23.2,21.2,30\n0,150,24.5,23.4,21.1,30\n0,151,24.6,23.4,21.1,30\n0,152,24.9,23.7,21.6,30\n0,153,25.4,24.0,21.3,30\n0,154,25.9,24.5,21.4,30\n0,155,26.3,24.6,21.4,30\n0,156,27.0,25.1,21.3,30\n0,157,27.4,25.1,21.0,30\n0,158,27.6,25.5,21.0,30\n0,159,27.7,25.8,21.3,30\n0,160,27.6,25.5,21.0,30\n0,161,27.8,25.6,21.6,30\n0,162,27.3,25.4,21.0,30\n0,163,27.1,25.2,21.2,30\n0,164,26.8,25.0,21.0,30\n0,165,26.2,24.9,21.1,30\n0,166,26.0,24.4,21.3,30\n0,167,25.3,24.0,21.1,30\n1,0,25.1,23.9,21.4,30\n1,1,24.9,23.4,21.0,30\n1,2,24.5,23.3,21.3,30\n1,3,24.2,23.2,21.4,30\n1,4,24.4,23.1,21.3,30\n1,5,24.4,23.1,21.1,30\n1,6,24.4,23.2,21.5,30\n1,7,24.8,23.5,21.1,30\n1,8,24.9,23.7,21.1,30\n1,9,25.5,24.1,21.1,30\n1,10,25.8,24.5,21.0,30\n1,11,26.3,24.7,21.2,30\n1,12,26.7,25.0,21.2,30\n1,13,27.3,25.3,21.5,30\n1,14,27.5,25.6,21.3,30\n1,15,27.6,25.7,21.4,30\n1,16,27.9,25.7,21.4,30\n1,17,27.5,25.7,21.2,30\n1,18,27.3,25.4,21.1,30\n1,19,27.1,25.3,21.2,30\n1,20,26.7,25.1,21.3,30\n1,21,26.2,24.6,21.1,30\n1,22,25.9,24.5,21.6,30\n1,23,25.5,24.0,21.3,30\n1,24,25.0,23.7,21.0,30\n1,25,24.7,23.6,21.4,30\n1,26,24.3,23.3,21.1,30\n1,27,24.3,23.2,21.6,30\n1,28,24.3,23.0,21.2,30\n1,29,24.4,23.2,21.3,30\n1,30,24.4,23.4,21.6,30\n1,31,24.7,23.7,21.4,30\n1,32,24.9,23.9,21.3,30\n1,33,25.3,24.2,21.0,30\n1,34,26.0,24.4,21.5,30\n1,35,26.4,24.6,21.2,30\n1,36,26.7,25.0,21.2,30\n1,37,27.3,25.2,21.2,30\n1,38,27.4,25.6,21.5,30\n1,39,27.8,25.6,21.2,30\n1,40,27.6,25.7,21.3,30\n1,41,27.5,25.5,21.1,30\n1,42,27.6,25.6,21.1,30\n1,43,27.3,25.2,21.4,30\n1,44,27.0,25.1,21.5,30\n1,45,26.4,24.6,21.3,30\n1,46,26.0,24.3,21.2,30\n1,47,25.4,23.9,21.2,30\n1,48,25.0,23.8,21.4,30\n1,49,24.7,23.7,21.5,30\n1,50,24.6,23.4,21.4,30\n1,51,24.3,23.3,21.2,30\n1,52,24.2,23.2,21.3,30\n1,53,24.2,23.1,21.1,30\n1,54,24.4,23.3,21.5,30\n1,55,24.8,23.5,21.6,30\n1,56,25.0,23.8,21.0,30\n1,57,25.6,24.1,21.6,30\n1,58,26.1,24.5,21.5,30\n1,59,26.5,24.8,21.1,30\n1,60,26.8,25.1,21.1,30\n1,61,27.4,25.3,21.2,30\n1,62,27.3,25.4,21.1,30\n1,63,27.7,25.7,21.5,30\n1,64,27.7,25.6,21.1,30\n1,65,27.7,25.6,21.4,30\n1,66,27.4,25.6,21.1,30\n1,67,27.1,25.2,21.4,30\n1,68,27.0,24.9,21.4,30\n1,69,26.5,24.6,21.0,30\n1,70,26.0,24.5,21.5,30\n1,71,25.6,24.1,21.3,30\n1,72,25.1,23.9,21.2,30\n1,73,24.6,23.5,21.6,30\n1,74,24.3,23.2,21.1,30\n1,75,24.3,23.2,21.1,30\n1,76,24.1,23.2,21.4,30\n1,77,24.3,23.3,21.0,30\n1,78,24.4,23.4,21.6,30\n1,79,24.6,23.6,21.4,30\n1,80,25.2,23.7,21.4,30\n1,81,25.6,24.1,21.1,30\n1,82,25.8,24.3,21.1,30\n1,83,26.3,24.8,21.1,30\n1,84,26.9,25.1,21.5,30\n1,85,27.3,25.3,21.6,30\n1,86,27.6,25.5,21.6,30\n1,87,27.5,25.5,21.0,30\n1,88,27.6,25.6,21.3,30\n1,89,27.7,25.7,21.1,30\n1,90,27.4,25.5,21.2,30\n1,91,27.0,25.3,21.2,30\n1,92,26.9,25.0,21.6,30\n1,93,26.6,24.6,21.5,30\n1,94,26.0,24.3,21.1,30\n1,95,25.5,24.0,21.4,30\n1,96,25.2,23.7,21.2,30\n1,97,24.7,23.6,21.5,30\n1,98,24.5,23.3,21.2,30\n1,99,24.4,23.2,21.0,30\n1,100,24.2,23.1,21.4,30\n1,101,24.1,23.1,21.1,30\n1,102,24.4,23.5,21.3,30\n1,103,24.7,23.6,21.1,30\n1,104,25.0,23.9,21.0,30\n1,105,25.6,24.0,21.0,30\n1,106,25.9,24.4,21.2,30\n1,107,26.4,24.6,21.1,30\n1,108,27.0,25.0,21.3,30\n1,109,27.0,25.2,21.6,30\n1,110,27.5,25.5,21.0,30\n1,111,27.6,25.7,21.3,30\n1,112,27.7,25.8,21.4,30\n1,113,27.7,25.5,21.0,30\n1,114,27.6,25.5,21.5,30\n1,115,27.3,25.4,21.2,30\n1,116,27.0,25.1,21.5,30\n1,117,26.3,24.8,21.3,30\n1,118,26.1,24.5,21.1,30\n1,119,25.5,24.0,21.3,30\n1,120,25.0,23.8,21.1,30\n1,121,24.6,23.5,21.0,30\n1,122,24.4,23.4,21.5,30\n1,123,24.1,23.0,21.5,30\n1,124,24.4,23.2,21.1,30\n1,125,24.2,23.3,21.6,30\n1,126,24.2,23.2,21.3,30\n1,127,24.6,23.6,21.2,30\n1,128,25.2,23.7,21.3,30\n1,129,25.7,24.1,21.1,30\n1,130,25.8,24.4,21.2,30\n1,131,26.4,24.7,21.3,30\n1,132,27.0,24.9,21.3,30\n1,133,27.1,25.3,21.4,30\n1,134,27.3,25.5,21.4,30\n1,135,27.4,25.7,21.3,30\n1,136,27.7,25.7,21.5,30\n1,137,27.5,25.6,21.0,30\n1,138,27.4,25.4,21.0,30\n1,139,27.1,25.3,21.4,30\n1,140,27.0,25.0,21.3,30\n1,141,26.5,24.9,21.6,30\n1,142,26.1,24.3,21.1,30\n1,143,25.7,23.9,21.3,30\n1,144,25.2,23.8,21.2,30\n1,145,24.9,23.5,21.3,30\n1,146,24.6,23.2,21.2,30\n1,147,24.3,23.2,21.1,30\n1,148,24.2,23.0,21.1,30\n1,149,24.2,23.1,21.6,30\n1,150,24.3,23.3,21.5,30\n1,151,24.8,23.4,21.5,30\n1,152,25.1,23.7,21.4,30\n1,153,25.4,24.0,21.5,30\n1,154,25.9,24.5,21.1,30\n1,155,26.3,24.6,21.4,30\n1,156,26.8,24.9,21.0,30\n1,157,27.3,25.3,21.5,30\n1,158,27.3,25.5,21.1,30\n1,159,27.7,25.6,21.4,30\n1,160,27.6,25.8,21.1,30\n1,161,27.5,25.7,21.1,30\n1,162,27.3,25.5,21.4,30\n1,163,27.3,25.4,21.0,30\n1,164,26.9,25.1,21.1,30\n1,165,26.5,24.7,21.2,30\n1,166,25.8,24.5,21.3,30\n1,167,25.7,24.1,21.1,30\"\n| eval _time=relative_time(now(), \"@w0\") + slot*3600 - cyc*604800\n| where _time<=now() AND _time>now()-604800\n| sort 0 _time\n| eval \"Lab storage C1-104\"=round('Lab storage C1-104' + 4.5*(1-(now()-_time)/604800), 1)\n| eval \"Pharmacy B1-012\"=round('Pharmacy B1-012' + 3.0*(1-(now()-_time)/604800), 1)\n| eval \"Server room A0-001\"='Server room A0-001' + if(now()-_time>=108000 AND now()-_time<122400, 2.5, 0)\n| table _time \"Lab storage C1-104\" \"Pharmacy B1-012\" \"Server room A0-001\" \"Printer max. rating\"",
+        "queryParameters": {
+          "earliest": "-15m",
+          "latest": "now"
+        }
+      }
+    },
+    "ds_026": {
+      "type": "ds.search",
+      "name": "ds_026",
+      "options": {
+        "query": "| makeresults format=csv data=\"ago,C1-104\n1,30.9\n0,31.8\"\n| eval _time=relative_time(now(), \"@h\") - ago*3600\n| sort 0 _time\n| table _time \"C1-104\"",
+        "queryParameters": {
+          "earliest": "-15m",
+          "latest": "now"
+        }
+      }
+    },
+    "ds_029": {
+      "type": "ds.search",
+      "name": "ds_029",
+      "options": {
+        "query": "| makeresults format=csv data=\"Device,Type,Room,Temp now,Rated max,Errors today,Status\nPRT-LAB-04,Label printer,Lab storage C1-104,31.8 °C,30 °C,9,Over limit\nPRT-PHA-01,Label printer,Pharmacy B1-012,30.4 °C,30 °C,4,Over limit\nFRG-PHA-02,Medication fridge,Pharmacy B1-012,6.8 °C,8 °C,0,Near limit\nUPS-A0-01,UPS,Server room A0-001,23.1 °C,35 °C,0,OK\nPRT-ED-02,Label printer,Emergency D0-003,25.6 °C,30 °C,0,OK\nINC-LAB-01,Incubator,Microbiology C1-110,37.1 °C,37.5 °C,0,OK\"\n| table Device Type Room \"Temp now\" \"Rated max\" \"Errors today\" Status",
+        "queryParameters": {
+          "earliest": "-15m",
+          "latest": "now"
+        }
+      }
+    },
+    "ds_032": {
+      "type": "ds.search",
+      "name": "ds_032",
+      "options": {
+        "query": "| makeresults format=csv data=\"ago,Print head overheat,Label jam,Ribbon / media\n13,5,1,1\n12,3,1,0\n11,2,1,0\n10,2,1,1\n9,0,0,0\n8,1,0,1\n7,1,0,0\n6,1,1,1\n5,1,2,0\n4,2,1,1\n3,4,1,0\n2,5,1,1\n1,8,2,1\n0,10,2,0\"\n| eval _time=relative_time(now(), \"@d\") - ago*86400\n| sort 0 _time\n| table _time \"Print head overheat\" \"Label jam\" \"Ribbon / media\"",
+        "queryParameters": {
+          "earliest": "-15m",
+          "latest": "now"
+        }
+      }
+    }
+  },
+  "layout": {
+    "globalInputs": [],
+    "tabs": {
+      "items": [
+        {
+          "layoutId": "layout_1",
+          "label": "Dashboard"
+        }
+      ]
+    },
+    "layoutDefinitions": {
+      "layout_1": {
+        "type": "absolute",
+        "options": {
+          "width": 1440,
+          "height": 1122,
+          "display": "auto-scale",
+          "backgroundColor": "#0E1116"
+        },
+        "structure": [
+          {
+            "item": "bg_001",
+            "type": "block",
+            "position": {
+              "x": 24,
+              "y": 20,
+              "w": 1392,
+              "h": 116
+            }
+          },
+          {
+            "item": "bg_002",
+            "type": "block",
+            "position": {
+              "x": 24,
+              "y": 20,
+              "w": 6,
+              "h": 116
+            }
+          },
+          {
+            "item": "md_003",
+            "type": "block",
+            "position": {
+              "x": 52,
+              "y": 34,
+              "w": 820,
+              "h": 22
+            }
+          },
+          {
+            "item": "md_004",
+            "type": "block",
+            "position": {
+              "x": 52,
+              "y": 56,
+              "w": 880,
+              "h": 44
+            }
+          },
+          {
+            "item": "md_005",
+            "type": "block",
+            "position": {
+              "x": 52,
+              "y": 100,
+              "w": 880,
+              "h": 28
+            }
+          },
+          {
+            "item": "bg_006",
+            "type": "block",
+            "position": {
+              "x": 928,
+              "y": 36,
+              "w": 464,
+              "h": 84
+            }
+          },
+          {
+            "item": "md_007",
+            "type": "block",
+            "position": {
+              "x": 940,
+              "y": 42,
+              "w": 444,
+              "h": 20
+            }
+          },
+          {
+            "item": "md_008",
+            "type": "block",
+            "position": {
+              "x": 940,
+              "y": 62,
+              "w": 444,
+              "h": 56
+            }
+          },
+          {
+            "item": "bg_009",
+            "type": "block",
+            "position": {
+              "x": 24,
+              "y": 152,
+              "w": 336,
+              "h": 164
+            }
+          },
+          {
+            "item": "viz_010",
+            "type": "block",
+            "position": {
+              "x": 30,
+              "y": 158,
+              "w": 324,
+              "h": 152
+            }
+          },
+          {
+            "item": "bg_012",
+            "type": "block",
+            "position": {
+              "x": 376,
+              "y": 152,
+              "w": 336,
+              "h": 164
+            }
+          },
+          {
+            "item": "viz_013",
+            "type": "block",
+            "position": {
+              "x": 382,
+              "y": 158,
+              "w": 324,
+              "h": 152
+            }
+          },
+          {
+            "item": "bg_015",
+            "type": "block",
+            "position": {
+              "x": 728,
+              "y": 152,
+              "w": 336,
+              "h": 164
+            }
+          },
+          {
+            "item": "viz_016",
+            "type": "block",
+            "position": {
+              "x": 734,
+              "y": 158,
+              "w": 324,
+              "h": 152
+            }
+          },
+          {
+            "item": "bg_018",
+            "type": "block",
+            "position": {
+              "x": 1080,
+              "y": 152,
+              "w": 336,
+              "h": 164
+            }
+          },
+          {
+            "item": "viz_019",
+            "type": "block",
+            "position": {
+              "x": 1086,
+              "y": 158,
+              "w": 324,
+              "h": 152
+            }
+          },
+          {
+            "item": "bg_021",
+            "type": "block",
+            "position": {
+              "x": 24,
+              "y": 332,
+              "w": 904,
+              "h": 330
+            }
+          },
+          {
+            "item": "viz_022",
+            "type": "block",
+            "position": {
+              "x": 30,
+              "y": 338,
+              "w": 892,
+              "h": 318
+            }
+          },
+          {
+            "item": "bg_024",
+            "type": "block",
+            "position": {
+              "x": 944,
+              "y": 332,
+              "w": 472,
+              "h": 330
+            }
+          },
+          {
+            "item": "viz_025",
+            "type": "block",
+            "position": {
+              "x": 950,
+              "y": 338,
+              "w": 460,
+              "h": 318
+            }
+          },
+          {
+            "item": "bg_027",
+            "type": "block",
+            "position": {
+              "x": 24,
+              "y": 678,
+              "w": 904,
+              "h": 300
+            }
+          },
+          {
+            "item": "viz_028",
+            "type": "block",
+            "position": {
+              "x": 30,
+              "y": 684,
+              "w": 892,
+              "h": 288
+            }
+          },
+          {
+            "item": "bg_030",
+            "type": "block",
+            "position": {
+              "x": 944,
+              "y": 678,
+              "w": 472,
+              "h": 300
+            }
+          },
+          {
+            "item": "viz_031",
+            "type": "block",
+            "position": {
+              "x": 950,
+              "y": 684,
+              "w": 460,
+              "h": 288
+            }
+          },
+          {
+            "item": "bg_033",
+            "type": "block",
+            "position": {
+              "x": 24,
+              "y": 994,
+              "w": 1392,
+              "h": 104
+            }
+          },
+          {
+            "item": "md_034",
+            "type": "block",
+            "position": {
+              "x": 44,
+              "y": 1010,
+              "w": 700,
+              "h": 22
+            }
+          },
+          {
+            "item": "bg_035",
+            "type": "block",
+            "position": {
+              "x": 44,
+              "y": 1044,
+              "w": 233,
+              "h": 34
+            }
+          },
+          {
+            "item": "md_036",
+            "type": "block",
+            "position": {
+              "x": 60,
+              "y": 1051,
+              "w": 215,
+              "h": 22
+            }
+          },
+          {
+            "item": "bg_037",
+            "type": "block",
+            "position": {
+              "x": 287,
+              "y": 1044,
+              "w": 196,
+              "h": 34
+            }
+          },
+          {
+            "item": "md_038",
+            "type": "block",
+            "position": {
+              "x": 303,
+              "y": 1051,
+              "w": 178,
+              "h": 22
+            }
+          },
+          {
+            "item": "bg_039",
+            "type": "block",
+            "position": {
+              "x": 493,
+              "y": 1044,
+              "w": 219,
+              "h": 34
+            }
+          },
+          {
+            "item": "md_040",
+            "type": "block",
+            "position": {
+              "x": 509,
+              "y": 1051,
+              "w": 201,
+              "h": 22
+            }
+          },
+          {
+            "item": "bg_041",
+            "type": "block",
+            "position": {
+              "x": 722,
+              "y": 1044,
+              "w": 196,
+              "h": 34
+            }
+          },
+          {
+            "item": "md_042",
+            "type": "block",
+            "position": {
+              "x": 738,
+              "y": 1051,
+              "w": 178,
+              "h": 22
+            }
+          }
+        ]
+      }
+    }
+  }
+}
+  ]]></definition>
+  <meta type="hiddenElements"><![CDATA[
+{"hideEdit": false, "hideOpenInSearch": false, "hideExport": false}
+  ]]></meta>
+</dashboard>

@@ -1,130 +1,1023 @@
-<form version="1.1" theme="dark">
-  <label>9. AI Observability &amp; Governance</label>
-  <description>A governance-first view of AI usage — cost, latency, and guardrail hits — built to de-risk AI adoption for a leadership team that currently has the handbrake on.</description>
-
-  <fieldset submitButton="false" autoRun="true">
-    <input type="time" token="tr">
-      <label>Time range</label>
-      <default><earliest>-7d</earliest><latest>now</latest></default>
-    </input>
-  </fieldset>
-
-  <row>
-    <panel>
-      <html>
-        <p style="margin:0;color:#8b98a5;font-style:italic;">"AI Observability ist sehr interessant, GL hat da zur Zeit aber etwas die Handbremse drauf, aufgrund Unsicherheit."
-        <span style="color:#cdd9e5;font-style:normal;"> — the gap is visibility and guardrails, not the technology.</span></p>
-      </html>
-    </panel>
-  </row>
-
-  <row>
-    <panel>
-      <title>Governance confidence score</title>
-      <chart>
-        <search><query>| makeresults | eval v=91</query></search>
-        <option name="charting.chart">radialGauge</option>
-        <option name="charting.chart.rangeValues">[0,60,80,100]</option>
-        <option name="drilldown">none</option>
-      </chart>
-    </panel>
-    <panel>
-      <title>AI requests (7 days)</title>
-      <single>
-        <search><query>| makeresults | eval v=48213</query></search>
-        <option name="drilldown">none</option>
-      </single>
-    </panel>
-    <panel>
-      <title>Guardrail hits (blocked)</title>
-      <single>
-        <search><query>| makeresults | eval v=7</query></search>
-        <option name="drilldown">none</option>
-        <option name="colorBy">value</option>
-        <option name="rangeColors">["0x53a051","0xf2b827"]</option>
-        <option name="rangeValues">[1]</option>
-      </single>
-    </panel>
-    <panel>
-      <title>Spend (7 days)</title>
-      <single>
-        <search><query>| makeresults | eval v=1284</query></search>
-        <option name="unit">CHF</option>
-        <option name="drilldown">none</option>
-      </single>
-    </panel>
-  </row>
-
-  <row>
-    <panel>
-      <title>Usage &amp; spend by team (7 days)</title>
-      <chart>
-        <search>
-          <query>| makeresults count=4
-| streamstats count as i
-| eval Team=case(i=1,"Radiology-AI-Pipeline",i=2,"Clinical-Docs-Assistant",i=3,"IT-Helpdesk-Bot",i=4,"HR-Screening (paused)")
-| eval "Requests"=case(i=1,28400,i=2,14200,i=3,5600,i=4,13)
-| eval "Spend (CHF)"=case(i=1,712,i=2,398,i=3,161,i=4,13)
-| table Team "Requests" "Spend (CHF)"</query>
-          <earliest>$tr.earliest$</earliest>
-          <latest>$tr.latest$</latest>
-        </search>
-        <option name="charting.chart">bar</option>
-        <option name="charting.legend.placement">bottom</option>
-        <option name="drilldown">none</option>
-      </chart>
-    </panel>
-    <panel>
-      <title>Guardrail hit types (7 days)</title>
-      <chart>
-        <search>
-          <query>| makeresults count=3
-| streamstats count as i
-| eval Category=case(i=1,"PII / PHI leakage",i=2,"Internal-confidential",i=3,"Policy / other")
-| eval Count=case(i=1,3,i=2,2,i=3,2)
-| table Category Count</query>
-          <earliest>$tr.earliest$</earliest>
-          <latest>$tr.latest$</latest>
-        </search>
-        <option name="charting.chart">pie</option>
-        <option name="charting.legend.placement">right</option>
-        <option name="drilldown">none</option>
-      </chart>
-    </panel>
-  </row>
-
-  <row>
-    <panel>
-      <title>Guardrail hits — what governance is actually catching</title>
-      <table>
-        <search>
-          <query>| makeresults count=3
-| streamstats count as i
-| eval Time=strftime(relative_time(now(), "-".(i*2)."d"), "%Y-%m-%d")
-| eval Team=case(i=1,"Clinical-Docs-Assistant",i=2,"HR-Screening (paused)",i=3,"Clinical-Docs-Assistant")
-| eval Finding=case(i=1,"Unredacted patient name",i=2,"Candidate SSN in prompt",i=3,"Internal-only pricing")
-| eval Action=case(i=1,"Blocked, team notified",i=2,"Blocked, pilot escalated to GL",i=3,"Blocked, logged")
-| table Time Team Finding Action
-| sort Time</query>
-          <earliest>$tr.earliest$</earliest>
-          <latest>$tr.latest$</latest>
-        </search>
-        <option name="drilldown">none</option>
-      </table>
-    </panel>
-  </row>
-
-  <row>
-    <panel>
-      <title>Data sources needed</title>
-      <html>
-        <div style="display:flex;flex-wrap:wrap;gap:6px;">
-          <span style="background:#1b2430;color:#cdd9e5;padding:4px 10px;border-radius:12px;font-size:12px;border:1px solid #2b3a4a;">LLM / API gateway logs</span>
-          <span style="background:#1b2430;color:#cdd9e5;padding:4px 10px;border-radius:12px;font-size:12px;border:1px solid #2b3a4a;">Guardrail / DLP scan logs</span>
-          <span style="background:#1b2430;color:#cdd9e5;padding:4px 10px;border-radius:12px;font-size:12px;border:1px solid #2b3a4a;">Model registry</span>
-          <span style="background:#1b2430;color:#cdd9e5;padding:4px 10px;border-radius:12px;font-size:12px;border:1px solid #2b3a4a;">Identity / access data</span>
-        </div>
-      </html>
-    </panel>
-  </row>
-</form>
+<dashboard version="2" theme="dark">
+  <label>9 · AI Observability &amp; Governance</label>
+  <description>See AI usage, cost, latency and guardrail findings in one place.</description>
+  <definition><![CDATA[
+{
+  "title": "9 · AI Observability & Governance",
+  "description": "See AI usage, cost, latency and guardrail findings in one place.",
+  "inputs": {},
+  "defaults": {},
+  "visualizations": {
+    "bg_001": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#161B22",
+        "strokeColor": "#262C36",
+        "strokeWidth": 1,
+        "rx": 12
+      }
+    },
+    "bg_002": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#16A3B0",
+        "strokeColor": "#16A3B0",
+        "strokeWidth": 1,
+        "rx": 3
+      }
+    },
+    "md_003": {
+      "type": "splunk.markdown",
+      "options": {
+        "markdown": "USE CASE 9 OF 9  ·  SPITAL AARWALD  ·  SAMPLE DATA",
+        "fontColor": "#16A3B0",
+        "fontSize": "custom",
+        "customFontSize": 12
+      }
+    },
+    "md_004": {
+      "type": "splunk.markdown",
+      "options": {
+        "markdown": "# AI Observability & Governance",
+        "fontColor": "#E6EDF3"
+      }
+    },
+    "md_005": {
+      "type": "splunk.markdown",
+      "options": {
+        "markdown": "What AI is used for, what it costs and what the guardrails catch — evidence to release the handbrake.",
+        "fontColor": "#9AA4B2",
+        "fontSize": "custom",
+        "customFontSize": 15
+      }
+    },
+    "bg_006": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#11161D",
+        "strokeColor": "#262C36",
+        "strokeWidth": 1,
+        "rx": 8
+      }
+    },
+    "md_007": {
+      "type": "splunk.markdown",
+      "options": {
+        "markdown": "WHAT WE HEARD",
+        "fontColor": "#6E7681",
+        "fontSize": "custom",
+        "customFontSize": 11
+      }
+    },
+    "md_008": {
+      "type": "splunk.markdown",
+      "options": {
+        "markdown": "*“AI Observability ist sehr interessant, GL hat da zur Zeit aber etwas die Handbremse drauf, aufgrund Unsicherheit.”*",
+        "fontColor": "#9AA4B2",
+        "fontSize": "custom",
+        "customFontSize": 13
+      }
+    },
+    "bg_009": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#161B22",
+        "strokeColor": "#262C36",
+        "strokeWidth": 1,
+        "rx": 12
+      }
+    },
+    "viz_010": {
+      "type": "splunk.singlevalue",
+      "options": {
+        "backgroundColor": "#161B22",
+        "majorColor": "#E6EDF3",
+        "numberPrecision": 0,
+        "shouldUseThousandSeparators": true,
+        "majorFontSize": 42,
+        "trendFontSize": 15,
+        "trendDisplay": "absolute",
+        "sparklineDisplay": "below",
+        "showSparklineAreaGraph": true,
+        "sparklineStrokeColor": "#16A3B0",
+        "sparklineAreaColor": "#16A3B0",
+        "underLabel": "4 applications · 1,180 users",
+        "underLabelColor": "#9AA4B2",
+        "underLabelFontSize": 13
+      },
+      "dataSources": {
+        "primary": "ds_011"
+      },
+      "title": "AI requests today"
+    },
+    "bg_012": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#161B22",
+        "strokeColor": "#262C36",
+        "strokeWidth": 1,
+        "rx": 12
+      }
+    },
+    "viz_013": {
+      "type": "splunk.singlevalue",
+      "options": {
+        "backgroundColor": "#161B22",
+        "majorColor": "#E6EDF3",
+        "numberPrecision": 0,
+        "shouldUseThousandSeparators": true,
+        "majorFontSize": 42,
+        "trendFontSize": 15,
+        "trendDisplay": "off",
+        "sparklineDisplay": "below",
+        "showSparklineAreaGraph": true,
+        "sparklineStrokeColor": "#16A3B0",
+        "sparklineAreaColor": "#16A3B0",
+        "unit": "CHF ",
+        "unitPosition": "before",
+        "underLabel": "budget CHF 7,500",
+        "underLabelColor": "#9AA4B2",
+        "underLabelFontSize": 13
+      },
+      "dataSources": {
+        "primary": "ds_014"
+      },
+      "title": "Cost this month"
+    },
+    "bg_015": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#161B22",
+        "strokeColor": "#262C36",
+        "strokeWidth": 1,
+        "rx": 12
+      }
+    },
+    "viz_016": {
+      "type": "splunk.singlevalue",
+      "options": {
+        "backgroundColor": "#161B22",
+        "majorColor": "> majorValue | rangeValue(majorColorConfig)",
+        "numberPrecision": 1,
+        "shouldUseThousandSeparators": true,
+        "majorFontSize": 42,
+        "trendFontSize": 15,
+        "trendDisplay": "absolute",
+        "sparklineDisplay": "below",
+        "showSparklineAreaGraph": true,
+        "sparklineStrokeColor": "#16A3B0",
+        "sparklineAreaColor": "#16A3B0",
+        "unit": " s",
+        "unitPosition": "after",
+        "underLabel": "target < 3 s",
+        "underLabelColor": "#9AA4B2",
+        "underLabelFontSize": 13,
+        "trendColor": "> trendValue | rangeValue(trendColorConfig)"
+      },
+      "dataSources": {
+        "primary": "ds_017"
+      },
+      "title": "p95 response time",
+      "context": {
+        "trendColorConfig": [
+          {
+            "to": -0.0001,
+            "value": "#0CA30C"
+          },
+          {
+            "from": -0.0001,
+            "to": 0.0001,
+            "value": "#9AA4B2"
+          },
+          {
+            "from": 0.0001,
+            "value": "#D03B3B"
+          }
+        ],
+        "majorColorConfig": [
+          {
+            "to": 3,
+            "value": "#0CA30C"
+          },
+          {
+            "from": 3,
+            "to": 5,
+            "value": "#FAB219"
+          },
+          {
+            "from": 5,
+            "value": "#D03B3B"
+          }
+        ]
+      }
+    },
+    "bg_018": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#161B22",
+        "strokeColor": "#262C36",
+        "strokeWidth": 1,
+        "rx": 12
+      }
+    },
+    "viz_019": {
+      "type": "splunk.singlevalue",
+      "options": {
+        "backgroundColor": "#161B22",
+        "majorColor": "> majorValue | rangeValue(majorColorConfig)",
+        "numberPrecision": 0,
+        "shouldUseThousandSeparators": true,
+        "majorFontSize": 42,
+        "trendFontSize": 15,
+        "trendDisplay": "absolute",
+        "sparklineDisplay": "below",
+        "showSparklineAreaGraph": true,
+        "sparklineStrokeColor": "#16A3B0",
+        "sparklineAreaColor": "#16A3B0",
+        "underLabel": "PHI · PII · injection",
+        "underLabelColor": "#9AA4B2",
+        "underLabelFontSize": 13,
+        "trendColor": "> trendValue | rangeValue(trendColorConfig)"
+      },
+      "dataSources": {
+        "primary": "ds_020"
+      },
+      "title": "Guardrail blocks (7 days)",
+      "context": {
+        "trendColorConfig": [
+          {
+            "to": -0.0001,
+            "value": "#0CA30C"
+          },
+          {
+            "from": -0.0001,
+            "to": 0.0001,
+            "value": "#9AA4B2"
+          },
+          {
+            "from": 0.0001,
+            "value": "#D03B3B"
+          }
+        ],
+        "majorColorConfig": [
+          {
+            "to": 1,
+            "value": "#0CA30C"
+          },
+          {
+            "from": 1,
+            "value": "#FAB219"
+          }
+        ]
+      }
+    },
+    "bg_021": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#161B22",
+        "strokeColor": "#262C36",
+        "strokeWidth": 1,
+        "rx": 12
+      }
+    },
+    "viz_022": {
+      "type": "splunk.line",
+      "options": {
+        "backgroundColor": "#161B22",
+        "legendDisplay": "bottom",
+        "xAxisTitleVisibility": "hide",
+        "nullValueDisplay": "connect",
+        "lineWidth": 2,
+        "seriesColors": [
+          "#3987E5",
+          "#D95926",
+          "#199E70",
+          "#C98500"
+        ],
+        "yAxisTitleVisibility": "hide"
+      },
+      "dataSources": {
+        "primary": "ds_023"
+      },
+      "title": "Requests per day by application (30 days)"
+    },
+    "bg_024": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#161B22",
+        "strokeColor": "#262C36",
+        "strokeWidth": 1,
+        "rx": 12
+      }
+    },
+    "viz_025": {
+      "type": "splunk.pie",
+      "options": {
+        "backgroundColor": "#161B22",
+        "showDonutHole": true,
+        "labelDisplay": "valuesAndPercentage",
+        "legendDisplay": "off",
+        "seriesColors": [
+          "#3987E5",
+          "#D95926",
+          "#199E70",
+          "#C98500",
+          "#D55181",
+          "#008300",
+          "#9085E9",
+          "#E66767"
+        ]
+      },
+      "dataSources": {
+        "primary": "ds_026"
+      },
+      "title": "Guardrail findings (30 days)"
+    },
+    "bg_027": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#161B22",
+        "strokeColor": "#262C36",
+        "strokeWidth": 1,
+        "rx": 12
+      }
+    },
+    "viz_028": {
+      "type": "splunk.table",
+      "options": {
+        "backgroundColor": "#161B22",
+        "headerVisibility": "fixed",
+        "fontSize": "small",
+        "columnFormat": {
+          "When": {
+            "width": 90
+          },
+          "Application": {
+            "width": 185
+          },
+          "User group": {
+            "width": 100
+          },
+          "Finding": {
+            "width": 220
+          },
+          "Action": {
+            "width": 90,
+            "rowBackgroundColors": "> table | seriesByName(\"Action\") | matchValue(c0Bg)",
+            "rowColors": "> table | seriesByName(\"Action\") | matchValue(c0Fg)"
+          },
+          "Model": {
+            "width": 165
+          }
+        }
+      },
+      "dataSources": {
+        "primary": "ds_029"
+      },
+      "title": "Latest guardrail events",
+      "context": {
+        "c0Bg": [
+          {
+            "match": "Blocked",
+            "value": "#3F1D20"
+          },
+          {
+            "match": "Redacted",
+            "value": "#3A2E12"
+          },
+          {
+            "match": "Flagged",
+            "value": "#1F242C"
+          }
+        ],
+        "c0Fg": [
+          {
+            "match": "Blocked",
+            "value": "#FF8A80"
+          },
+          {
+            "match": "Redacted",
+            "value": "#E3B341"
+          },
+          {
+            "match": "Flagged",
+            "value": "#9AA4B2"
+          }
+        ]
+      }
+    },
+    "bg_030": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#161B22",
+        "strokeColor": "#262C36",
+        "strokeWidth": 1,
+        "rx": 12
+      }
+    },
+    "viz_031": {
+      "type": "splunk.bar",
+      "options": {
+        "backgroundColor": "#161B22",
+        "legendDisplay": "off",
+        "xAxisTitleVisibility": "hide",
+        "yAxisTitleVisibility": "hide",
+        "seriesColors": [
+          "#3987E5"
+        ],
+        "dataValuesDisplay": "all"
+      },
+      "dataSources": {
+        "primary": "ds_032"
+      },
+      "title": "Cost by model this month (CHF)"
+    },
+    "bg_033": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#161B22",
+        "strokeColor": "#262C36",
+        "strokeWidth": 1,
+        "rx": 12
+      }
+    },
+    "md_034": {
+      "type": "splunk.markdown",
+      "options": {
+        "markdown": "DATA SOURCES NEEDED IN SPLUNK",
+        "fontColor": "#16A3B0",
+        "fontSize": "custom",
+        "customFontSize": 12
+      }
+    },
+    "bg_035": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#1C2530",
+        "strokeColor": "#2D3A48",
+        "strokeWidth": 1,
+        "rx": 17
+      }
+    },
+    "md_036": {
+      "type": "splunk.markdown",
+      "options": {
+        "markdown": "Application logs & health checks",
+        "fontColor": "#E6EDF3",
+        "fontSize": "custom",
+        "customFontSize": 13
+      }
+    },
+    "bg_037": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#1C2530",
+        "strokeColor": "#2D3A48",
+        "strokeWidth": 1,
+        "rx": 17
+      }
+    },
+    "md_038": {
+      "type": "splunk.markdown",
+      "options": {
+        "markdown": "DLP / data classification",
+        "fontColor": "#E6EDF3",
+        "fontSize": "custom",
+        "customFontSize": 13
+      }
+    },
+    "bg_039": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#1C2530",
+        "strokeColor": "#2D3A48",
+        "strokeWidth": 1,
+        "rx": 17
+      }
+    },
+    "md_040": {
+      "type": "splunk.markdown",
+      "options": {
+        "markdown": "Cloud audit logs (Azure / AWS / M365)",
+        "fontColor": "#E6EDF3",
+        "fontSize": "custom",
+        "customFontSize": 13
+      }
+    },
+    "bg_041": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#1C2530",
+        "strokeColor": "#2D3A48",
+        "strokeWidth": 1,
+        "rx": 17
+      }
+    },
+    "md_042": {
+      "type": "splunk.markdown",
+      "options": {
+        "markdown": "Identity (Entra ID / AD)",
+        "fontColor": "#E6EDF3",
+        "fontSize": "custom",
+        "customFontSize": 13
+      }
+    },
+    "bg_043": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#1C2530",
+        "strokeColor": "#2D3A48",
+        "strokeWidth": 1,
+        "rx": 17
+      }
+    },
+    "md_044": {
+      "type": "splunk.markdown",
+      "options": {
+        "markdown": "AI gateway / LLM proxy logs",
+        "fontColor": "#E6EDF3",
+        "fontSize": "custom",
+        "customFontSize": 13
+      }
+    }
+  },
+  "dataSources": {
+    "ds_011": {
+      "type": "ds.search",
+      "name": "ds_011",
+      "options": {
+        "query": "| makeresults format=csv data=\"cyc,slot,n\n0,0,2574\n0,1,6882\n0,2,6773\n0,3,6641\n0,4,6690\n0,5,6506\n0,6,2446\n1,0,2614\n1,1,6974\n1,2,6582\n1,3,6842\n1,4,7067\n1,5,6541\n1,6,2488\n2,0,2273\n2,1,6962\n2,2,6932\n2,3,6660\n2,4,6672\n2,5,6743\n2,6,2152\n3,0,2213\n3,1,6635\n3,2,7018\n3,3,6564\n3,4,6892\n3,5,6604\n3,6,2398\n4,0,2309\n4,1,6729\n4,2,6931\n4,3,6589\n4,4,6773\n4,5,6714\n4,6,2506\n5,0,2387\n5,1,6849\n5,2,6544\n5,3,6704\n5,4,6505\n5,5,6921\n5,6,2156\"\n| eval _time=relative_time(now(), \"@w0\") + slot*86400 - cyc*604800\n| where _time<=now() AND _time>now()-2592000\n| sort 0 _time\n| table _time n",
+        "queryParameters": {
+          "earliest": "-15m",
+          "latest": "now"
+        }
+      }
+    },
+    "ds_014": {
+      "type": "ds.search",
+      "name": "ds_014",
+      "options": {
+        "query": "| makeresults format=csv data=\"ago,chf\n22,242\n21,424\n20,669\n19,861\n18,1053\n17,1261\n16,1490\n15,1717\n14,1952\n13,2178\n12,2389\n11,2557\n10,2803\n9,2980\n8,3202\n7,3458\n6,3662\n5,3852\n4,4112\n3,4324\n2,4497\n1,4721\n0,4915\"\n| eval _time=relative_time(now(), \"@d\") - ago*86400\n| sort 0 _time\n| table _time chf",
+        "queryParameters": {
+          "earliest": "-15m",
+          "latest": "now"
+        }
+      }
+    },
+    "ds_017": {
+      "type": "ds.search",
+      "name": "ds_017",
+      "options": {
+        "query": "| makeresults format=csv data=\"ago,s\n23,2.64\n22,2.18\n21,2.65\n20,2.4\n19,2.44\n18,2.42\n17,2.22\n16,2.14\n15,2.22\n14,2.56\n13,3.42\n12,2.19\n11,2.66\n10,2.53\n9,2.12\n8,2.26\n7,2.51\n6,2.61\n5,2.55\n4,2.54\n3,2.45\n2,2.12\n1,2.62\n0,2.34\"\n| eval _time=relative_time(now(), \"@h\") - ago*3600\n| sort 0 _time\n| table _time s",
+        "queryParameters": {
+          "earliest": "-15m",
+          "latest": "now"
+        }
+      }
+    },
+    "ds_020": {
+      "type": "ds.search",
+      "name": "ds_020",
+      "options": {
+        "query": "| makeresults format=csv data=\"ago,n\n13,31\n12,29\n11,27\n10,26\n9,24\n8,23\n7,22\n6,21\n5,20\n4,19\n3,18\n2,17\n1,18\n0,17\"\n| eval _time=relative_time(now(), \"@d\") - ago*86400\n| sort 0 _time\n| table _time n",
+        "queryParameters": {
+          "earliest": "-15m",
+          "latest": "now"
+        }
+      }
+    },
+    "ds_023": {
+      "type": "ds.search",
+      "name": "ds_023",
+      "options": {
+        "query": "| makeresults format=csv data=\"cyc,slot,Radiology report assistant,Clinical documentation,IT helpdesk bot,Translation\n0,0,1020,495,240,185\n0,1,2609,1421,834,426\n0,2,2696,1582,806,455\n0,3,2624,1586,751,424\n0,4,2508,1559,786,437\n0,5,2533,1512,765,453\n0,6,979,439,268,184\n1,0,873,435,275,121\n1,1,2534,1466,796,414\n1,2,2563,1432,779,460\n1,3,2552,1436,806,387\n1,4,2486,1507,839,451\n1,5,2686,1519,803,424\n1,6,970,498,292,115\n2,0,897,600,249,119\n2,1,2674,1512,805,427\n2,2,2700,1553,787,397\n2,3,2650,1484,761,413\n2,4,2487,1422,860,402\n2,5,2547,1452,755,457\n2,6,826,438,226,114\n3,0,904,488,320,156\n3,1,2555,1566,741,425\n3,2,2552,1446,801,451\n3,3,2551,1445,751,451\n3,4,2555,1588,755,388\n3,5,2587,1525,758,451\n3,6,984,533,295,128\n4,0,958,505,318,183\n4,1,2705,1565,803,424\n4,2,2505,1422,775,447\n4,3,2512,1454,842,460\n4,4,2690,1431,760,408\n4,5,2699,1413,765,402\n4,6,910,551,295,178\n5,0,928,534,230,129\n5,1,2620,1533,815,413\n5,2,2617,1427,860,383\n5,3,2628,1559,853,435\n5,4,2619,1489,807,447\n5,5,2617,1574,856,388\n5,6,1013,599,293,176\"\n| eval _time=relative_time(now(), \"@w0\") + slot*86400 - cyc*604800\n| where _time<=now() AND _time>now()-2592000\n| sort 0 _time\n| eval \"Radiology report assistant\"=round('Radiology report assistant' + 900*(1-(now()-_time)/2592000), 1)\n| eval \"Clinical documentation\"=round('Clinical documentation' + 600*(1-(now()-_time)/2592000), 1)\n| table _time \"Radiology report assistant\" \"Clinical documentation\" \"IT helpdesk bot\" Translation",
+        "queryParameters": {
+          "earliest": "-15m",
+          "latest": "now"
+        }
+      }
+    },
+    "ds_026": {
+      "type": "ds.search",
+      "name": "ds_026",
+      "options": {
+        "query": "| makeresults format=csv data=\"Finding,Count\nPatient data (PHI),41\nPersonal data (PII),27\nConfidential documents,12\nPrompt injection attempt,6\"\n| table Finding Count",
+        "queryParameters": {
+          "earliest": "-15m",
+          "latest": "now"
+        }
+      }
+    },
+    "ds_029": {
+      "type": "ds.search",
+      "name": "ds_029",
+      "options": {
+        "query": "| makeresults format=csv data=\"When,Application,User group,Finding,Action,Model\n12,Clinical documentation,Nursing,Patient name + DOB in prompt,Redacted,GPT-4o (Azure CH)\n47,Translation,Admin staff,Insurance number,Redacted,GPT-4o mini (Azure CH)\n95,IT helpdesk bot,External,Prompt injection attempt,Blocked,GPT-4o mini (Azure CH)\n230,Radiology report assistant,Radiology,Report sent to non-CH endpoint,Blocked,Vendor model (EU)\n415,Clinical documentation,Physicians,Full discharge letter,Flagged,GPT-4o (Azure CH)\"\n| eval \"When\"=strftime(relative_time(now(), \"@m\") - 'When'*60, \"%a %H:%M\")\n| table When Application \"User group\" Finding Action Model",
+        "queryParameters": {
+          "earliest": "-15m",
+          "latest": "now"
+        }
+      }
+    },
+    "ds_032": {
+      "type": "ds.search",
+      "name": "ds_032",
+      "options": {
+        "query": "| makeresults format=csv data=\"Model,CHF\nGPT-4o,2940\nLlama (on-prem),1090\nGPT-4o mini,610\nEmbeddings,180\"\n| table Model CHF",
+        "queryParameters": {
+          "earliest": "-15m",
+          "latest": "now"
+        }
+      }
+    }
+  },
+  "layout": {
+    "globalInputs": [],
+    "tabs": {
+      "items": [
+        {
+          "layoutId": "layout_1",
+          "label": "Dashboard"
+        }
+      ]
+    },
+    "layoutDefinitions": {
+      "layout_1": {
+        "type": "absolute",
+        "options": {
+          "width": 1440,
+          "height": 1122,
+          "display": "auto-scale",
+          "backgroundColor": "#0E1116"
+        },
+        "structure": [
+          {
+            "item": "bg_001",
+            "type": "block",
+            "position": {
+              "x": 24,
+              "y": 20,
+              "w": 1392,
+              "h": 116
+            }
+          },
+          {
+            "item": "bg_002",
+            "type": "block",
+            "position": {
+              "x": 24,
+              "y": 20,
+              "w": 6,
+              "h": 116
+            }
+          },
+          {
+            "item": "md_003",
+            "type": "block",
+            "position": {
+              "x": 52,
+              "y": 34,
+              "w": 820,
+              "h": 22
+            }
+          },
+          {
+            "item": "md_004",
+            "type": "block",
+            "position": {
+              "x": 52,
+              "y": 56,
+              "w": 880,
+              "h": 44
+            }
+          },
+          {
+            "item": "md_005",
+            "type": "block",
+            "position": {
+              "x": 52,
+              "y": 100,
+              "w": 880,
+              "h": 28
+            }
+          },
+          {
+            "item": "bg_006",
+            "type": "block",
+            "position": {
+              "x": 928,
+              "y": 36,
+              "w": 464,
+              "h": 84
+            }
+          },
+          {
+            "item": "md_007",
+            "type": "block",
+            "position": {
+              "x": 940,
+              "y": 42,
+              "w": 444,
+              "h": 20
+            }
+          },
+          {
+            "item": "md_008",
+            "type": "block",
+            "position": {
+              "x": 940,
+              "y": 62,
+              "w": 444,
+              "h": 56
+            }
+          },
+          {
+            "item": "bg_009",
+            "type": "block",
+            "position": {
+              "x": 24,
+              "y": 152,
+              "w": 336,
+              "h": 164
+            }
+          },
+          {
+            "item": "viz_010",
+            "type": "block",
+            "position": {
+              "x": 30,
+              "y": 158,
+              "w": 324,
+              "h": 152
+            }
+          },
+          {
+            "item": "bg_012",
+            "type": "block",
+            "position": {
+              "x": 376,
+              "y": 152,
+              "w": 336,
+              "h": 164
+            }
+          },
+          {
+            "item": "viz_013",
+            "type": "block",
+            "position": {
+              "x": 382,
+              "y": 158,
+              "w": 324,
+              "h": 152
+            }
+          },
+          {
+            "item": "bg_015",
+            "type": "block",
+            "position": {
+              "x": 728,
+              "y": 152,
+              "w": 336,
+              "h": 164
+            }
+          },
+          {
+            "item": "viz_016",
+            "type": "block",
+            "position": {
+              "x": 734,
+              "y": 158,
+              "w": 324,
+              "h": 152
+            }
+          },
+          {
+            "item": "bg_018",
+            "type": "block",
+            "position": {
+              "x": 1080,
+              "y": 152,
+              "w": 336,
+              "h": 164
+            }
+          },
+          {
+            "item": "viz_019",
+            "type": "block",
+            "position": {
+              "x": 1086,
+              "y": 158,
+              "w": 324,
+              "h": 152
+            }
+          },
+          {
+            "item": "bg_021",
+            "type": "block",
+            "position": {
+              "x": 24,
+              "y": 332,
+              "w": 904,
+              "h": 330
+            }
+          },
+          {
+            "item": "viz_022",
+            "type": "block",
+            "position": {
+              "x": 30,
+              "y": 338,
+              "w": 892,
+              "h": 318
+            }
+          },
+          {
+            "item": "bg_024",
+            "type": "block",
+            "position": {
+              "x": 944,
+              "y": 332,
+              "w": 472,
+              "h": 330
+            }
+          },
+          {
+            "item": "viz_025",
+            "type": "block",
+            "position": {
+              "x": 950,
+              "y": 338,
+              "w": 460,
+              "h": 318
+            }
+          },
+          {
+            "item": "bg_027",
+            "type": "block",
+            "position": {
+              "x": 24,
+              "y": 678,
+              "w": 904,
+              "h": 300
+            }
+          },
+          {
+            "item": "viz_028",
+            "type": "block",
+            "position": {
+              "x": 30,
+              "y": 684,
+              "w": 892,
+              "h": 288
+            }
+          },
+          {
+            "item": "bg_030",
+            "type": "block",
+            "position": {
+              "x": 944,
+              "y": 678,
+              "w": 472,
+              "h": 300
+            }
+          },
+          {
+            "item": "viz_031",
+            "type": "block",
+            "position": {
+              "x": 950,
+              "y": 684,
+              "w": 460,
+              "h": 288
+            }
+          },
+          {
+            "item": "bg_033",
+            "type": "block",
+            "position": {
+              "x": 24,
+              "y": 994,
+              "w": 1392,
+              "h": 104
+            }
+          },
+          {
+            "item": "md_034",
+            "type": "block",
+            "position": {
+              "x": 44,
+              "y": 1010,
+              "w": 700,
+              "h": 22
+            }
+          },
+          {
+            "item": "bg_035",
+            "type": "block",
+            "position": {
+              "x": 44,
+              "y": 1044,
+              "w": 270,
+              "h": 34
+            }
+          },
+          {
+            "item": "md_036",
+            "type": "block",
+            "position": {
+              "x": 60,
+              "y": 1051,
+              "w": 252,
+              "h": 22
+            }
+          },
+          {
+            "item": "bg_037",
+            "type": "block",
+            "position": {
+              "x": 324,
+              "y": 1044,
+              "w": 219,
+              "h": 34
+            }
+          },
+          {
+            "item": "md_038",
+            "type": "block",
+            "position": {
+              "x": 340,
+              "y": 1051,
+              "w": 201,
+              "h": 22
+            }
+          },
+          {
+            "item": "bg_039",
+            "type": "block",
+            "position": {
+              "x": 553,
+              "y": 1044,
+              "w": 307,
+              "h": 34
+            }
+          },
+          {
+            "item": "md_040",
+            "type": "block",
+            "position": {
+              "x": 569,
+              "y": 1051,
+              "w": 289,
+              "h": 22
+            }
+          },
+          {
+            "item": "bg_041",
+            "type": "block",
+            "position": {
+              "x": 870,
+              "y": 1044,
+              "w": 211,
+              "h": 34
+            }
+          },
+          {
+            "item": "md_042",
+            "type": "block",
+            "position": {
+              "x": 886,
+              "y": 1051,
+              "w": 193,
+              "h": 22
+            }
+          },
+          {
+            "item": "bg_043",
+            "type": "block",
+            "position": {
+              "x": 1091,
+              "y": 1044,
+              "w": 233,
+              "h": 34
+            }
+          },
+          {
+            "item": "md_044",
+            "type": "block",
+            "position": {
+              "x": 1107,
+              "y": 1051,
+              "w": 215,
+              "h": 22
+            }
+          }
+        ]
+      }
+    }
+  }
+}
+  ]]></definition>
+  <meta type="hiddenElements"><![CDATA[
+{"hideEdit": false, "hideOpenInSearch": false, "hideExport": false}
+  ]]></meta>
+</dashboard>

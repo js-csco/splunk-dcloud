@@ -1,127 +1,1011 @@
-<form version="1.1" theme="dark">
-  <label>6. VMware / NSX — Microsegmentation Drift</label>
-  <description>Tie every "it stopped working on the other side again" back to the firewall rule or port-group change that actually caused it.</description>
-
-  <fieldset submitButton="false" autoRun="true">
-    <input type="time" token="tr">
-      <label>Time range</label>
-      <default><earliest>-24h</earliest><latest>now</latest></default>
-    </input>
-  </fieldset>
-
-  <row>
-    <panel>
-      <html>
-        <p style="margin:0;color:#8b98a5;font-style:italic;">"…ein kleiner Klick und es 'tut auf der anderen Seite wieder nichts', dann hat der Lieferant wieder ein Port gewechselt."
-        <span style="color:#cdd9e5;font-style:normal;"> — every change breaks something, with no link back to what caused it.</span></p>
-      </html>
-    </panel>
-  </row>
-
-  <row>
-    <panel>
-      <title>DFW / port-group changes (7 days)</title>
-      <single>
-        <search><query>| makeresults | eval v=12</query></search>
-        <option name="drilldown">none</option>
-      </single>
-    </panel>
-    <panel>
-      <title>Changes that caused an outage</title>
-      <single>
-        <search><query>| makeresults | eval v=5</query></search>
-        <option name="drilldown">none</option>
-        <option name="colorBy">value</option>
-        <option name="rangeColors">["0x53a051","0xd93f3c"]</option>
-        <option name="rangeValues">[1]</option>
-      </single>
-    </panel>
-    <panel>
-      <title>Change success rate (no outage)</title>
-      <chart>
-        <search><query>| makeresults | eval v=58</query></search>
-        <option name="charting.chart">radialGauge</option>
-        <option name="charting.chart.rangeValues">[0,50,80,100]</option>
-        <option name="drilldown">none</option>
-      </chart>
-    </panel>
-  </row>
-
-  <row>
-    <panel>
-      <title>App connectivity around the rule change</title>
-      <chart>
-        <search>
-          <query>| makeresults count=24
-| streamstats count as i
-| eval Hour=strftime(relative_time(now(), "-".(24-i)."h"), "%H:00")
-| eval "App -&gt; DB reachable"=if(i&gt;=12 AND i&lt;=13, 0, 1)
-| table Hour "App -&gt; DB reachable"</query>
-          <earliest>$tr.earliest$</earliest>
-          <latest>$tr.latest$</latest>
-        </search>
-        <option name="charting.chart">line</option>
-        <option name="charting.chart.nullValueMode">connect</option>
-        <option name="charting.axisY.maximumNumber">1</option>
-        <option name="charting.axisY.minimumNumber">0</option>
-        <option name="charting.legend.placement">bottom</option>
-        <option name="drilldown">none</option>
-      </chart>
-    </panel>
-    <panel>
-      <title>Changes by team (7 days)</title>
-      <chart>
-        <search>
-          <query>| makeresults count=3
-| streamstats count as i
-| eval Category=case(i=1,"vendor.integrations",i=2,"network.admin",i=3,"app.team")
-| eval Count=case(i=1,7,i=2,2,i=3,3)
-| table Category Count</query>
-          <earliest>$tr.earliest$</earliest>
-          <latest>$tr.latest$</latest>
-        </search>
-        <option name="charting.chart">pie</option>
-        <option name="charting.legend.placement">right</option>
-        <option name="drilldown">none</option>
-      </chart>
-    </panel>
-  </row>
-
-  <row>
-    <panel>
-      <title>Example: rule change immediately followed by an app outage</title>
-      <table>
-        <search>
-          <query>| makeresults count=4
-| streamstats count as i
-| eval Time=strftime(relative_time(now(), "-".(240-i*20)."m"), "%H:%M")
-| eval Source=case(i=1,"NSX Manager (DFW)",i=2,"App probe",i=3,"NSX Manager (DFW)",i=4,"App probe")
-| eval Event=case(
-    i=1,"Rule 'Allow-App-to-DB-5432' modified (source range narrowed)",
-    i=2,"webapp -&gt; db:5432 probe FAILED",
-    i=3,"Rule reverted by network.admin",
-    i=4,"webapp -&gt; db:5432 probe OK")
-| table Time Source Event
-| sort Time</query>
-          <earliest>$tr.earliest$</earliest>
-          <latest>$tr.latest$</latest>
-        </search>
-        <option name="drilldown">none</option>
-      </table>
-    </panel>
-  </row>
-
-  <row>
-    <panel>
-      <title>Data sources needed</title>
-      <html>
-        <div style="display:flex;flex-wrap:wrap;gap:6px;">
-          <span style="background:#1b2430;color:#cdd9e5;padding:4px 10px;border-radius:12px;font-size:12px;border:1px solid #2b3a4a;">NSX Manager (DFW events)</span>
-          <span style="background:#1b2430;color:#cdd9e5;padding:4px 10px;border-radius:12px;font-size:12px;border:1px solid #2b3a4a;">vCenter events</span>
-          <span style="background:#1b2430;color:#cdd9e5;padding:4px 10px;border-radius:12px;font-size:12px;border:1px solid #2b3a4a;">Change management / CMDB</span>
-          <span style="background:#1b2430;color:#cdd9e5;padding:4px 10px;border-radius:12px;font-size:12px;border:1px solid #2b3a4a;">App connectivity probes</span>
-        </div>
-      </html>
-    </panel>
-  </row>
-</form>
+<dashboard version="2" theme="dark">
+  <label>6 · Microsegmentation Change Impact</label>
+  <description>Tie every connectivity break in VMware NSX back to the rule or port change that caused it.</description>
+  <definition><![CDATA[
+{
+  "title": "6 · Microsegmentation Change Impact",
+  "description": "Tie every connectivity break in VMware NSX back to the rule or port change that caused it.",
+  "inputs": {},
+  "defaults": {},
+  "visualizations": {
+    "bg_001": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#161B22",
+        "strokeColor": "#262C36",
+        "strokeWidth": 1,
+        "rx": 12
+      }
+    },
+    "bg_002": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#16A3B0",
+        "strokeColor": "#16A3B0",
+        "strokeWidth": 1,
+        "rx": 3
+      }
+    },
+    "md_003": {
+      "type": "splunk.markdown",
+      "options": {
+        "markdown": "USE CASE 6 OF 9  ·  SPITAL AARWALD  ·  SAMPLE DATA",
+        "fontColor": "#16A3B0",
+        "fontSize": "custom",
+        "customFontSize": 12
+      }
+    },
+    "md_004": {
+      "type": "splunk.markdown",
+      "options": {
+        "markdown": "# Microsegmentation Change Impact — VMware NSX",
+        "fontColor": "#E6EDF3"
+      }
+    },
+    "md_005": {
+      "type": "splunk.markdown",
+      "options": {
+        "markdown": "A small rule or port change breaks an app on the other side. Splunk links each break to its change.",
+        "fontColor": "#9AA4B2",
+        "fontSize": "custom",
+        "customFontSize": 15
+      }
+    },
+    "bg_006": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#11161D",
+        "strokeColor": "#262C36",
+        "strokeWidth": 1,
+        "rx": 8
+      }
+    },
+    "md_007": {
+      "type": "splunk.markdown",
+      "options": {
+        "markdown": "WHAT WE HEARD",
+        "fontColor": "#6E7681",
+        "fontSize": "custom",
+        "customFontSize": 11
+      }
+    },
+    "md_008": {
+      "type": "splunk.markdown",
+      "options": {
+        "markdown": "*“Ein kleiner Klick und es tut auf der anderen Seite wieder nichts — dann hat der Lieferant wieder einen Port gewechselt.”*",
+        "fontColor": "#9AA4B2",
+        "fontSize": "custom",
+        "customFontSize": 13
+      }
+    },
+    "bg_009": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#161B22",
+        "strokeColor": "#262C36",
+        "strokeWidth": 1,
+        "rx": 12
+      }
+    },
+    "viz_010": {
+      "type": "splunk.singlevalue",
+      "options": {
+        "backgroundColor": "#161B22",
+        "majorColor": "#E6EDF3",
+        "numberPrecision": 0,
+        "shouldUseThousandSeparators": true,
+        "majorFontSize": 42,
+        "trendFontSize": 15,
+        "trendDisplay": "absolute",
+        "sparklineDisplay": "below",
+        "showSparklineAreaGraph": true,
+        "sparklineStrokeColor": "#16A3B0",
+        "sparklineAreaColor": "#16A3B0",
+        "underLabel": "rolling 7 days · rules · groups",
+        "underLabelColor": "#9AA4B2",
+        "underLabelFontSize": 13
+      },
+      "dataSources": {
+        "primary": "ds_011"
+      },
+      "title": "DFW rule changes (7 days)"
+    },
+    "bg_012": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#161B22",
+        "strokeColor": "#262C36",
+        "strokeWidth": 1,
+        "rx": 12
+      }
+    },
+    "viz_013": {
+      "type": "splunk.singlevalue",
+      "options": {
+        "backgroundColor": "#161B22",
+        "majorColor": "> majorValue | rangeValue(majorColorConfig)",
+        "numberPrecision": 0,
+        "shouldUseThousandSeparators": true,
+        "majorFontSize": 42,
+        "trendFontSize": 15,
+        "trendDisplay": "absolute",
+        "sparklineDisplay": "below",
+        "showSparklineAreaGraph": true,
+        "sparklineStrokeColor": "#16A3B0",
+        "sparklineAreaColor": "#16A3B0",
+        "underLabel": "per week",
+        "underLabelColor": "#9AA4B2",
+        "underLabelFontSize": 13,
+        "trendColor": "> trendValue | rangeValue(trendColorConfig)"
+      },
+      "dataSources": {
+        "primary": "ds_014"
+      },
+      "title": "Changes followed by an outage",
+      "context": {
+        "trendColorConfig": [
+          {
+            "to": -0.0001,
+            "value": "#0CA30C"
+          },
+          {
+            "from": -0.0001,
+            "to": 0.0001,
+            "value": "#9AA4B2"
+          },
+          {
+            "from": 0.0001,
+            "value": "#D03B3B"
+          }
+        ],
+        "majorColorConfig": [
+          {
+            "to": 1,
+            "value": "#0CA30C"
+          },
+          {
+            "from": 1,
+            "value": "#FAB219"
+          }
+        ]
+      }
+    },
+    "bg_015": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#161B22",
+        "strokeColor": "#262C36",
+        "strokeWidth": 1,
+        "rx": 12
+      }
+    },
+    "viz_016": {
+      "type": "splunk.singlevalue",
+      "options": {
+        "backgroundColor": "#161B22",
+        "majorColor": "#E6EDF3",
+        "numberPrecision": 0,
+        "shouldUseThousandSeparators": true,
+        "majorFontSize": 42,
+        "trendFontSize": 15,
+        "trendDisplay": "absolute",
+        "sparklineDisplay": "below",
+        "showSparklineAreaGraph": true,
+        "sparklineStrokeColor": "#16A3B0",
+        "sparklineAreaColor": "#16A3B0",
+        "underLabel": "per week · mostly external vendors",
+        "underLabelColor": "#9AA4B2",
+        "underLabelFontSize": 13,
+        "trendColor": "> trendValue | rangeValue(trendColorConfig)"
+      },
+      "dataSources": {
+        "primary": "ds_017"
+      },
+      "title": "Changes without a ticket",
+      "context": {
+        "trendColorConfig": [
+          {
+            "to": -0.0001,
+            "value": "#0CA30C"
+          },
+          {
+            "from": -0.0001,
+            "to": 0.0001,
+            "value": "#9AA4B2"
+          },
+          {
+            "from": 0.0001,
+            "value": "#D03B3B"
+          }
+        ]
+      }
+    },
+    "bg_018": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#161B22",
+        "strokeColor": "#262C36",
+        "strokeWidth": 1,
+        "rx": 12
+      }
+    },
+    "viz_019": {
+      "type": "splunk.singlevalue",
+      "options": {
+        "backgroundColor": "#161B22",
+        "majorColor": "#E6EDF3",
+        "numberPrecision": 0,
+        "shouldUseThousandSeparators": true,
+        "majorFontSize": 42,
+        "trendFontSize": 15,
+        "trendDisplay": "off",
+        "sparklineDisplay": "below",
+        "showSparklineAreaGraph": true,
+        "sparklineStrokeColor": "#16A3B0",
+        "sparklineAreaColor": "#16A3B0",
+        "unit": " min",
+        "unitPosition": "after",
+        "underLabel": "was hours of guessing",
+        "underLabelColor": "#9AA4B2",
+        "underLabelFontSize": 13
+      },
+      "dataSources": {
+        "primary": "ds_020"
+      },
+      "title": "Time to find the causing change"
+    },
+    "bg_021": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#161B22",
+        "strokeColor": "#262C36",
+        "strokeWidth": 1,
+        "rx": 12
+      }
+    },
+    "viz_022": {
+      "type": "splunk.area",
+      "options": {
+        "backgroundColor": "#161B22",
+        "legendDisplay": "off",
+        "xAxisTitleVisibility": "hide",
+        "nullValueDisplay": "connect",
+        "lineWidth": 2,
+        "seriesColors": [
+          "#D95926"
+        ],
+        "yAxisTitleVisibility": "hide"
+      },
+      "dataSources": {
+        "primary": "ds_023"
+      },
+      "title": "Blocked connections per 5 min — LIS app tier → LIS database (6h)"
+    },
+    "bg_024": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#161B22",
+        "strokeColor": "#262C36",
+        "strokeWidth": 1,
+        "rx": 12
+      }
+    },
+    "viz_025": {
+      "type": "splunk.pie",
+      "options": {
+        "backgroundColor": "#161B22",
+        "showDonutHole": true,
+        "labelDisplay": "valuesAndPercentage",
+        "legendDisplay": "off",
+        "seriesColors": [
+          "#3987E5",
+          "#D95926",
+          "#199E70",
+          "#C98500",
+          "#D55181",
+          "#008300",
+          "#9085E9",
+          "#E66767"
+        ]
+      },
+      "dataSources": {
+        "primary": "ds_026"
+      },
+      "title": "Who changes NSX rules (30 days)"
+    },
+    "bg_027": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#161B22",
+        "strokeColor": "#262C36",
+        "strokeWidth": 1,
+        "rx": 12
+      }
+    },
+    "viz_028": {
+      "type": "splunk.table",
+      "options": {
+        "backgroundColor": "#161B22",
+        "headerVisibility": "fixed",
+        "fontSize": "small",
+        "columnFormat": {
+          "Impact": {
+            "rowBackgroundColors": "> table | seriesByName(\"Impact\") | matchValue(c0Bg)",
+            "rowColors": "> table | seriesByName(\"Impact\") | matchValue(c0Fg)"
+          },
+          "Ticket": {
+            "rowBackgroundColors": "> table | seriesByName(\"Ticket\") | matchValue(c2Bg)",
+            "rowColors": "> table | seriesByName(\"Ticket\") | matchValue(c2Fg)"
+          }
+        }
+      },
+      "dataSources": {
+        "primary": "ds_029"
+      },
+      "title": "Change log — with the impact that followed",
+      "context": {
+        "c0Bg": [
+          {
+            "match": "Outage 57 min",
+            "value": "#3F1D20"
+          },
+          {
+            "match": "Outage 12 min",
+            "value": "#3F1D20"
+          },
+          {
+            "match": "Restored",
+            "value": "#12301B"
+          },
+          {
+            "match": "None",
+            "value": "#1F242C"
+          }
+        ],
+        "c0Fg": [
+          {
+            "match": "Outage 57 min",
+            "value": "#FF8A80"
+          },
+          {
+            "match": "Outage 12 min",
+            "value": "#FF8A80"
+          },
+          {
+            "match": "Restored",
+            "value": "#56D364"
+          },
+          {
+            "match": "None",
+            "value": "#9AA4B2"
+          }
+        ],
+        "c2Bg": [
+          {
+            "match": "none",
+            "value": "#3A2E12"
+          }
+        ],
+        "c2Fg": [
+          {
+            "match": "none",
+            "value": "#E3B341"
+          }
+        ]
+      }
+    },
+    "bg_030": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#161B22",
+        "strokeColor": "#262C36",
+        "strokeWidth": 1,
+        "rx": 12
+      }
+    },
+    "viz_031": {
+      "type": "splunk.bar",
+      "options": {
+        "backgroundColor": "#161B22",
+        "legendDisplay": "off",
+        "xAxisTitleVisibility": "hide",
+        "yAxisTitleVisibility": "hide",
+        "seriesColors": [
+          "#D95926"
+        ],
+        "dataValuesDisplay": "all"
+      },
+      "dataSources": {
+        "primary": "ds_032"
+      },
+      "title": "Top blocked destinations after changes (24h)"
+    },
+    "bg_033": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#161B22",
+        "strokeColor": "#262C36",
+        "strokeWidth": 1,
+        "rx": 12
+      }
+    },
+    "md_034": {
+      "type": "splunk.markdown",
+      "options": {
+        "markdown": "DATA SOURCES NEEDED IN SPLUNK",
+        "fontColor": "#16A3B0",
+        "fontSize": "custom",
+        "customFontSize": 12
+      }
+    },
+    "bg_035": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#1C2530",
+        "strokeColor": "#2D3A48",
+        "strokeWidth": 1,
+        "rx": 17
+      }
+    },
+    "md_036": {
+      "type": "splunk.markdown",
+      "options": {
+        "markdown": "VMware NSX Manager (DFW)",
+        "fontColor": "#E6EDF3",
+        "fontSize": "custom",
+        "customFontSize": 13
+      }
+    },
+    "bg_037": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#1C2530",
+        "strokeColor": "#2D3A48",
+        "strokeWidth": 1,
+        "rx": 17
+      }
+    },
+    "md_038": {
+      "type": "splunk.markdown",
+      "options": {
+        "markdown": "VMware vCenter events",
+        "fontColor": "#E6EDF3",
+        "fontSize": "custom",
+        "customFontSize": 13
+      }
+    },
+    "bg_039": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#1C2530",
+        "strokeColor": "#2D3A48",
+        "strokeWidth": 1,
+        "rx": 17
+      }
+    },
+    "md_040": {
+      "type": "splunk.markdown",
+      "options": {
+        "markdown": "Application logs & health checks",
+        "fontColor": "#E6EDF3",
+        "fontSize": "custom",
+        "customFontSize": 13
+      }
+    },
+    "bg_041": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#1C2530",
+        "strokeColor": "#2D3A48",
+        "strokeWidth": 1,
+        "rx": 17
+      }
+    },
+    "md_042": {
+      "type": "splunk.markdown",
+      "options": {
+        "markdown": "CMDB / asset inventory",
+        "fontColor": "#E6EDF3",
+        "fontSize": "custom",
+        "customFontSize": 13
+      }
+    },
+    "bg_043": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#1C2530",
+        "strokeColor": "#2D3A48",
+        "strokeWidth": 1,
+        "rx": 17
+      }
+    },
+    "md_044": {
+      "type": "splunk.markdown",
+      "options": {
+        "markdown": "ServiceNow tickets & changes",
+        "fontColor": "#E6EDF3",
+        "fontSize": "custom",
+        "customFontSize": 13
+      }
+    }
+  },
+  "dataSources": {
+    "ds_011": {
+      "type": "ds.search",
+      "name": "ds_011",
+      "options": {
+        "query": "| makeresults format=csv data=\"ago,n\n13,19\n12,21\n11,20\n10,24\n9,22\n8,18\n7,17\n6,19\n5,23\n4,26\n3,25\n2,22\n1,24\n0,23\"\n| eval _time=relative_time(now(), \"@d\") - ago*86400\n| sort 0 _time\n| table _time n",
+        "queryParameters": {
+          "earliest": "-15m",
+          "latest": "now"
+        }
+      }
+    },
+    "ds_014": {
+      "type": "ds.search",
+      "name": "ds_014",
+      "options": {
+        "query": "| makeresults format=csv data=\"ago,n\n11,5\n10,6\n9,4\n8,7\n7,5\n6,6\n5,4\n4,3\n3,3\n2,2\n1,3\n0,2\"\n| eval _time=relative_time(now(), \"@d\") - ago*604800\n| sort 0 _time\n| table _time n",
+        "queryParameters": {
+          "earliest": "-15m",
+          "latest": "now"
+        }
+      }
+    },
+    "ds_017": {
+      "type": "ds.search",
+      "name": "ds_017",
+      "options": {
+        "query": "| makeresults format=csv data=\"ago,n\n11,9\n10,8\n9,10\n8,7\n7,8\n6,6\n5,5\n4,4\n3,4\n2,3\n1,3\n0,2\"\n| eval _time=relative_time(now(), \"@d\") - ago*604800\n| sort 0 _time\n| table _time n",
+        "queryParameters": {
+          "earliest": "-15m",
+          "latest": "now"
+        }
+      }
+    },
+    "ds_020": {
+      "type": "ds.search",
+      "name": "ds_020",
+      "options": {
+        "query": "| makeresults format=csv data=\"ago,m\n11,180\n10,150\n9,210\n8,160\n7,170\n6,14\n5,9\n4,7\n3,6\n2,6\n1,5\n0,6\"\n| eval _time=relative_time(now(), \"@d\") - ago*604800\n| sort 0 _time\n| table _time m",
+        "queryParameters": {
+          "earliest": "-15m",
+          "latest": "now"
+        }
+      }
+    },
+    "ds_023": {
+      "type": "ds.search",
+      "name": "ds_023",
+      "options": {
+        "query": "| makeresults format=csv data=\"ago,Blocked connections\n71,7\n70,3\n69,6\n68,5\n67,3\n66,3\n65,4\n64,7\n63,6\n62,5\n61,5\n60,3\n59,5\n58,6\n57,4\n56,6\n55,7\n54,7\n53,3\n52,4\n51,7\n50,7\n49,5\n48,7\n47,3\n46,6\n45,5\n44,3\n43,5\n42,6\n41,5\n40,6\n39,3\n38,4\n37,5\n36,3\n35,3\n34,7\n33,4\n32,5\n31,6\n30,4\n29,415\n28,423\n27,414\n26,353\n25,396\n24,381\n23,427\n22,405\n21,388\n20,395\n19,425\n18,3\n17,3\n16,7\n15,7\n14,4\n13,3\n12,7\n11,5\n10,5\n9,4\n8,6\n7,6\n6,4\n5,4\n4,7\n3,4\n2,7\n1,3\n0,4\"\n| eval _time=relative_time(now(), \"@m\") - ago*300\n| sort 0 _time\n| table _time \"Blocked connections\"",
+        "queryParameters": {
+          "earliest": "-15m",
+          "latest": "now"
+        }
+      }
+    },
+    "ds_026": {
+      "type": "ds.search",
+      "name": "ds_026",
+      "options": {
+        "query": "| makeresults format=csv data=\"Changed by,Changes\nExternal vendors,41\nNetwork team,27\nApplication teams,18\nAutomation (vRA),22\"\n| table \"Changed by\" Changes",
+        "queryParameters": {
+          "earliest": "-15m",
+          "latest": "now"
+        }
+      }
+    },
+    "ds_029": {
+      "type": "ds.search",
+      "name": "ds_029",
+      "options": {
+        "query": "| makeresults format=csv data=\"When,Changed by,Object,Change,Ticket,Impact\n95,net-admin j.keller,Rule LIS-App-to-DB,Reverted to 1433,CHG0041877,Restored\n152,vendor-lis (ext.),Rule LIS-App-to-DB,Port 1433 → 14330,none,Outage 57 min\n410,app-pacs m.brunner,Group SG-PACS-Web,Added VM pacs-web-03,CHG0041862,None\n760,automation (vRA),Segment Seg-Lab-12,New segment + rules,CHG0041850,None\n1930,vendor-lis (ext.),Rule LIS-Interfaces,Source range narrowed,none,Outage 12 min\n2880,net-admin s.frei,Service HL7-MLLP,Added port 2575,CHG0041811,None\"\n| eval \"When\"=strftime(relative_time(now(), \"@m\") - 'When'*60, \"%a %H:%M\")\n| table When \"Changed by\" Object Change Ticket Impact",
+        "queryParameters": {
+          "earliest": "-15m",
+          "latest": "now"
+        }
+      }
+    },
+    "ds_032": {
+      "type": "ds.search",
+      "name": "ds_032",
+      "options": {
+        "query": "| makeresults format=csv data=\"Destination,Blocked\nLIS DB :14330,4212\nHL7 engine :2575,388\nPACS DICOM :104,121\nAD (SMB) :445,64\"\n| table Destination Blocked",
+        "queryParameters": {
+          "earliest": "-15m",
+          "latest": "now"
+        }
+      }
+    }
+  },
+  "layout": {
+    "globalInputs": [],
+    "tabs": {
+      "items": [
+        {
+          "layoutId": "layout_1",
+          "label": "Dashboard"
+        }
+      ]
+    },
+    "layoutDefinitions": {
+      "layout_1": {
+        "type": "absolute",
+        "options": {
+          "width": 1440,
+          "height": 1122,
+          "display": "auto-scale",
+          "backgroundColor": "#0E1116"
+        },
+        "structure": [
+          {
+            "item": "bg_001",
+            "type": "block",
+            "position": {
+              "x": 24,
+              "y": 20,
+              "w": 1392,
+              "h": 116
+            }
+          },
+          {
+            "item": "bg_002",
+            "type": "block",
+            "position": {
+              "x": 24,
+              "y": 20,
+              "w": 6,
+              "h": 116
+            }
+          },
+          {
+            "item": "md_003",
+            "type": "block",
+            "position": {
+              "x": 52,
+              "y": 34,
+              "w": 820,
+              "h": 22
+            }
+          },
+          {
+            "item": "md_004",
+            "type": "block",
+            "position": {
+              "x": 52,
+              "y": 56,
+              "w": 880,
+              "h": 44
+            }
+          },
+          {
+            "item": "md_005",
+            "type": "block",
+            "position": {
+              "x": 52,
+              "y": 100,
+              "w": 880,
+              "h": 28
+            }
+          },
+          {
+            "item": "bg_006",
+            "type": "block",
+            "position": {
+              "x": 928,
+              "y": 36,
+              "w": 464,
+              "h": 84
+            }
+          },
+          {
+            "item": "md_007",
+            "type": "block",
+            "position": {
+              "x": 940,
+              "y": 42,
+              "w": 444,
+              "h": 20
+            }
+          },
+          {
+            "item": "md_008",
+            "type": "block",
+            "position": {
+              "x": 940,
+              "y": 62,
+              "w": 444,
+              "h": 56
+            }
+          },
+          {
+            "item": "bg_009",
+            "type": "block",
+            "position": {
+              "x": 24,
+              "y": 152,
+              "w": 336,
+              "h": 164
+            }
+          },
+          {
+            "item": "viz_010",
+            "type": "block",
+            "position": {
+              "x": 30,
+              "y": 158,
+              "w": 324,
+              "h": 152
+            }
+          },
+          {
+            "item": "bg_012",
+            "type": "block",
+            "position": {
+              "x": 376,
+              "y": 152,
+              "w": 336,
+              "h": 164
+            }
+          },
+          {
+            "item": "viz_013",
+            "type": "block",
+            "position": {
+              "x": 382,
+              "y": 158,
+              "w": 324,
+              "h": 152
+            }
+          },
+          {
+            "item": "bg_015",
+            "type": "block",
+            "position": {
+              "x": 728,
+              "y": 152,
+              "w": 336,
+              "h": 164
+            }
+          },
+          {
+            "item": "viz_016",
+            "type": "block",
+            "position": {
+              "x": 734,
+              "y": 158,
+              "w": 324,
+              "h": 152
+            }
+          },
+          {
+            "item": "bg_018",
+            "type": "block",
+            "position": {
+              "x": 1080,
+              "y": 152,
+              "w": 336,
+              "h": 164
+            }
+          },
+          {
+            "item": "viz_019",
+            "type": "block",
+            "position": {
+              "x": 1086,
+              "y": 158,
+              "w": 324,
+              "h": 152
+            }
+          },
+          {
+            "item": "bg_021",
+            "type": "block",
+            "position": {
+              "x": 24,
+              "y": 332,
+              "w": 904,
+              "h": 330
+            }
+          },
+          {
+            "item": "viz_022",
+            "type": "block",
+            "position": {
+              "x": 30,
+              "y": 338,
+              "w": 892,
+              "h": 318
+            }
+          },
+          {
+            "item": "bg_024",
+            "type": "block",
+            "position": {
+              "x": 944,
+              "y": 332,
+              "w": 472,
+              "h": 330
+            }
+          },
+          {
+            "item": "viz_025",
+            "type": "block",
+            "position": {
+              "x": 950,
+              "y": 338,
+              "w": 460,
+              "h": 318
+            }
+          },
+          {
+            "item": "bg_027",
+            "type": "block",
+            "position": {
+              "x": 24,
+              "y": 678,
+              "w": 904,
+              "h": 300
+            }
+          },
+          {
+            "item": "viz_028",
+            "type": "block",
+            "position": {
+              "x": 30,
+              "y": 684,
+              "w": 892,
+              "h": 288
+            }
+          },
+          {
+            "item": "bg_030",
+            "type": "block",
+            "position": {
+              "x": 944,
+              "y": 678,
+              "w": 472,
+              "h": 300
+            }
+          },
+          {
+            "item": "viz_031",
+            "type": "block",
+            "position": {
+              "x": 950,
+              "y": 684,
+              "w": 460,
+              "h": 288
+            }
+          },
+          {
+            "item": "bg_033",
+            "type": "block",
+            "position": {
+              "x": 24,
+              "y": 994,
+              "w": 1392,
+              "h": 104
+            }
+          },
+          {
+            "item": "md_034",
+            "type": "block",
+            "position": {
+              "x": 44,
+              "y": 1010,
+              "w": 700,
+              "h": 22
+            }
+          },
+          {
+            "item": "bg_035",
+            "type": "block",
+            "position": {
+              "x": 44,
+              "y": 1044,
+              "w": 211,
+              "h": 34
+            }
+          },
+          {
+            "item": "md_036",
+            "type": "block",
+            "position": {
+              "x": 60,
+              "y": 1051,
+              "w": 193,
+              "h": 22
+            }
+          },
+          {
+            "item": "bg_037",
+            "type": "block",
+            "position": {
+              "x": 265,
+              "y": 1044,
+              "w": 189,
+              "h": 34
+            }
+          },
+          {
+            "item": "md_038",
+            "type": "block",
+            "position": {
+              "x": 281,
+              "y": 1051,
+              "w": 171,
+              "h": 22
+            }
+          },
+          {
+            "item": "bg_039",
+            "type": "block",
+            "position": {
+              "x": 464,
+              "y": 1044,
+              "w": 270,
+              "h": 34
+            }
+          },
+          {
+            "item": "md_040",
+            "type": "block",
+            "position": {
+              "x": 480,
+              "y": 1051,
+              "w": 252,
+              "h": 22
+            }
+          },
+          {
+            "item": "bg_041",
+            "type": "block",
+            "position": {
+              "x": 744,
+              "y": 1044,
+              "w": 196,
+              "h": 34
+            }
+          },
+          {
+            "item": "md_042",
+            "type": "block",
+            "position": {
+              "x": 760,
+              "y": 1051,
+              "w": 178,
+              "h": 22
+            }
+          },
+          {
+            "item": "bg_043",
+            "type": "block",
+            "position": {
+              "x": 950,
+              "y": 1044,
+              "w": 241,
+              "h": 34
+            }
+          },
+          {
+            "item": "md_044",
+            "type": "block",
+            "position": {
+              "x": 966,
+              "y": 1051,
+              "w": 223,
+              "h": 22
+            }
+          }
+        ]
+      }
+    }
+  }
+}
+  ]]></definition>
+  <meta type="hiddenElements"><![CDATA[
+{"hideEdit": false, "hideOpenInSearch": false, "hideExport": false}
+  ]]></meta>
+</dashboard>

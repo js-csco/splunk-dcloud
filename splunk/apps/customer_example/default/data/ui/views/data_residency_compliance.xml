@@ -1,128 +1,1015 @@
-<form version="1.1" theme="dark">
-  <label>8. Swiss Data Residency &amp; Cloud Compliance</label>
-  <description>Prove, on every cloud egress, that "processed in Switzerland" actually held — instead of assuming it did.</description>
-
-  <fieldset submitButton="false" autoRun="true">
-    <input type="time" token="tr">
-      <label>Time range</label>
-      <default><earliest>-24h</earliest><latest>now</latest></default>
-    </input>
-  </fieldset>
-
-  <row>
-    <panel>
-      <html>
-        <p style="margin:0;color:#8b98a5;font-style:italic;">"Solange es in der Schweiz verarbeitet wird, darf es auch in die Cloud raus."
-        <span style="color:#cdd9e5;font-style:normal;"> — a policy today, not yet a monitored control.</span></p>
-      </html>
-    </panel>
-  </row>
-
-  <row>
-    <panel>
-      <title>Compliant (processed in CH first)</title>
-      <chart>
-        <search><query>| makeresults | eval v=99.7</query></search>
-        <option name="charting.chart">radialGauge</option>
-        <option name="charting.chart.rangeValues">[0,90,98,100]</option>
-        <option name="drilldown">none</option>
-      </chart>
-    </panel>
-    <panel>
-      <title>Egress events — last 24h</title>
-      <single>
-        <search><query>| makeresults | eval v=1842</query></search>
-        <option name="drilldown">none</option>
-      </single>
-    </panel>
-    <panel>
-      <title>Policy violations flagged</title>
-      <single>
-        <search><query>| makeresults | eval v=1</query></search>
-        <option name="drilldown">none</option>
-        <option name="colorBy">value</option>
-        <option name="rangeColors">["0x53a051","0xd93f3c"]</option>
-        <option name="rangeValues">[1]</option>
-      </single>
-    </panel>
-  </row>
-
-  <row>
-    <panel>
-      <title>Egress volume by processing region (24h)</title>
-      <chart>
-        <search>
-          <query>| makeresults count=24
-| streamstats count as i
-| eval Hour=strftime(relative_time(now(), "-".(24-i)."h"), "%H:00")
-| eval "Switzerland"=70+(i%10)
-| eval "Other region (flagged)"=if(i=15,4,0)
-| table Hour "Switzerland" "Other region (flagged)"</query>
-          <earliest>$tr.earliest$</earliest>
-          <latest>$tr.latest$</latest>
-        </search>
-        <option name="charting.chart">column</option>
-        <option name="charting.chart.stackMode">stacked</option>
-        <option name="charting.seriesColors">[0x53a051,0xd93f3c]</option>
-        <option name="charting.legend.placement">bottom</option>
-        <option name="drilldown">none</option>
-      </chart>
-    </panel>
-    <panel>
-      <title>Egress by destination region (24h)</title>
-      <chart>
-        <search>
-          <query>| makeresults count=2
-| streamstats count as i
-| eval Category=case(i=1,"Switzerland",i=2,"Other region (flagged)")
-| eval Count=case(i=1,1837,i=2,5)
-| table Category Count</query>
-          <earliest>$tr.earliest$</earliest>
-          <latest>$tr.latest$</latest>
-        </search>
-        <option name="charting.chart">pie</option>
-        <option name="charting.legend.placement">right</option>
-        <option name="drilldown">none</option>
-      </chart>
-    </panel>
-  </row>
-
-  <row>
-    <panel>
-      <title>Example: cloud egress events</title>
-      <table>
-        <search>
-          <query>| makeresults count=5
-| streamstats count as i
-| eval Time=strftime(relative_time(now(), "-".(300-i*30)."m"), "%H:%M")
-| eval Application=case(i=1,"Imaging-AI-Pipeline",i=2,"HR-Analytics",i=3,"Imaging-AI-Pipeline",i=4,"Backup-Sync",i=5,"Imaging-AI-Pipeline")
-| eval "Processed in"=case(i=1,"Switzerland",i=2,"Switzerland",i=3,"Switzerland",i=4,"Switzerland",i=5,"West Europe (Ireland)")
-| eval "Cloud destination"=case(i=1,"Azure Blob (CH-North)",i=2,"Azure Blob (CH-North)",i=3,"Azure Blob (CH-North)",i=4,"Azure Blob (CH-North)",i=5,"Azure Blob (West Europe)")
-| eval Status=if(i=5,"VIOLATION","OK")
-| table Time Application "Processed in" "Cloud destination" Status
-| sort Time</query>
-          <earliest>$tr.earliest$</earliest>
-          <latest>$tr.latest$</latest>
-        </search>
-        <option name="drilldown">none</option>
-        <format type="color" field="Status">
-          <colorPalette type="map">{"VIOLATION":#d93f3c,"OK":#53a051}</colorPalette>
-        </format>
-      </table>
-    </panel>
-  </row>
-
-  <row>
-    <panel>
-      <title>Data sources needed</title>
-      <html>
-        <div style="display:flex;flex-wrap:wrap;gap:6px;">
-          <span style="background:#1b2430;color:#cdd9e5;padding:4px 10px;border-radius:12px;font-size:12px;border:1px solid #2b3a4a;">Proxy / CASB logs</span>
-          <span style="background:#1b2430;color:#cdd9e5;padding:4px 10px;border-radius:12px;font-size:12px;border:1px solid #2b3a4a;">DLP / data classification tags</span>
-          <span style="background:#1b2430;color:#cdd9e5;padding:4px 10px;border-radius:12px;font-size:12px;border:1px solid #2b3a4a;">Cloud provider audit logs</span>
-          <span style="background:#1b2430;color:#cdd9e5;padding:4px 10px;border-radius:12px;font-size:12px;border:1px solid #2b3a4a;">Egress firewall / SASE logs</span>
-        </div>
-      </html>
-    </panel>
-  </row>
-</form>
+<dashboard version="2" theme="dark">
+  <label>8 · Swiss Data Residency</label>
+  <description>Prove that every cloud transfer was processed in Switzerland, and flag the ones that were not.</description>
+  <definition><![CDATA[
+{
+  "title": "8 · Swiss Data Residency",
+  "description": "Prove that every cloud transfer was processed in Switzerland, and flag the ones that were not.",
+  "inputs": {},
+  "defaults": {},
+  "visualizations": {
+    "bg_001": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#161B22",
+        "strokeColor": "#262C36",
+        "strokeWidth": 1,
+        "rx": 12
+      }
+    },
+    "bg_002": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#16A3B0",
+        "strokeColor": "#16A3B0",
+        "strokeWidth": 1,
+        "rx": 3
+      }
+    },
+    "md_003": {
+      "type": "splunk.markdown",
+      "options": {
+        "markdown": "USE CASE 8 OF 9  ·  SPITAL AARWALD  ·  SAMPLE DATA",
+        "fontColor": "#16A3B0",
+        "fontSize": "custom",
+        "customFontSize": 12
+      }
+    },
+    "md_004": {
+      "type": "splunk.markdown",
+      "options": {
+        "markdown": "# Swiss Data Residency — Cloud Compliance",
+        "fontColor": "#E6EDF3"
+      }
+    },
+    "md_005": {
+      "type": "splunk.markdown",
+      "options": {
+        "markdown": "Policy: cloud is fine if data is processed in Switzerland. Splunk proves it for every transfer.",
+        "fontColor": "#9AA4B2",
+        "fontSize": "custom",
+        "customFontSize": 15
+      }
+    },
+    "bg_006": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#11161D",
+        "strokeColor": "#262C36",
+        "strokeWidth": 1,
+        "rx": 8
+      }
+    },
+    "md_007": {
+      "type": "splunk.markdown",
+      "options": {
+        "markdown": "WHAT WE HEARD",
+        "fontColor": "#6E7681",
+        "fontSize": "custom",
+        "customFontSize": 11
+      }
+    },
+    "md_008": {
+      "type": "splunk.markdown",
+      "options": {
+        "markdown": "*“Solange es in der Schweiz verarbeitet wird, darf es auch in die Cloud raus.”*",
+        "fontColor": "#9AA4B2",
+        "fontSize": "custom",
+        "customFontSize": 13
+      }
+    },
+    "bg_009": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#161B22",
+        "strokeColor": "#262C36",
+        "strokeWidth": 1,
+        "rx": 12
+      }
+    },
+    "viz_010": {
+      "type": "splunk.singlevalue",
+      "options": {
+        "backgroundColor": "#161B22",
+        "majorColor": "#E6EDF3",
+        "numberPrecision": 0,
+        "shouldUseThousandSeparators": true,
+        "majorFontSize": 42,
+        "trendFontSize": 15,
+        "trendDisplay": "absolute",
+        "sparklineDisplay": "below",
+        "showSparklineAreaGraph": true,
+        "sparklineStrokeColor": "#16A3B0",
+        "sparklineAreaColor": "#16A3B0",
+        "underLabel": "M365 · Azure · AWS · SaaS",
+        "underLabelColor": "#9AA4B2",
+        "underLabelFontSize": 13
+      },
+      "dataSources": {
+        "primary": "ds_011"
+      },
+      "title": "Cloud transfers today"
+    },
+    "bg_012": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#161B22",
+        "strokeColor": "#262C36",
+        "strokeWidth": 1,
+        "rx": 12
+      }
+    },
+    "viz_013": {
+      "type": "splunk.singlevalue",
+      "options": {
+        "backgroundColor": "#161B22",
+        "majorColor": "> majorValue | rangeValue(majorColorConfig)",
+        "numberPrecision": 2,
+        "shouldUseThousandSeparators": true,
+        "majorFontSize": 42,
+        "trendFontSize": 15,
+        "trendDisplay": "absolute",
+        "sparklineDisplay": "below",
+        "showSparklineAreaGraph": true,
+        "sparklineStrokeColor": "#16A3B0",
+        "sparklineAreaColor": "#16A3B0",
+        "unit": "%",
+        "unitPosition": "after",
+        "underLabel": "of all transfers today",
+        "underLabelColor": "#9AA4B2",
+        "underLabelFontSize": 13,
+        "trendColor": "> trendValue | rangeValue(trendColorConfig)"
+      },
+      "dataSources": {
+        "primary": "ds_014"
+      },
+      "title": "Processed in Switzerland",
+      "context": {
+        "trendColorConfig": [
+          {
+            "to": -0.0001,
+            "value": "#D03B3B"
+          },
+          {
+            "from": -0.0001,
+            "to": 0.0001,
+            "value": "#9AA4B2"
+          },
+          {
+            "from": 0.0001,
+            "value": "#0CA30C"
+          }
+        ],
+        "majorColorConfig": [
+          {
+            "to": 99.5,
+            "value": "#D03B3B"
+          },
+          {
+            "from": 99.5,
+            "to": 99.9,
+            "value": "#FAB219"
+          },
+          {
+            "from": 99.9,
+            "value": "#0CA30C"
+          }
+        ]
+      }
+    },
+    "bg_015": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#161B22",
+        "strokeColor": "#262C36",
+        "strokeWidth": 1,
+        "rx": 12
+      }
+    },
+    "viz_016": {
+      "type": "splunk.singlevalue",
+      "options": {
+        "backgroundColor": "#161B22",
+        "majorColor": "#E6EDF3",
+        "numberPrecision": 0,
+        "shouldUseThousandSeparators": true,
+        "majorFontSize": 42,
+        "trendFontSize": 15,
+        "trendDisplay": "absolute",
+        "sparklineDisplay": "below",
+        "showSparklineAreaGraph": true,
+        "sparklineStrokeColor": "#16A3B0",
+        "sparklineAreaColor": "#16A3B0",
+        "underLabel": "patient · personnel · finance",
+        "underLabelColor": "#9AA4B2",
+        "underLabelFontSize": 13
+      },
+      "dataSources": {
+        "primary": "ds_017"
+      },
+      "title": "Sensitive data transfers today"
+    },
+    "bg_018": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#161B22",
+        "strokeColor": "#262C36",
+        "strokeWidth": 1,
+        "rx": 12
+      }
+    },
+    "viz_019": {
+      "type": "splunk.singlevalue",
+      "options": {
+        "backgroundColor": "#161B22",
+        "majorColor": "> majorValue | rangeValue(majorColorConfig)",
+        "numberPrecision": 0,
+        "shouldUseThousandSeparators": true,
+        "majorFontSize": 42,
+        "trendFontSize": 15,
+        "trendDisplay": "absolute",
+        "sparklineDisplay": "below",
+        "showSparklineAreaGraph": true,
+        "sparklineStrokeColor": "#16A3B0",
+        "sparklineAreaColor": "#16A3B0",
+        "underLabel": "rolling 7-day count",
+        "underLabelColor": "#9AA4B2",
+        "underLabelFontSize": 13,
+        "trendColor": "> trendValue | rangeValue(trendColorConfig)"
+      },
+      "dataSources": {
+        "primary": "ds_020"
+      },
+      "title": "Policy violations (7 days)",
+      "context": {
+        "trendColorConfig": [
+          {
+            "to": -0.0001,
+            "value": "#0CA30C"
+          },
+          {
+            "from": -0.0001,
+            "to": 0.0001,
+            "value": "#9AA4B2"
+          },
+          {
+            "from": 0.0001,
+            "value": "#D03B3B"
+          }
+        ],
+        "majorColorConfig": [
+          {
+            "to": 1,
+            "value": "#0CA30C"
+          },
+          {
+            "from": 1,
+            "value": "#D03B3B"
+          }
+        ]
+      }
+    },
+    "bg_021": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#161B22",
+        "strokeColor": "#262C36",
+        "strokeWidth": 1,
+        "rx": 12
+      }
+    },
+    "viz_022": {
+      "type": "splunk.column",
+      "options": {
+        "backgroundColor": "#161B22",
+        "legendDisplay": "bottom",
+        "xAxisTitleVisibility": "hide",
+        "seriesColors": [
+          "#3987E5",
+          "#199E70",
+          "#D95926",
+          "#D55181"
+        ],
+        "stackMode": "stacked",
+        "yAxisTitleVisibility": "hide"
+      },
+      "dataSources": {
+        "primary": "ds_023"
+      },
+      "title": "Cloud transfers per hour by processing region (24h)"
+    },
+    "bg_024": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#161B22",
+        "strokeColor": "#262C36",
+        "strokeWidth": 1,
+        "rx": 12
+      }
+    },
+    "viz_025": {
+      "type": "splunk.pie",
+      "options": {
+        "backgroundColor": "#161B22",
+        "showDonutHole": true,
+        "labelDisplay": "valuesAndPercentage",
+        "legendDisplay": "off",
+        "seriesColors": [
+          "#3987E5",
+          "#D95926",
+          "#199E70",
+          "#C98500",
+          "#D55181",
+          "#008300",
+          "#9085E9",
+          "#E66767"
+        ]
+      },
+      "dataSources": {
+        "primary": "ds_026"
+      },
+      "title": "Data volume by cloud service (24h, GB)"
+    },
+    "bg_027": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#161B22",
+        "strokeColor": "#262C36",
+        "strokeWidth": 1,
+        "rx": 12
+      }
+    },
+    "viz_028": {
+      "type": "splunk.table",
+      "options": {
+        "backgroundColor": "#161B22",
+        "headerVisibility": "fixed",
+        "fontSize": "small",
+        "columnFormat": {
+          "When": {
+            "width": 90
+          },
+          "Application": {
+            "width": 160
+          },
+          "Data class": {
+            "width": 120
+          },
+          "Destination": {
+            "width": 190
+          },
+          "Region": {
+            "width": 130
+          },
+          "Volume": {
+            "width": 75
+          },
+          "Status": {
+            "width": 95,
+            "rowBackgroundColors": "> table | seriesByName(\"Status\") | matchValue(c0Bg)",
+            "rowColors": "> table | seriesByName(\"Status\") | matchValue(c0Fg)"
+          }
+        }
+      },
+      "dataSources": {
+        "primary": "ds_029"
+      },
+      "title": "Transfers processed outside Switzerland (24h)",
+      "context": {
+        "c0Bg": [
+          {
+            "match": "Violation",
+            "value": "#3F1D20"
+          },
+          {
+            "match": "Exception",
+            "value": "#1F242C"
+          }
+        ],
+        "c0Fg": [
+          {
+            "match": "Violation",
+            "value": "#FF8A80"
+          },
+          {
+            "match": "Exception",
+            "value": "#9AA4B2"
+          }
+        ]
+      }
+    },
+    "bg_030": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#161B22",
+        "strokeColor": "#262C36",
+        "strokeWidth": 1,
+        "rx": 12
+      }
+    },
+    "viz_031": {
+      "type": "splunk.bar",
+      "options": {
+        "backgroundColor": "#161B22",
+        "legendDisplay": "off",
+        "xAxisTitleVisibility": "hide",
+        "yAxisTitleVisibility": "hide",
+        "seriesColors": [
+          "#3987E5"
+        ],
+        "dataValuesDisplay": "all"
+      },
+      "dataSources": {
+        "primary": "ds_032"
+      },
+      "title": "Sensitive data transfers by region (7 days)"
+    },
+    "bg_033": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#161B22",
+        "strokeColor": "#262C36",
+        "strokeWidth": 1,
+        "rx": 12
+      }
+    },
+    "md_034": {
+      "type": "splunk.markdown",
+      "options": {
+        "markdown": "DATA SOURCES NEEDED IN SPLUNK",
+        "fontColor": "#16A3B0",
+        "fontSize": "custom",
+        "customFontSize": 12
+      }
+    },
+    "bg_035": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#1C2530",
+        "strokeColor": "#2D3A48",
+        "strokeWidth": 1,
+        "rx": 17
+      }
+    },
+    "md_036": {
+      "type": "splunk.markdown",
+      "options": {
+        "markdown": "Firewall / proxy egress logs",
+        "fontColor": "#E6EDF3",
+        "fontSize": "custom",
+        "customFontSize": 13
+      }
+    },
+    "bg_037": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#1C2530",
+        "strokeColor": "#2D3A48",
+        "strokeWidth": 1,
+        "rx": 17
+      }
+    },
+    "md_038": {
+      "type": "splunk.markdown",
+      "options": {
+        "markdown": "CASB / secure web gateway",
+        "fontColor": "#E6EDF3",
+        "fontSize": "custom",
+        "customFontSize": 13
+      }
+    },
+    "bg_039": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#1C2530",
+        "strokeColor": "#2D3A48",
+        "strokeWidth": 1,
+        "rx": 17
+      }
+    },
+    "md_040": {
+      "type": "splunk.markdown",
+      "options": {
+        "markdown": "DLP / data classification",
+        "fontColor": "#E6EDF3",
+        "fontSize": "custom",
+        "customFontSize": 13
+      }
+    },
+    "bg_041": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#1C2530",
+        "strokeColor": "#2D3A48",
+        "strokeWidth": 1,
+        "rx": 17
+      }
+    },
+    "md_042": {
+      "type": "splunk.markdown",
+      "options": {
+        "markdown": "Cloud audit logs (Azure / AWS / M365)",
+        "fontColor": "#E6EDF3",
+        "fontSize": "custom",
+        "customFontSize": 13
+      }
+    },
+    "bg_043": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#1C2530",
+        "strokeColor": "#2D3A48",
+        "strokeWidth": 1,
+        "rx": 17
+      }
+    },
+    "md_044": {
+      "type": "splunk.markdown",
+      "options": {
+        "markdown": "Identity (Entra ID / AD)",
+        "fontColor": "#E6EDF3",
+        "fontSize": "custom",
+        "customFontSize": 13
+      }
+    }
+  },
+  "dataSources": {
+    "ds_011": {
+      "type": "ds.search",
+      "name": "ds_011",
+      "options": {
+        "query": "| makeresults format=csv data=\"cyc,slot,n\n0,0,7764\n0,1,18258\n0,2,18268\n0,3,17758\n0,4,17895\n0,5,18943\n0,6,7389\n1,0,7474\n1,1,17780\n1,2,18006\n1,3,19161\n1,4,18537\n1,5,17928\n1,6,8120\n2,0,8614\n2,1,17562\n2,2,18440\n2,3,18498\n2,4,18428\n2,5,18299\n2,6,8313\"\n| eval _time=relative_time(now(), \"@w0\") + slot*86400 - cyc*604800\n| where _time<=now() AND _time>now()-1209600\n| sort 0 _time\n| table _time n",
+        "queryParameters": {
+          "earliest": "-15m",
+          "latest": "now"
+        }
+      }
+    },
+    "ds_014": {
+      "type": "ds.search",
+      "name": "ds_014",
+      "options": {
+        "query": "| makeresults format=csv data=\"ago,pct\n13,99.95\n12,99.98\n11,99.94\n10,99.94\n9,99.97\n8,99.96\n7,99.95\n6,99.94\n5,99.98\n4,99.97\n3,99.96\n2,99.91\n1,99.97\n0,99.94\"\n| eval _time=relative_time(now(), \"@d\") - ago*86400\n| sort 0 _time\n| table _time pct",
+        "queryParameters": {
+          "earliest": "-15m",
+          "latest": "now"
+        }
+      }
+    },
+    "ds_017": {
+      "type": "ds.search",
+      "name": "ds_017",
+      "options": {
+        "query": "| makeresults format=csv data=\"cyc,slot,n\n0,0,1397\n0,1,3217\n0,2,3093\n0,3,2955\n0,4,3238\n0,5,2929\n0,6,1373\n1,0,1320\n1,1,3253\n1,2,2944\n1,3,3154\n1,4,3232\n1,5,3164\n1,6,1306\n2,0,1497\n2,1,2972\n2,2,3210\n2,3,2932\n2,4,3176\n2,5,2919\n2,6,1450\"\n| eval _time=relative_time(now(), \"@w0\") + slot*86400 - cyc*604800\n| where _time<=now() AND _time>now()-1209600\n| sort 0 _time\n| table _time n",
+        "queryParameters": {
+          "earliest": "-15m",
+          "latest": "now"
+        }
+      }
+    },
+    "ds_020": {
+      "type": "ds.search",
+      "name": "ds_020",
+      "options": {
+        "query": "| makeresults format=csv data=\"ago,n\n13,4\n12,4\n11,5\n10,3\n9,3\n8,3\n7,2\n6,2\n5,3\n4,2\n3,2\n2,1\n1,2\n0,2\"\n| eval _time=relative_time(now(), \"@d\") - ago*86400\n| sort 0 _time\n| table _time n",
+        "queryParameters": {
+          "earliest": "-15m",
+          "latest": "now"
+        }
+      }
+    },
+    "ds_023": {
+      "type": "ds.search",
+      "name": "ds_023",
+      "options": {
+        "query": "| makeresults format=csv data=\"cyc,slot,Switzerland North (Zurich),Switzerland West (Geneva),EU (Frankfurt),Other\n0,0,29,5,2,0\n0,1,77,22,1,0\n0,2,111,30,2,0\n0,3,131,39,0,0\n0,4,211,61,2,0\n0,5,267,85,1,0\n0,6,314,91,2,0\n0,7,382,113,0,0\n0,8,428,136,2,0\n0,9,454,137,1,0\n0,10,473,147,2,0\n0,11,479,141,4,0\n0,12,471,149,3,0\n0,13,458,135,4,0\n0,14,403,124,1,0\n0,15,361,109,2,0\n0,16,302,87,3,0\n0,17,257,74,3,0\n0,18,191,55,3,0\n0,19,159,48,2,0\n0,20,102,21,0,0\n0,21,58,11,0,0\n0,22,22,4,1,0\n0,23,18,15,2,0\n0,24,72,35,0,0\n0,25,126,31,0,0\n0,26,214,68,0,0\n0,27,317,99,2,0\n0,28,442,126,4,0\n0,29,562,168,2,0\n0,30,717,212,3,0\n0,31,822,258,6,0\n0,32,912,279,5,0\n0,33,1023,309,7,0\n0,34,1065,322,7,0\n0,35,1060,326,7,0\n0,36,1043,332,4,0\n0,37,1015,320,7,0\n0,38,928,291,5,0\n0,39,804,251,3,0\n0,40,708,210,2,0\n0,41,562,167,2,0\n0,42,442,139,1,0\n0,43,336,104,1,0\n0,44,225,63,2,0\n0,45,147,43,0,0\n0,46,63,25,1,0\n0,47,51,20,2,0\n0,48,77,36,1,0\n0,49,119,48,2,0\n0,50,216,66,2,0\n0,51,338,99,2,0\n0,52,425,132,4,0\n0,53,572,179,4,0\n0,54,693,216,5,0\n0,55,840,257,5,0\n0,56,943,295,6,0\n0,57,1012,308,7,0\n0,58,1068,334,4,0\n0,59,1070,328,4,0\n0,60,1066,326,7,0\n0,61,992,321,6,0\n0,62,923,285,6,0\n0,63,818,265,6,0\n0,64,695,218,3,0\n0,65,564,183,5,0\n0,66,434,133,2,0\n0,67,321,103,0,0\n0,68,200,68,0,0\n0,69,124,49,2,0\n0,70,65,20,0,0\n0,71,85,16,1,0\n0,72,68,19,2,0\n0,73,143,40,0,0\n0,74,201,75,2,0\n0,75,302,98,0,0\n0,76,424,130,3,0\n0,77,553,174,2,0\n0,78,718,217,3,0\n0,79,819,256,5,0\n0,80,909,293,4,0\n0,81,1024,313,7,0\n0,82,1045,323,6,0\n0,83,1077,327,7,0\n0,84,1039,321,5,0\n0,85,990,311,5,0\n0,86,926,283,4,0\n0,87,804,246,4,0\n0,88,690,224,4,0\n0,89,567,174,5,0\n0,90,426,144,1,0\n0,91,306,92,1,0\n0,92,213,62,3,0\n0,93,125,36,0,0\n0,94,91,17,2,0\n0,95,83,29,1,0\n0,96,89,29,1,0\n0,97,150,46,1,0\n0,98,226,61,2,0\n0,99,315,103,1,0\n0,100,436,141,3,0\n0,101,562,185,5,0\n0,102,688,222,5,0\n0,103,808,254,6,0\n0,104,907,278,6,0\n0,105,1017,311,6,0\n0,106,1059,318,5,0\n0,107,1053,325,5,0\n0,108,1063,336,5,0\n0,109,1012,320,4,0\n0,110,928,293,4,0\n0,111,839,265,5,0\n0,112,702,210,4,0\n0,113,555,182,3,0\n0,114,434,141,3,0\n0,115,334,99,2,0\n0,116,220,67,0,0\n0,117,123,51,1,0\n0,118,66,17,0,0\n0,119,78,21,2,0\n0,120,86,31,0,0\n0,121,133,35,1,0\n0,122,194,70,2,0\n0,123,335,96,3,0\n0,124,437,135,4,0\n0,125,580,181,2,0\n0,126,711,227,5,0\n0,127,822,249,3,0\n0,128,928,296,7,0\n0,129,1008,317,7,0\n0,130,1048,335,5,0\n0,131,1062,339,4,0\n0,132,1040,335,6,0\n0,133,998,306,7,0\n0,134,921,283,4,0\n0,135,801,246,6,0\n0,136,693,217,4,0\n0,137,550,167,2,0\n0,138,427,144,3,0\n0,139,338,97,0,0\n0,140,195,62,2,0\n0,141,134,33,2,0\n0,142,78,16,0,0\n0,143,79,26,0,0\n0,144,47,14,0,0\n0,145,67,24,0,0\n0,146,80,23,1,0\n0,147,161,47,0,0\n0,148,193,64,1,0\n0,149,237,78,0,0\n0,150,326,97,1,0\n0,151,363,105,3,0\n0,152,415,127,3,0\n0,153,465,138,1,0\n0,154,480,143,2,0\n0,155,474,143,4,0\n0,156,464,147,2,0\n0,157,437,143,3,0\n0,158,428,136,4,0\n0,159,378,123,2,0\n0,160,334,91,1,0\n0,161,266,72,1,0\n0,162,210,61,1,0\n0,163,158,41,0,0\n0,164,103,38,0,0\n0,165,61,12,1,0\n0,166,21,15,1,0\n0,167,45,3,0,0\n1,0,55,13,0,0\n1,1,60,20,1,0\n1,2,95,22,0,0\n1,3,147,48,2,0\n1,4,215,51,3,0\n1,5,257,86,1,0\n1,6,296,87,2,0\n1,7,372,119,0,0\n1,8,435,124,1,0\n1,9,435,144,3,0\n1,10,460,154,1,0\n1,11,474,147,1,0\n1,12,458,147,3,0\n1,13,456,140,4,0\n1,14,434,124,4,0\n1,15,366,124,0,0\n1,16,325,101,1,0\n1,17,270,70,3,0\n1,18,205,67,3,0\n1,19,133,37,0,0\n1,20,97,28,2,0\n1,21,79,11,2,0\n1,22,52,6,1,0\n1,23,19,10,1,0\n1,24,96,17,2,0\n1,25,152,39,0,0\n1,26,208,73,3,0\n1,27,326,97,1,0\n1,28,449,143,1,0\n1,29,553,187,4,0\n1,30,684,212,5,0\n1,31,807,262,3,0\n1,32,916,282,7,0\n1,33,1005,320,5,0\n1,34,1047,332,5,0\n1,35,1077,323,6,0\n1,36,1054,321,7,0\n1,37,1021,303,4,0\n1,38,933,288,6,0\n1,39,822,248,3,0\n1,40,692,222,5,0\n1,41,585,181,2,0\n1,42,427,126,3,0\n1,43,306,100,3,0\n1,44,214,72,3,0\n1,45,152,34,2,0\n1,46,93,36,2,0\n1,47,54,12,0,0\n1,48,78,30,0,0\n1,49,131,50,0,0\n1,50,206,72,0,0\n1,51,319,99,0,0\n1,52,429,142,3,0\n1,53,584,180,4,0\n1,54,688,214,5,0\n1,55,801,263,3,0\n1,56,914,284,4,0\n1,57,995,322,5,0\n1,58,1066,327,7,0\n1,59,1058,337,6,0\n1,60,1039,330,7,0\n1,61,1016,315,6,0\n1,62,935,284,6,0\n1,63,803,263,3,0\n1,64,681,224,4,0\n1,65,576,167,4,0\n1,66,442,127,2,0\n1,67,337,90,3,0\n1,68,196,72,0,0\n1,69,117,34,1,0\n1,70,71,23,1,0\n1,71,68,26,1,0\n1,72,68,23,0,0\n1,73,146,38,1,0\n1,74,199,76,3,0\n1,75,299,94,0,0\n1,76,426,139,3,0\n1,77,558,183,4,0\n1,78,694,208,4,0\n1,79,823,261,6,0\n1,80,938,282,6,0\n1,81,1025,322,6,0\n1,82,1045,318,6,0\n1,83,1054,339,4,0\n1,84,1074,337,6,0\n1,85,1020,306,6,0\n1,86,939,296,5,0\n1,87,802,249,3,0\n1,88,713,226,3,0\n1,89,571,175,5,0\n1,90,435,137,3,0\n1,91,306,99,3,0\n1,92,221,75,1,0\n1,93,147,51,1,0\n1,94,68,33,1,0\n1,95,82,10,1,0\n1,96,84,32,0,0\n1,97,131,31,0,0\n1,98,230,70,3,0\n1,99,338,106,1,0\n1,100,419,126,2,0\n1,101,589,184,2,0\n1,102,701,217,3,0\n1,103,825,262,4,0\n1,104,936,291,6,0\n1,105,1010,318,7,0\n1,106,1066,321,7,0\n1,107,1086,333,7,0\n1,108,1066,335,7,0\n1,109,1023,303,5,0\n1,110,919,294,5,0\n1,111,825,258,5,0\n1,112,695,215,4,0\n1,113,581,167,4,0\n1,114,434,139,4,0\n1,115,332,96,3,0\n1,116,214,57,3,0\n1,117,153,38,0,0\n1,118,85,21,0,0\n1,119,60,16,0,0\n1,120,87,34,0,0\n1,121,150,34,0,0\n1,122,209,65,0,0\n1,123,307,103,0,0\n1,124,442,129,3,0\n1,125,556,185,3,0\n1,126,683,227,2,0\n1,127,823,254,5,0\n1,128,922,281,4,0\n1,129,1025,307,7,0\n1,130,1035,318,7,0\n1,131,1082,334,7,0\n1,132,1049,319,6,0\n1,133,1022,316,6,0\n1,134,924,294,7,0\n1,135,809,253,6,0\n1,136,684,209,3,0\n1,137,570,173,5,0\n1,138,422,140,3,0\n1,139,313,97,2,0\n1,140,210,69,0,0\n1,141,114,31,2,0\n1,142,65,36,0,0\n1,143,60,27,0,0\n1,144,22,16,0,0\n1,145,51,22,2,0\n1,146,80,19,1,0\n1,147,141,35,1,0\n1,148,182,59,2,0\n1,149,268,78,3,0\n1,150,329,94,1,0\n1,151,352,106,1,0\n1,152,424,128,1,0\n1,153,439,143,3,0\n1,154,481,140,2,0\n1,155,482,153,3,0\n1,156,486,149,4,0\n1,157,463,146,1,0\n1,158,421,129,4,0\n1,159,369,117,2,0\n1,160,313,102,3,0\n1,161,236,76,0,0\n1,162,193,53,0,0\n1,163,131,35,0,0\n1,164,82,38,0,0\n1,165,73,23,2,0\n1,166,35,7,0,0\n1,167,27,16,1,0\"\n| eval _time=relative_time(now(), \"@w0\") + slot*3600 - cyc*604800\n| where _time<=now() AND _time>now()-86400\n| sort 0 _time\n| eval \"EU (Frankfurt)\"='EU (Frankfurt)' + if(now()-_time>=0 AND now()-_time<7200, 9, 0)\n| eval \"Other\"='Other' + if(now()-_time>=18000 AND now()-_time<21600, 2, 0)\n| eval \"Other\"='Other' + if(now()-_time>=25200 AND now()-_time<28800, 2, 0)\n| table _time \"Switzerland North (Zurich)\" \"Switzerland West (Geneva)\" \"EU (Frankfurt)\" Other",
+        "queryParameters": {
+          "earliest": "-15m",
+          "latest": "now"
+        }
+      }
+    },
+    "ds_026": {
+      "type": "ds.search",
+      "name": "ds_026",
+      "options": {
+        "query": "| makeresults format=csv data=\"Service,GB\nMicrosoft 365 (CH),412\nAzure Switzerland North,286\nAWS Zurich,97\nRadiology AI (SaaS),12\nOther SaaS,9\"\n| table Service GB",
+        "queryParameters": {
+          "earliest": "-15m",
+          "latest": "now"
+        }
+      }
+    },
+    "ds_029": {
+      "type": "ds.search",
+      "name": "ds_029",
+      "options": {
+        "query": "| makeresults format=csv data=\"When,Application,Data class,Destination,Region,Volume,Status\n58,Radiology AI (SaaS),Patient images,api.rad-ai.example,EU (Frankfurt),1.2 GB,Violation\n196,Radiology AI (SaaS),Patient images,api.rad-ai.example,EU (Frankfurt),0.8 GB,Violation\n310,HR recruiting tool,Personnel data,eu.recruit.example,EU (Dublin),14 MB,Exception\n455,Microsoft Teams,Internal,teams.microsoft.com,EU (Amsterdam),220 MB,Exception\n612,Lab supplier portal,Order data,orders.labsupply.example,EU (Vienna),3 MB,Exception\"\n| eval \"When\"=strftime(relative_time(now(), \"@m\") - 'When'*60, \"%a %H:%M\")\n| table When Application \"Data class\" Destination Region Volume Status",
+        "queryParameters": {
+          "earliest": "-15m",
+          "latest": "now"
+        }
+      }
+    },
+    "ds_032": {
+      "type": "ds.search",
+      "name": "ds_032",
+      "options": {
+        "query": "| makeresults format=csv data=\"Region,Sensitive transfers\nSwitzerland,21540\nEU,38\nUSA,0\"\n| table Region \"Sensitive transfers\"",
+        "queryParameters": {
+          "earliest": "-15m",
+          "latest": "now"
+        }
+      }
+    }
+  },
+  "layout": {
+    "globalInputs": [],
+    "tabs": {
+      "items": [
+        {
+          "layoutId": "layout_1",
+          "label": "Dashboard"
+        }
+      ]
+    },
+    "layoutDefinitions": {
+      "layout_1": {
+        "type": "absolute",
+        "options": {
+          "width": 1440,
+          "height": 1122,
+          "display": "auto-scale",
+          "backgroundColor": "#0E1116"
+        },
+        "structure": [
+          {
+            "item": "bg_001",
+            "type": "block",
+            "position": {
+              "x": 24,
+              "y": 20,
+              "w": 1392,
+              "h": 116
+            }
+          },
+          {
+            "item": "bg_002",
+            "type": "block",
+            "position": {
+              "x": 24,
+              "y": 20,
+              "w": 6,
+              "h": 116
+            }
+          },
+          {
+            "item": "md_003",
+            "type": "block",
+            "position": {
+              "x": 52,
+              "y": 34,
+              "w": 820,
+              "h": 22
+            }
+          },
+          {
+            "item": "md_004",
+            "type": "block",
+            "position": {
+              "x": 52,
+              "y": 56,
+              "w": 880,
+              "h": 44
+            }
+          },
+          {
+            "item": "md_005",
+            "type": "block",
+            "position": {
+              "x": 52,
+              "y": 100,
+              "w": 880,
+              "h": 28
+            }
+          },
+          {
+            "item": "bg_006",
+            "type": "block",
+            "position": {
+              "x": 928,
+              "y": 36,
+              "w": 464,
+              "h": 84
+            }
+          },
+          {
+            "item": "md_007",
+            "type": "block",
+            "position": {
+              "x": 940,
+              "y": 42,
+              "w": 444,
+              "h": 20
+            }
+          },
+          {
+            "item": "md_008",
+            "type": "block",
+            "position": {
+              "x": 940,
+              "y": 62,
+              "w": 444,
+              "h": 56
+            }
+          },
+          {
+            "item": "bg_009",
+            "type": "block",
+            "position": {
+              "x": 24,
+              "y": 152,
+              "w": 336,
+              "h": 164
+            }
+          },
+          {
+            "item": "viz_010",
+            "type": "block",
+            "position": {
+              "x": 30,
+              "y": 158,
+              "w": 324,
+              "h": 152
+            }
+          },
+          {
+            "item": "bg_012",
+            "type": "block",
+            "position": {
+              "x": 376,
+              "y": 152,
+              "w": 336,
+              "h": 164
+            }
+          },
+          {
+            "item": "viz_013",
+            "type": "block",
+            "position": {
+              "x": 382,
+              "y": 158,
+              "w": 324,
+              "h": 152
+            }
+          },
+          {
+            "item": "bg_015",
+            "type": "block",
+            "position": {
+              "x": 728,
+              "y": 152,
+              "w": 336,
+              "h": 164
+            }
+          },
+          {
+            "item": "viz_016",
+            "type": "block",
+            "position": {
+              "x": 734,
+              "y": 158,
+              "w": 324,
+              "h": 152
+            }
+          },
+          {
+            "item": "bg_018",
+            "type": "block",
+            "position": {
+              "x": 1080,
+              "y": 152,
+              "w": 336,
+              "h": 164
+            }
+          },
+          {
+            "item": "viz_019",
+            "type": "block",
+            "position": {
+              "x": 1086,
+              "y": 158,
+              "w": 324,
+              "h": 152
+            }
+          },
+          {
+            "item": "bg_021",
+            "type": "block",
+            "position": {
+              "x": 24,
+              "y": 332,
+              "w": 904,
+              "h": 330
+            }
+          },
+          {
+            "item": "viz_022",
+            "type": "block",
+            "position": {
+              "x": 30,
+              "y": 338,
+              "w": 892,
+              "h": 318
+            }
+          },
+          {
+            "item": "bg_024",
+            "type": "block",
+            "position": {
+              "x": 944,
+              "y": 332,
+              "w": 472,
+              "h": 330
+            }
+          },
+          {
+            "item": "viz_025",
+            "type": "block",
+            "position": {
+              "x": 950,
+              "y": 338,
+              "w": 460,
+              "h": 318
+            }
+          },
+          {
+            "item": "bg_027",
+            "type": "block",
+            "position": {
+              "x": 24,
+              "y": 678,
+              "w": 904,
+              "h": 300
+            }
+          },
+          {
+            "item": "viz_028",
+            "type": "block",
+            "position": {
+              "x": 30,
+              "y": 684,
+              "w": 892,
+              "h": 288
+            }
+          },
+          {
+            "item": "bg_030",
+            "type": "block",
+            "position": {
+              "x": 944,
+              "y": 678,
+              "w": 472,
+              "h": 300
+            }
+          },
+          {
+            "item": "viz_031",
+            "type": "block",
+            "position": {
+              "x": 950,
+              "y": 684,
+              "w": 460,
+              "h": 288
+            }
+          },
+          {
+            "item": "bg_033",
+            "type": "block",
+            "position": {
+              "x": 24,
+              "y": 994,
+              "w": 1392,
+              "h": 104
+            }
+          },
+          {
+            "item": "md_034",
+            "type": "block",
+            "position": {
+              "x": 44,
+              "y": 1010,
+              "w": 700,
+              "h": 22
+            }
+          },
+          {
+            "item": "bg_035",
+            "type": "block",
+            "position": {
+              "x": 44,
+              "y": 1044,
+              "w": 241,
+              "h": 34
+            }
+          },
+          {
+            "item": "md_036",
+            "type": "block",
+            "position": {
+              "x": 60,
+              "y": 1051,
+              "w": 223,
+              "h": 22
+            }
+          },
+          {
+            "item": "bg_037",
+            "type": "block",
+            "position": {
+              "x": 295,
+              "y": 1044,
+              "w": 219,
+              "h": 34
+            }
+          },
+          {
+            "item": "md_038",
+            "type": "block",
+            "position": {
+              "x": 311,
+              "y": 1051,
+              "w": 201,
+              "h": 22
+            }
+          },
+          {
+            "item": "bg_039",
+            "type": "block",
+            "position": {
+              "x": 524,
+              "y": 1044,
+              "w": 219,
+              "h": 34
+            }
+          },
+          {
+            "item": "md_040",
+            "type": "block",
+            "position": {
+              "x": 540,
+              "y": 1051,
+              "w": 201,
+              "h": 22
+            }
+          },
+          {
+            "item": "bg_041",
+            "type": "block",
+            "position": {
+              "x": 753,
+              "y": 1044,
+              "w": 307,
+              "h": 34
+            }
+          },
+          {
+            "item": "md_042",
+            "type": "block",
+            "position": {
+              "x": 769,
+              "y": 1051,
+              "w": 289,
+              "h": 22
+            }
+          },
+          {
+            "item": "bg_043",
+            "type": "block",
+            "position": {
+              "x": 1070,
+              "y": 1044,
+              "w": 211,
+              "h": 34
+            }
+          },
+          {
+            "item": "md_044",
+            "type": "block",
+            "position": {
+              "x": 1086,
+              "y": 1051,
+              "w": 193,
+              "h": 22
+            }
+          }
+        ]
+      }
+    }
+  }
+}
+  ]]></definition>
+  <meta type="hiddenElements"><![CDATA[
+{"hideEdit": false, "hideOpenInSearch": false, "hideExport": false}
+  ]]></meta>
+</dashboard>

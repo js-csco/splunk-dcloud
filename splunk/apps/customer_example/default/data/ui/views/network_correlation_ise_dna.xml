@@ -1,145 +1,1155 @@
-<form version="1.1" theme="dark">
-  <label>4. Network Correlation — ISE / DNA Center</label>
-  <description>Line up identity (ISE), assurance (DNA Center) and the wire (switches) into one incident timeline instead of three separate consoles.</description>
-
-  <fieldset submitButton="false" autoRun="true">
-    <input type="time" token="tr">
-      <label>Time range</label>
-      <default><earliest>-4h</earliest><latest>now</latest></default>
-    </input>
-  </fieldset>
-
-  <row>
-    <panel>
-      <html>
-        <p style="margin:0;color:#8b98a5;font-style:italic;">"…Fehlende Korrelationen der Netzwerkkomponenten wie ISE, DNA usw."
-        <span style="color:#cdd9e5;font-style:normal;"> — each system tells part of the story; nobody looks at them together.</span></p>
-      </html>
-    </panel>
-  </row>
-
-  <row>
-    <panel>
-      <title>Correlated incidents (7 days)</title>
-      <single>
-        <search><query>| makeresults | eval v=9</query></search>
-        <option name="drilldown">none</option>
-      </single>
-    </panel>
-    <panel>
-      <title>Auth failures linked to a network-health drop</title>
-      <single>
-        <search><query>| makeresults | eval v=4</query></search>
-        <option name="drilldown">none</option>
-      </single>
-    </panel>
-    <panel>
-      <title>Avg client health score (fleet)</title>
-      <chart>
-        <search><query>| makeresults | eval v=87</query></search>
-        <option name="charting.chart">radialGauge</option>
-        <option name="charting.chart.rangeValues">[0,60,85,100]</option>
-        <option name="drilldown">none</option>
-      </chart>
-    </panel>
-  </row>
-
-  <row>
-    <panel>
-      <title>Client health score around the incident (DNA Center)</title>
-      <chart>
-        <search>
-          <query>| makeresults count=20
-| streamstats count as i
-| eval Minute=strftime(relative_time(now(), "-".(20-i)."m"), "%H:%M")
-| eval "Client health score"=case(i&gt;=9 AND i&lt;=13, 34, 1=1, 90+(i%3))
-| table Minute "Client health score"</query>
-          <earliest>$tr.earliest$</earliest>
-          <latest>$tr.latest$</latest>
-        </search>
-        <option name="charting.chart">line</option>
-        <option name="charting.chart.nullValueMode">connect</option>
-        <option name="charting.axisY.maximumNumber">100</option>
-        <option name="charting.axisY.minimumNumber">0</option>
-        <option name="charting.legend.placement">bottom</option>
-        <option name="drilldown">none</option>
-      </chart>
-    </panel>
-    <panel>
-      <title>Auth outcome over time (ISE)</title>
-      <chart>
-        <search>
-          <query>| makeresults count=20
-| streamstats count as i
-| eval Minute=strftime(relative_time(now(), "-".(20-i)."m"), "%H:%M")
-| eval "Auth success"=if(i&gt;=9 AND i&lt;=12,0,1)
-| eval "Auth failure"=if(i&gt;=9 AND i&lt;=12,1,0)
-| table Minute "Auth success" "Auth failure"</query>
-          <earliest>$tr.earliest$</earliest>
-          <latest>$tr.latest$</latest>
-        </search>
-        <option name="charting.chart">column</option>
-        <option name="charting.chart.stackMode">stacked</option>
-        <option name="charting.legend.placement">bottom</option>
-        <option name="drilldown">none</option>
-      </chart>
-    </panel>
-  </row>
-
-  <row>
-    <panel>
-      <title>Correlated incidents by root cause (7 days)</title>
-      <chart>
-        <search>
-          <query>| makeresults count=4
-| streamstats count as i
-| eval Category=case(i=1,"Cert / auth issue",i=2,"Port-security violation",i=3,"AP / wireless roam",i=4,"Config drift")
-| eval Count=case(i=1,4,i=2,2,i=3,2,i=4,1)
-| table Category Count</query>
-          <earliest>$tr.earliest$</earliest>
-          <latest>$tr.latest$</latest>
-        </search>
-        <option name="charting.chart">pie</option>
-        <option name="charting.legend.placement">right</option>
-        <option name="drilldown">none</option>
-      </chart>
-    </panel>
-    <panel>
-      <title>Example: one incident, three consoles</title>
-      <table>
-        <search>
-          <query>| makeresults count=5
-| streamstats count as i
-| eval Time=strftime(relative_time(now(), "-".(300-i*40)."s"), "%H:%M:%S")
-| eval Source=case(i=1,"ISE",i=2,"Switch",i=3,"DNA Center",i=4,"ISE",i=5,"DNA Center")
-| eval Event=case(
-    i=1,"802.1X auth failed (cert expired)",
-    i=2,"Gi1/0/24 err-disabled",
-    i=3,"Health score 92 -&gt; 34",
-    i=4,"Re-authenticated after cert renewal",
-    i=5,"Health score 34 -&gt; 90")
-| table Time Source Event
-| sort Time</query>
-          <earliest>$tr.earliest$</earliest>
-          <latest>$tr.latest$</latest>
-        </search>
-        <option name="drilldown">none</option>
-      </table>
-    </panel>
-  </row>
-
-  <row>
-    <panel>
-      <title>Data sources needed</title>
-      <html>
-        <div style="display:flex;flex-wrap:wrap;gap:6px;">
-          <span style="background:#1b2430;color:#cdd9e5;padding:4px 10px;border-radius:12px;font-size:12px;border:1px solid #2b3a4a;">Cisco ISE</span>
-          <span style="background:#1b2430;color:#cdd9e5;padding:4px 10px;border-radius:12px;font-size:12px;border:1px solid #2b3a4a;">Cisco DNA Center</span>
-          <span style="background:#1b2430;color:#cdd9e5;padding:4px 10px;border-radius:12px;font-size:12px;border:1px solid #2b3a4a;">Switch / router syslog &amp; SNMP</span>
-          <span style="background:#1b2430;color:#cdd9e5;padding:4px 10px;border-radius:12px;font-size:12px;border:1px solid #2b3a4a;">Wireless LAN controller</span>
-          <span style="background:#1b2430;color:#cdd9e5;padding:4px 10px;border-radius:12px;font-size:12px;border:1px solid #2b3a4a;">Correlate by: MAC / username</span>
-        </div>
-      </html>
-    </panel>
-  </row>
-</form>
+<dashboard version="2" theme="dark">
+  <label>4 · Network Correlation</label>
+  <description>Correlate Cisco ISE, Catalyst Center (DNA) and switching into one incident timeline.</description>
+  <definition><![CDATA[
+{
+  "title": "4 · Network Correlation",
+  "description": "Correlate Cisco ISE, Catalyst Center (DNA) and switching into one incident timeline.",
+  "inputs": {},
+  "defaults": {},
+  "visualizations": {
+    "bg_001": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#161B22",
+        "strokeColor": "#262C36",
+        "strokeWidth": 1,
+        "rx": 12
+      }
+    },
+    "bg_002": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#16A3B0",
+        "strokeColor": "#16A3B0",
+        "strokeWidth": 1,
+        "rx": 3
+      }
+    },
+    "md_003": {
+      "type": "splunk.markdown",
+      "options": {
+        "markdown": "USE CASE 4 OF 9  ·  SPITAL AARWALD  ·  SAMPLE DATA",
+        "fontColor": "#16A3B0",
+        "fontSize": "custom",
+        "customFontSize": 12
+      }
+    },
+    "md_004": {
+      "type": "splunk.markdown",
+      "options": {
+        "markdown": "# Network Correlation — ISE · Catalyst Center · Switching",
+        "fontColor": "#E6EDF3"
+      }
+    },
+    "md_005": {
+      "type": "splunk.markdown",
+      "options": {
+        "markdown": "One timeline across identity, assurance and the wire — instead of three consoles.",
+        "fontColor": "#9AA4B2",
+        "fontSize": "custom",
+        "customFontSize": 15
+      }
+    },
+    "bg_006": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#11161D",
+        "strokeColor": "#262C36",
+        "strokeWidth": 1,
+        "rx": 8
+      }
+    },
+    "md_007": {
+      "type": "splunk.markdown",
+      "options": {
+        "markdown": "WHAT WE HEARD",
+        "fontColor": "#6E7681",
+        "fontSize": "custom",
+        "customFontSize": 11
+      }
+    },
+    "md_008": {
+      "type": "splunk.markdown",
+      "options": {
+        "markdown": "*“Fehlende Korrelationen der Netzwerkkomponenten wie ISE, DNA usw.”*",
+        "fontColor": "#9AA4B2",
+        "fontSize": "custom",
+        "customFontSize": 13
+      }
+    },
+    "bg_009": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#161B22",
+        "strokeColor": "#262C36",
+        "strokeWidth": 1,
+        "rx": 12
+      }
+    },
+    "viz_010": {
+      "type": "splunk.singlevalue",
+      "options": {
+        "backgroundColor": "#161B22",
+        "majorColor": "#E6EDF3",
+        "numberPrecision": 0,
+        "shouldUseThousandSeparators": true,
+        "majorFontSize": 42,
+        "trendFontSize": 15,
+        "trendDisplay": "absolute",
+        "sparklineDisplay": "below",
+        "showSparklineAreaGraph": true,
+        "sparklineStrokeColor": "#16A3B0",
+        "sparklineAreaColor": "#16A3B0",
+        "underLabel": "all sites",
+        "underLabelColor": "#9AA4B2",
+        "underLabelFontSize": 13,
+        "trendColor": "> trendValue | rangeValue(trendColorConfig)"
+      },
+      "dataSources": {
+        "primary": "ds_011"
+      },
+      "title": "802.1X auth failures today",
+      "context": {
+        "trendColorConfig": [
+          {
+            "to": -0.0001,
+            "value": "#0CA30C"
+          },
+          {
+            "from": -0.0001,
+            "to": 0.0001,
+            "value": "#9AA4B2"
+          },
+          {
+            "from": 0.0001,
+            "value": "#D03B3B"
+          }
+        ]
+      }
+    },
+    "bg_012": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#161B22",
+        "strokeColor": "#262C36",
+        "strokeWidth": 1,
+        "rx": 12
+      }
+    },
+    "viz_013": {
+      "type": "splunk.singlevalue",
+      "options": {
+        "backgroundColor": "#161B22",
+        "majorColor": "> majorValue | rangeValue(majorColorConfig)",
+        "numberPrecision": 0,
+        "shouldUseThousandSeparators": true,
+        "majorFontSize": 42,
+        "trendFontSize": 15,
+        "trendDisplay": "absolute",
+        "sparklineDisplay": "below",
+        "showSparklineAreaGraph": true,
+        "sparklineStrokeColor": "#16A3B0",
+        "sparklineAreaColor": "#16A3B0",
+        "underLabel": "Catalyst Center health < 4",
+        "underLabelColor": "#9AA4B2",
+        "underLabelFontSize": 13,
+        "trendColor": "> trendValue | rangeValue(trendColorConfig)"
+      },
+      "dataSources": {
+        "primary": "ds_014"
+      },
+      "title": "Clients with poor health",
+      "context": {
+        "trendColorConfig": [
+          {
+            "to": -0.0001,
+            "value": "#0CA30C"
+          },
+          {
+            "from": -0.0001,
+            "to": 0.0001,
+            "value": "#9AA4B2"
+          },
+          {
+            "from": 0.0001,
+            "value": "#D03B3B"
+          }
+        ],
+        "majorColorConfig": [
+          {
+            "to": 40,
+            "value": "#E6EDF3"
+          },
+          {
+            "from": 40,
+            "value": "#FAB219"
+          }
+        ]
+      }
+    },
+    "bg_015": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#161B22",
+        "strokeColor": "#262C36",
+        "strokeWidth": 1,
+        "rx": 12
+      }
+    },
+    "viz_016": {
+      "type": "splunk.singlevalue",
+      "options": {
+        "backgroundColor": "#161B22",
+        "majorColor": "#E6EDF3",
+        "numberPrecision": 0,
+        "shouldUseThousandSeparators": true,
+        "majorFontSize": 42,
+        "trendFontSize": 15,
+        "trendDisplay": "absolute",
+        "sparklineDisplay": "below",
+        "showSparklineAreaGraph": true,
+        "sparklineStrokeColor": "#16A3B0",
+        "sparklineAreaColor": "#16A3B0",
+        "underLabel": "auto-grouped from 3 sources",
+        "underLabelColor": "#9AA4B2",
+        "underLabelFontSize": 13,
+        "trendColor": "> trendValue | rangeValue(trendColorConfig)"
+      },
+      "dataSources": {
+        "primary": "ds_017"
+      },
+      "title": "Correlated incidents (7 days)",
+      "context": {
+        "trendColorConfig": [
+          {
+            "to": -0.0001,
+            "value": "#0CA30C"
+          },
+          {
+            "from": -0.0001,
+            "to": 0.0001,
+            "value": "#9AA4B2"
+          },
+          {
+            "from": 0.0001,
+            "value": "#D03B3B"
+          }
+        ]
+      }
+    },
+    "bg_018": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#161B22",
+        "strokeColor": "#262C36",
+        "strokeWidth": 1,
+        "rx": 12
+      }
+    },
+    "viz_019": {
+      "type": "splunk.singlevalue",
+      "options": {
+        "backgroundColor": "#161B22",
+        "majorColor": "#E6EDF3",
+        "numberPrecision": 0,
+        "shouldUseThousandSeparators": true,
+        "majorFontSize": 42,
+        "trendFontSize": 15,
+        "trendDisplay": "off",
+        "sparklineDisplay": "below",
+        "showSparklineAreaGraph": true,
+        "sparklineStrokeColor": "#16A3B0",
+        "sparklineAreaColor": "#16A3B0",
+        "unit": " min",
+        "unitPosition": "after",
+        "underLabel": "was ~2 h before Splunk",
+        "underLabelColor": "#9AA4B2",
+        "underLabelFontSize": 13
+      },
+      "dataSources": {
+        "primary": "ds_020"
+      },
+      "title": "Mean time to root cause"
+    },
+    "bg_021": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#161B22",
+        "strokeColor": "#262C36",
+        "strokeWidth": 1,
+        "rx": 12
+      }
+    },
+    "viz_022": {
+      "type": "splunk.column",
+      "options": {
+        "backgroundColor": "#161B22",
+        "legendDisplay": "off",
+        "xAxisTitleVisibility": "hide",
+        "seriesColors": [
+          "#D95926"
+        ],
+        "stackMode": "stacked",
+        "yAxisTitleVisibility": "hide"
+      },
+      "dataSources": {
+        "primary": "ds_023"
+      },
+      "title": "Cisco ISE — 802.1X auth failures (Ward A3 West, per 5 min)"
+    },
+    "bg_024": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#161B22",
+        "strokeColor": "#262C36",
+        "strokeWidth": 1,
+        "rx": 12
+      }
+    },
+    "viz_025": {
+      "type": "splunk.line",
+      "options": {
+        "backgroundColor": "#161B22",
+        "legendDisplay": "off",
+        "xAxisTitleVisibility": "hide",
+        "nullValueDisplay": "connect",
+        "lineWidth": 2,
+        "seriesColors": [
+          "#3987E5"
+        ],
+        "yAxisTitleVisibility": "hide",
+        "yAxisMin": 0,
+        "yAxisMax": 10
+      },
+      "dataSources": {
+        "primary": "ds_026"
+      },
+      "title": "Catalyst Center — average client health (Ward A3 West, 0–10)"
+    },
+    "bg_027": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#161B22",
+        "strokeColor": "#262C36",
+        "strokeWidth": 1,
+        "rx": 12
+      }
+    },
+    "viz_028": {
+      "type": "splunk.column",
+      "options": {
+        "backgroundColor": "#161B22",
+        "legendDisplay": "off",
+        "xAxisTitleVisibility": "hide",
+        "seriesColors": [
+          "#9085E9"
+        ],
+        "stackMode": "stacked",
+        "yAxisTitleVisibility": "hide"
+      },
+      "dataSources": {
+        "primary": "ds_029"
+      },
+      "title": "Switch sw-a3-acc-01 — uplink Te1/1/1 up/down events"
+    },
+    "bg_030": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#161B22",
+        "strokeColor": "#262C36",
+        "strokeWidth": 1,
+        "rx": 12
+      }
+    },
+    "viz_031": {
+      "type": "splunk.pie",
+      "options": {
+        "backgroundColor": "#161B22",
+        "showDonutHole": true,
+        "labelDisplay": "valuesAndPercentage",
+        "legendDisplay": "off",
+        "seriesColors": [
+          "#3987E5",
+          "#D95926",
+          "#199E70",
+          "#C98500",
+          "#D55181",
+          "#008300",
+          "#9085E9",
+          "#E66767"
+        ]
+      },
+      "dataSources": {
+        "primary": "ds_032"
+      },
+      "title": "Auth failure reasons (24h)"
+    },
+    "bg_033": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#161B22",
+        "strokeColor": "#262C36",
+        "strokeWidth": 1,
+        "rx": 12
+      }
+    },
+    "viz_034": {
+      "type": "splunk.bar",
+      "options": {
+        "backgroundColor": "#161B22",
+        "legendDisplay": "off",
+        "xAxisTitleVisibility": "hide",
+        "yAxisTitleVisibility": "hide",
+        "seriesColors": [
+          "#9085E9"
+        ],
+        "dataValuesDisplay": "all"
+      },
+      "dataSources": {
+        "primary": "ds_035"
+      },
+      "title": "Switches with most related events (24h)"
+    },
+    "bg_036": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#161B22",
+        "strokeColor": "#262C36",
+        "strokeWidth": 1,
+        "rx": 12
+      }
+    },
+    "viz_037": {
+      "type": "splunk.table",
+      "options": {
+        "backgroundColor": "#161B22",
+        "headerVisibility": "fixed",
+        "fontSize": "small",
+        "columnFormat": {
+          "When": {
+            "width": 110
+          },
+          "Source": {
+            "width": 170,
+            "rowColors": "> table | seriesByName(\"Source\") | matchValue(src)"
+          },
+          "Event": {
+            "width": 1080
+          }
+        }
+      },
+      "dataSources": {
+        "primary": "ds_038"
+      },
+      "title": "Correlated incident — one timeline instead of three consoles",
+      "context": {
+        "src": [
+          {
+            "match": "ISE",
+            "value": "#D95926"
+          },
+          {
+            "match": "Catalyst Center",
+            "value": "#3987E5"
+          },
+          {
+            "match": "Switch",
+            "value": "#9085E9"
+          },
+          {
+            "match": "WLC",
+            "value": "#199E70"
+          }
+        ]
+      }
+    },
+    "bg_039": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#161B22",
+        "strokeColor": "#262C36",
+        "strokeWidth": 1,
+        "rx": 12
+      }
+    },
+    "md_040": {
+      "type": "splunk.markdown",
+      "options": {
+        "markdown": "DATA SOURCES NEEDED IN SPLUNK",
+        "fontColor": "#16A3B0",
+        "fontSize": "custom",
+        "customFontSize": 12
+      }
+    },
+    "bg_041": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#1C2530",
+        "strokeColor": "#2D3A48",
+        "strokeWidth": 1,
+        "rx": 17
+      }
+    },
+    "md_042": {
+      "type": "splunk.markdown",
+      "options": {
+        "markdown": "DHCP server logs",
+        "fontColor": "#E6EDF3",
+        "fontSize": "custom",
+        "customFontSize": 13
+      }
+    },
+    "bg_043": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#1C2530",
+        "strokeColor": "#2D3A48",
+        "strokeWidth": 1,
+        "rx": 17
+      }
+    },
+    "md_044": {
+      "type": "splunk.markdown",
+      "options": {
+        "markdown": "Switch & router syslog",
+        "fontColor": "#E6EDF3",
+        "fontSize": "custom",
+        "customFontSize": 13
+      }
+    },
+    "bg_045": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#1C2530",
+        "strokeColor": "#2D3A48",
+        "strokeWidth": 1,
+        "rx": 17
+      }
+    },
+    "md_046": {
+      "type": "splunk.markdown",
+      "options": {
+        "markdown": "SNMP (interfaces & devices)",
+        "fontColor": "#E6EDF3",
+        "fontSize": "custom",
+        "customFontSize": 13
+      }
+    },
+    "bg_047": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#1C2530",
+        "strokeColor": "#2D3A48",
+        "strokeWidth": 1,
+        "rx": 17
+      }
+    },
+    "md_048": {
+      "type": "splunk.markdown",
+      "options": {
+        "markdown": "Cisco ISE",
+        "fontColor": "#E6EDF3",
+        "fontSize": "custom",
+        "customFontSize": 13
+      }
+    },
+    "bg_049": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#1C2530",
+        "strokeColor": "#2D3A48",
+        "strokeWidth": 1,
+        "rx": 17
+      }
+    },
+    "md_050": {
+      "type": "splunk.markdown",
+      "options": {
+        "markdown": "Catalyst Center (DNA) Assurance",
+        "fontColor": "#E6EDF3",
+        "fontSize": "custom",
+        "customFontSize": 13
+      }
+    },
+    "bg_051": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#1C2530",
+        "strokeColor": "#2D3A48",
+        "strokeWidth": 1,
+        "rx": 17
+      }
+    },
+    "md_052": {
+      "type": "splunk.markdown",
+      "options": {
+        "markdown": "Wireless LAN controller",
+        "fontColor": "#E6EDF3",
+        "fontSize": "custom",
+        "customFontSize": 13
+      }
+    }
+  },
+  "dataSources": {
+    "ds_011": {
+      "type": "ds.search",
+      "name": "ds_011",
+      "options": {
+        "query": "| makeresults format=csv data=\"ago,n\n13,250\n12,258\n11,233\n10,312\n9,270\n8,281\n7,239\n6,231\n5,228\n4,222\n3,271\n2,290\n1,257\n0,407\"\n| eval _time=relative_time(now(), \"@d\") - ago*86400\n| sort 0 _time\n| table _time n",
+        "queryParameters": {
+          "earliest": "-15m",
+          "latest": "now"
+        }
+      }
+    },
+    "ds_014": {
+      "type": "ds.search",
+      "name": "ds_014",
+      "options": {
+        "query": "| makeresults format=csv data=\"ago,n\n23,13\n22,16\n21,21\n20,21\n19,18\n18,17\n17,15\n16,14\n15,17\n14,16\n13,13\n12,23\n11,17\n10,17\n9,16\n8,15\n7,17\n6,17\n5,23\n4,24\n3,78\n2,26\n1,22\n0,18\"\n| eval _time=relative_time(now(), \"@h\") - ago*3600\n| sort 0 _time\n| table _time n",
+        "queryParameters": {
+          "earliest": "-15m",
+          "latest": "now"
+        }
+      }
+    },
+    "ds_017": {
+      "type": "ds.search",
+      "name": "ds_017",
+      "options": {
+        "query": "| makeresults format=csv data=\"ago,n\n13,9\n12,8\n11,8\n10,7\n9,9\n8,10\n7,8\n6,7\n5,6\n4,6\n3,7\n2,5\n1,6\n0,6\"\n| eval _time=relative_time(now(), \"@d\") - ago*86400\n| sort 0 _time\n| table _time n",
+        "queryParameters": {
+          "earliest": "-15m",
+          "latest": "now"
+        }
+      }
+    },
+    "ds_020": {
+      "type": "ds.search",
+      "name": "ds_020",
+      "options": {
+        "query": "| makeresults format=csv data=\"ago,m\n11,130\n10,115\n9,140\n8,125\n7,120\n6,22\n5,16\n4,13\n3,12\n2,11\n1,12\n0,11\"\n| eval _time=relative_time(now(), \"@d\") - ago*604800\n| sort 0 _time\n| table _time m",
+        "queryParameters": {
+          "earliest": "-15m",
+          "latest": "now"
+        }
+      }
+    },
+    "ds_023": {
+      "type": "ds.search",
+      "name": "ds_023",
+      "options": {
+        "query": "| makeresults format=csv data=\"ago,Auth failures\n47,8\n46,6\n45,7\n44,4\n43,4\n42,4\n41,6\n40,5\n39,3\n38,7\n37,5\n36,3\n35,5\n34,7\n33,8\n32,5\n31,7\n30,4\n29,6\n28,6\n27,7\n26,5\n25,6\n24,6\n23,4\n22,4\n21,5\n20,5\n19,3\n18,3\n17,3\n16,6\n15,8\n14,5\n13,7\n12,7\n11,8\n10,6\n9,51\n8,45\n7,42\n6,8\n5,4\n4,3\n3,6\n2,4\n1,8\n0,8\"\n| eval _time=relative_time(now(), \"@m\") - ago*300\n| sort 0 _time\n| table _time \"Auth failures\"",
+        "queryParameters": {
+          "earliest": "-15m",
+          "latest": "now"
+        }
+      }
+    },
+    "ds_026": {
+      "type": "ds.search",
+      "name": "ds_026",
+      "options": {
+        "query": "| makeresults format=csv data=\"ago,Client health\n47,8.8\n46,8.7\n45,8.8\n44,8.9\n43,8.9\n42,8.7\n41,8.8\n40,9.0\n39,9.0\n38,8.7\n37,8.9\n36,9.0\n35,8.7\n34,9.1\n33,8.7\n32,8.6\n31,8.8\n30,8.6\n29,9.1\n28,8.7\n27,8.9\n26,8.8\n25,8.8\n24,8.8\n23,8.7\n22,8.9\n21,9.0\n20,9.0\n19,8.9\n18,8.6\n17,8.9\n16,9.0\n15,8.7\n14,8.7\n13,8.9\n12,8.7\n11,8.9\n10,8.8\n9,3.3\n8,3.3\n7,3.5\n6,3.6\n5,3.4\n4,3.3\n3,8.7\n2,9.1\n1,8.7\n0,8.6\"\n| eval _time=relative_time(now(), \"@m\") - ago*300\n| sort 0 _time\n| table _time \"Client health\"",
+        "queryParameters": {
+          "earliest": "-15m",
+          "latest": "now"
+        }
+      }
+    },
+    "ds_029": {
+      "type": "ds.search",
+      "name": "ds_029",
+      "options": {
+        "query": "| makeresults format=csv data=\"ago,Interface flaps\n47,0\n46,0\n45,0\n44,0\n43,0\n42,0\n41,0\n40,0\n39,0\n38,0\n37,0\n36,0\n35,0\n34,0\n33,0\n32,0\n31,0\n30,0\n29,0\n28,0\n27,0\n26,0\n25,0\n24,0\n23,0\n22,0\n21,0\n20,0\n19,0\n18,0\n17,0\n16,0\n15,0\n14,0\n13,0\n12,0\n11,0\n10,13\n9,9\n8,12\n7,13\n6,0\n5,0\n4,0\n3,0\n2,0\n1,0\n0,0\"\n| eval _time=relative_time(now(), \"@m\") - ago*300\n| sort 0 _time\n| table _time \"Interface flaps\"",
+        "queryParameters": {
+          "earliest": "-15m",
+          "latest": "now"
+        }
+      }
+    },
+    "ds_032": {
+      "type": "ds.search",
+      "name": "ds_032",
+      "options": {
+        "query": "| makeresults format=csv data=\"Reason,Failures\nRADIUS timeout,96\nCertificate expired,71\nWrong credentials,64\nPosture non-compliant,49\nUnknown endpoint,32\"\n| table Reason Failures",
+        "queryParameters": {
+          "earliest": "-15m",
+          "latest": "now"
+        }
+      }
+    },
+    "ds_035": {
+      "type": "ds.search",
+      "name": "ds_035",
+      "options": {
+        "query": "| makeresults format=csv data=\"Switch,Events\nsw-a3-acc-01,184\nsw-b2-acc-02,61\nsw-c1-acc-04,38\nsw-a2-acc-03,27\nsw-d1-acc-01,19\"\n| table Switch Events",
+        "queryParameters": {
+          "earliest": "-15m",
+          "latest": "now"
+        }
+      }
+    },
+    "ds_038": {
+      "type": "ds.search",
+      "name": "ds_038",
+      "options": {
+        "query": "| makeresults format=csv data=\"When,Source,Event\n51,Switch,sw-a3-acc-01 Te1/1/1 flapping (CRC errors)\n50,ISE,RADIUS timeouts from sw-a3-acc-01\n49,ISE,38 × 802.1X auth failed — Ward A3 West\n48,Catalyst Center,Client health A3 West 8.9 → 3.2\n46,WLC,22 clients roamed to AP-A3-W-07\n27,Switch,Te1/1/1 stable after SFP swap\n24,Catalyst Center,Client health back to 8.7\"\n| eval \"When\"=strftime(relative_time(now(), \"@m\") - 'When'*60, \"%a %H:%M\")\n| table When Source Event",
+        "queryParameters": {
+          "earliest": "-15m",
+          "latest": "now"
+        }
+      }
+    }
+  },
+  "layout": {
+    "globalInputs": [],
+    "tabs": {
+      "items": [
+        {
+          "layoutId": "layout_1",
+          "label": "Dashboard"
+        }
+      ]
+    },
+    "layoutDefinitions": {
+      "layout_1": {
+        "type": "absolute",
+        "options": {
+          "width": 1440,
+          "height": 1360,
+          "display": "auto-scale",
+          "backgroundColor": "#0E1116"
+        },
+        "structure": [
+          {
+            "item": "bg_001",
+            "type": "block",
+            "position": {
+              "x": 24,
+              "y": 20,
+              "w": 1392,
+              "h": 116
+            }
+          },
+          {
+            "item": "bg_002",
+            "type": "block",
+            "position": {
+              "x": 24,
+              "y": 20,
+              "w": 6,
+              "h": 116
+            }
+          },
+          {
+            "item": "md_003",
+            "type": "block",
+            "position": {
+              "x": 52,
+              "y": 34,
+              "w": 820,
+              "h": 22
+            }
+          },
+          {
+            "item": "md_004",
+            "type": "block",
+            "position": {
+              "x": 52,
+              "y": 56,
+              "w": 880,
+              "h": 44
+            }
+          },
+          {
+            "item": "md_005",
+            "type": "block",
+            "position": {
+              "x": 52,
+              "y": 100,
+              "w": 880,
+              "h": 28
+            }
+          },
+          {
+            "item": "bg_006",
+            "type": "block",
+            "position": {
+              "x": 928,
+              "y": 36,
+              "w": 464,
+              "h": 84
+            }
+          },
+          {
+            "item": "md_007",
+            "type": "block",
+            "position": {
+              "x": 940,
+              "y": 42,
+              "w": 444,
+              "h": 20
+            }
+          },
+          {
+            "item": "md_008",
+            "type": "block",
+            "position": {
+              "x": 940,
+              "y": 62,
+              "w": 444,
+              "h": 56
+            }
+          },
+          {
+            "item": "bg_009",
+            "type": "block",
+            "position": {
+              "x": 24,
+              "y": 152,
+              "w": 336,
+              "h": 164
+            }
+          },
+          {
+            "item": "viz_010",
+            "type": "block",
+            "position": {
+              "x": 30,
+              "y": 158,
+              "w": 324,
+              "h": 152
+            }
+          },
+          {
+            "item": "bg_012",
+            "type": "block",
+            "position": {
+              "x": 376,
+              "y": 152,
+              "w": 336,
+              "h": 164
+            }
+          },
+          {
+            "item": "viz_013",
+            "type": "block",
+            "position": {
+              "x": 382,
+              "y": 158,
+              "w": 324,
+              "h": 152
+            }
+          },
+          {
+            "item": "bg_015",
+            "type": "block",
+            "position": {
+              "x": 728,
+              "y": 152,
+              "w": 336,
+              "h": 164
+            }
+          },
+          {
+            "item": "viz_016",
+            "type": "block",
+            "position": {
+              "x": 734,
+              "y": 158,
+              "w": 324,
+              "h": 152
+            }
+          },
+          {
+            "item": "bg_018",
+            "type": "block",
+            "position": {
+              "x": 1080,
+              "y": 152,
+              "w": 336,
+              "h": 164
+            }
+          },
+          {
+            "item": "viz_019",
+            "type": "block",
+            "position": {
+              "x": 1086,
+              "y": 158,
+              "w": 324,
+              "h": 152
+            }
+          },
+          {
+            "item": "bg_021",
+            "type": "block",
+            "position": {
+              "x": 24,
+              "y": 332,
+              "w": 904,
+              "h": 176
+            }
+          },
+          {
+            "item": "viz_022",
+            "type": "block",
+            "position": {
+              "x": 30,
+              "y": 338,
+              "w": 892,
+              "h": 164
+            }
+          },
+          {
+            "item": "bg_024",
+            "type": "block",
+            "position": {
+              "x": 24,
+              "y": 524,
+              "w": 904,
+              "h": 176
+            }
+          },
+          {
+            "item": "viz_025",
+            "type": "block",
+            "position": {
+              "x": 30,
+              "y": 530,
+              "w": 892,
+              "h": 164
+            }
+          },
+          {
+            "item": "bg_027",
+            "type": "block",
+            "position": {
+              "x": 24,
+              "y": 716,
+              "w": 904,
+              "h": 176
+            }
+          },
+          {
+            "item": "viz_028",
+            "type": "block",
+            "position": {
+              "x": 30,
+              "y": 722,
+              "w": 892,
+              "h": 164
+            }
+          },
+          {
+            "item": "bg_030",
+            "type": "block",
+            "position": {
+              "x": 944,
+              "y": 332,
+              "w": 472,
+              "h": 272
+            }
+          },
+          {
+            "item": "viz_031",
+            "type": "block",
+            "position": {
+              "x": 950,
+              "y": 338,
+              "w": 460,
+              "h": 260
+            }
+          },
+          {
+            "item": "bg_033",
+            "type": "block",
+            "position": {
+              "x": 944,
+              "y": 620,
+              "w": 472,
+              "h": 272
+            }
+          },
+          {
+            "item": "viz_034",
+            "type": "block",
+            "position": {
+              "x": 950,
+              "y": 626,
+              "w": 460,
+              "h": 260
+            }
+          },
+          {
+            "item": "bg_036",
+            "type": "block",
+            "position": {
+              "x": 24,
+              "y": 908,
+              "w": 1392,
+              "h": 308
+            }
+          },
+          {
+            "item": "viz_037",
+            "type": "block",
+            "position": {
+              "x": 30,
+              "y": 914,
+              "w": 1380,
+              "h": 296
+            }
+          },
+          {
+            "item": "bg_039",
+            "type": "block",
+            "position": {
+              "x": 24,
+              "y": 1232,
+              "w": 1392,
+              "h": 104
+            }
+          },
+          {
+            "item": "md_040",
+            "type": "block",
+            "position": {
+              "x": 44,
+              "y": 1248,
+              "w": 700,
+              "h": 22
+            }
+          },
+          {
+            "item": "bg_041",
+            "type": "block",
+            "position": {
+              "x": 44,
+              "y": 1282,
+              "w": 152,
+              "h": 34
+            }
+          },
+          {
+            "item": "md_042",
+            "type": "block",
+            "position": {
+              "x": 60,
+              "y": 1289,
+              "w": 134,
+              "h": 22
+            }
+          },
+          {
+            "item": "bg_043",
+            "type": "block",
+            "position": {
+              "x": 206,
+              "y": 1282,
+              "w": 196,
+              "h": 34
+            }
+          },
+          {
+            "item": "md_044",
+            "type": "block",
+            "position": {
+              "x": 222,
+              "y": 1289,
+              "w": 178,
+              "h": 22
+            }
+          },
+          {
+            "item": "bg_045",
+            "type": "block",
+            "position": {
+              "x": 412,
+              "y": 1282,
+              "w": 233,
+              "h": 34
+            }
+          },
+          {
+            "item": "md_046",
+            "type": "block",
+            "position": {
+              "x": 428,
+              "y": 1289,
+              "w": 215,
+              "h": 22
+            }
+          },
+          {
+            "item": "bg_047",
+            "type": "block",
+            "position": {
+              "x": 655,
+              "y": 1282,
+              "w": 100,
+              "h": 34
+            }
+          },
+          {
+            "item": "md_048",
+            "type": "block",
+            "position": {
+              "x": 671,
+              "y": 1289,
+              "w": 82,
+              "h": 22
+            }
+          },
+          {
+            "item": "bg_049",
+            "type": "block",
+            "position": {
+              "x": 765,
+              "y": 1282,
+              "w": 263,
+              "h": 34
+            }
+          },
+          {
+            "item": "md_050",
+            "type": "block",
+            "position": {
+              "x": 781,
+              "y": 1289,
+              "w": 245,
+              "h": 22
+            }
+          },
+          {
+            "item": "bg_051",
+            "type": "block",
+            "position": {
+              "x": 1038,
+              "y": 1282,
+              "w": 204,
+              "h": 34
+            }
+          },
+          {
+            "item": "md_052",
+            "type": "block",
+            "position": {
+              "x": 1054,
+              "y": 1289,
+              "w": 186,
+              "h": 22
+            }
+          }
+        ]
+      }
+    }
+  }
+}
+  ]]></definition>
+  <meta type="hiddenElements"><![CDATA[
+{"hideEdit": false, "hideOpenInSearch": false, "hideExport": false}
+  ]]></meta>
+</dashboard>

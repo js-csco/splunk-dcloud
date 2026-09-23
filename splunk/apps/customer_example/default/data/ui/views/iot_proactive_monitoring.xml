@@ -1,126 +1,1006 @@
-<form version="1.1" theme="dark">
-  <label>3. IoT — From Reactive to Proactive</label>
-  <description>Turn IoT device telemetry into an early-warning signal instead of a post-mortem, and share the same view with the external service provider.</description>
-
-  <fieldset submitButton="false" autoRun="true">
-    <input type="time" token="tr">
-      <label>Time range</label>
-      <default><earliest>-7d</earliest><latest>now</latest></default>
-    </input>
-  </fieldset>
-
-  <row>
-    <panel>
-      <html>
-        <p style="margin:0;color:#8b98a5;font-style:italic;">"…IoT Systeme werden zur Zeit überhaupt nicht proaktiv überwacht, zu 99% reaktiv…"
-        <span style="color:#cdd9e5;font-style:normal;"> — managed with an external provider, first signal is always a break.</span></p>
-      </html>
-    </panel>
-  </row>
-
-  <row>
-    <panel>
-      <title>Proactive coverage today</title>
-      <chart>
-        <search><query>| makeresults | eval v=1</query></search>
-        <option name="charting.chart">radialGauge</option>
-        <option name="charting.chart.rangeValues">[0,50,80,100]</option>
-        <option name="drilldown">none</option>
-      </chart>
-    </panel>
-    <panel>
-      <title>Devices with degrading telemetry now</title>
-      <single>
-        <search><query>| makeresults | eval v=3</query></search>
-        <option name="drilldown">none</option>
-        <option name="colorBy">value</option>
-        <option name="rangeColors">["0x53a051","0xf2b827"]</option>
-        <option name="rangeValues">[1]</option>
-      </single>
-    </panel>
-    <panel>
-      <title>Fleet size (this ward)</title>
-      <single>
-        <search><query>| makeresults | eval v=48</query></search>
-        <option name="drilldown">none</option>
-      </single>
-    </panel>
-  </row>
-
-  <row>
-    <panel>
-      <title>Fleet health — battery &amp; connectivity trend (7 days)</title>
-      <chart>
-        <search>
-          <query>| makeresults count=7
-| streamstats count as i
-| eval Day=strftime(relative_time(now(), "-".(7-i)."d"), "%m-%d")
-| eval "Asset-Tag-114 battery %"=case(i&lt;=4, 61-(i*2), 1=1, 61-(i*8))
-| eval "InfusionGW-22 signal (RSSI dBm, higher=better)"=case(i&lt;=5, -58-(i*1), 1=1, -58-(i*6))
-| table Day "Asset-Tag-114 battery %" "InfusionGW-22 signal (RSSI dBm, higher=better)"</query>
-          <earliest>$tr.earliest$</earliest>
-          <latest>$tr.latest$</latest>
-        </search>
-        <option name="charting.chart">line</option>
-        <option name="charting.chart.nullValueMode">connect</option>
-        <option name="charting.legend.placement">bottom</option>
-        <option name="drilldown">none</option>
-      </chart>
-    </panel>
-    <panel>
-      <title>Fleet status right now</title>
-      <chart>
-        <search>
-          <query>| makeresults count=3
-| streamstats count as i
-| eval Category=case(i=1,"Healthy",i=2,"Degrading",i=3,"Dark / unresponsive")
-| eval Count=case(i=1,42,i=2,3,i=3,3)
-| table Category Count</query>
-          <earliest>$tr.earliest$</earliest>
-          <latest>$tr.latest$</latest>
-        </search>
-        <option name="charting.chart">pie</option>
-        <option name="charting.legend.placement">right</option>
-        <option name="drilldown">none</option>
-      </chart>
-    </panel>
-  </row>
-
-  <row>
-    <panel>
-      <title>Devices trending toward failure (would page the MSP before an outage)</title>
-      <table>
-        <search>
-          <query>| makeresults count=3
-| streamstats count as i
-| eval Device=case(i=1,"Asset-Tag-114",i=2,"InfusionGW-22",i=3,"EnvSensor-Ward3-07")
-| eval Signal=case(i=1,"Battery 13%, dropping",i=2,"RSSI -94 dBm, dropping",i=3,"Last-seen 41 min ago")
-| eval "Days until likely dark"=case(i=1,2,i=2,1,i=3,0)
-| eval Priority=case(i=1,"Medium",i=2,"High",i=3,"High")
-| table Device Signal "Days until likely dark" Priority
-| sort "Days until likely dark"</query>
-          <earliest>$tr.earliest$</earliest>
-          <latest>$tr.latest$</latest>
-        </search>
-        <option name="drilldown">none</option>
-        <format type="color" field="Priority">
-          <colorPalette type="map">{"High":#d93f3c,"Medium":#f2b827}</colorPalette>
-        </format>
-      </table>
-    </panel>
-  </row>
-
-  <row>
-    <panel>
-      <title>Data sources needed</title>
-      <html>
-        <div style="display:flex;flex-wrap:wrap;gap:6px;">
-          <span style="background:#1b2430;color:#cdd9e5;padding:4px 10px;border-radius:12px;font-size:12px;border:1px solid #2b3a4a;">IoT gateway / MQTT telemetry</span>
-          <span style="background:#1b2430;color:#cdd9e5;padding:4px 10px;border-radius:12px;font-size:12px;border:1px solid #2b3a4a;">Wireless / VLAN logs</span>
-          <span style="background:#1b2430;color:#cdd9e5;padding:4px 10px;border-radius:12px;font-size:12px;border:1px solid #2b3a4a;">MSP ticketing API</span>
-          <span style="background:#1b2430;color:#cdd9e5;padding:4px 10px;border-radius:12px;font-size:12px;border:1px solid #2b3a4a;">Asset inventory</span>
-        </div>
-      </html>
-    </panel>
-  </row>
-</form>
+<dashboard version="2" theme="dark">
+  <label>3 · IoT Fleet Health</label>
+  <description>Move IoT monitoring from reactive to proactive, shared with the external service partner.</description>
+  <definition><![CDATA[
+{
+  "title": "3 · IoT Fleet Health",
+  "description": "Move IoT monitoring from reactive to proactive, shared with the external service partner.",
+  "inputs": {},
+  "defaults": {},
+  "visualizations": {
+    "bg_001": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#161B22",
+        "strokeColor": "#262C36",
+        "strokeWidth": 1,
+        "rx": 12
+      }
+    },
+    "bg_002": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#16A3B0",
+        "strokeColor": "#16A3B0",
+        "strokeWidth": 1,
+        "rx": 3
+      }
+    },
+    "md_003": {
+      "type": "splunk.markdown",
+      "options": {
+        "markdown": "USE CASE 3 OF 9  ·  SPITAL AARWALD  ·  SAMPLE DATA",
+        "fontColor": "#16A3B0",
+        "fontSize": "custom",
+        "customFontSize": 12
+      }
+    },
+    "md_004": {
+      "type": "splunk.markdown",
+      "options": {
+        "markdown": "# IoT Fleet Health — Reactive to Proactive",
+        "fontColor": "#E6EDF3"
+      }
+    },
+    "md_005": {
+      "type": "splunk.markdown",
+      "options": {
+        "markdown": "2,400 connected devices run with a partner. Splunk flags degrading devices days before they fail.",
+        "fontColor": "#9AA4B2",
+        "fontSize": "custom",
+        "customFontSize": 15
+      }
+    },
+    "bg_006": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#11161D",
+        "strokeColor": "#262C36",
+        "strokeWidth": 1,
+        "rx": 8
+      }
+    },
+    "md_007": {
+      "type": "splunk.markdown",
+      "options": {
+        "markdown": "WHAT WE HEARD",
+        "fontColor": "#6E7681",
+        "fontSize": "custom",
+        "customFontSize": 11
+      }
+    },
+    "md_008": {
+      "type": "splunk.markdown",
+      "options": {
+        "markdown": "*“IoT Systeme werden zur Zeit überhaupt nicht proaktiv überwacht, zu 99% reaktiv. Man arbeitet hier mit einem externen Dienstleister zusammen.”*",
+        "fontColor": "#9AA4B2",
+        "fontSize": "custom",
+        "customFontSize": 13
+      }
+    },
+    "bg_009": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#161B22",
+        "strokeColor": "#262C36",
+        "strokeWidth": 1,
+        "rx": 12
+      }
+    },
+    "viz_010": {
+      "type": "splunk.singlevalue",
+      "options": {
+        "backgroundColor": "#161B22",
+        "majorColor": "#E6EDF3",
+        "numberPrecision": 0,
+        "shouldUseThousandSeparators": true,
+        "majorFontSize": 42,
+        "trendFontSize": 15,
+        "trendDisplay": "absolute",
+        "sparklineDisplay": "below",
+        "showSparklineAreaGraph": true,
+        "sparklineStrokeColor": "#16A3B0",
+        "sparklineAreaColor": "#16A3B0",
+        "underLabel": "tags · sensors · pumps · nurse call",
+        "underLabelColor": "#9AA4B2",
+        "underLabelFontSize": 13
+      },
+      "dataSources": {
+        "primary": "ds_011"
+      },
+      "title": "Connected IoT devices"
+    },
+    "bg_012": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#161B22",
+        "strokeColor": "#262C36",
+        "strokeWidth": 1,
+        "rx": 12
+      }
+    },
+    "viz_013": {
+      "type": "splunk.singlevalue",
+      "options": {
+        "backgroundColor": "#161B22",
+        "majorColor": "> majorValue | rangeValue(majorColorConfig)",
+        "numberPrecision": 1,
+        "shouldUseThousandSeparators": true,
+        "majorFontSize": 42,
+        "trendFontSize": 15,
+        "trendDisplay": "absolute",
+        "sparklineDisplay": "below",
+        "showSparklineAreaGraph": true,
+        "sparklineStrokeColor": "#16A3B0",
+        "sparklineAreaColor": "#16A3B0",
+        "unit": "%",
+        "unitPosition": "after",
+        "underLabel": "last 24 hours",
+        "underLabelColor": "#9AA4B2",
+        "underLabelFontSize": 13,
+        "trendColor": "> trendValue | rangeValue(trendColorConfig)"
+      },
+      "dataSources": {
+        "primary": "ds_014"
+      },
+      "title": "Online now",
+      "context": {
+        "trendColorConfig": [
+          {
+            "to": -0.0001,
+            "value": "#D03B3B"
+          },
+          {
+            "from": -0.0001,
+            "to": 0.0001,
+            "value": "#9AA4B2"
+          },
+          {
+            "from": 0.0001,
+            "value": "#0CA30C"
+          }
+        ],
+        "majorColorConfig": [
+          {
+            "to": 95,
+            "value": "#D03B3B"
+          },
+          {
+            "from": 95,
+            "to": 98,
+            "value": "#FAB219"
+          },
+          {
+            "from": 98,
+            "value": "#0CA30C"
+          }
+        ]
+      }
+    },
+    "bg_015": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#161B22",
+        "strokeColor": "#262C36",
+        "strokeWidth": 1,
+        "rx": 12
+      }
+    },
+    "viz_016": {
+      "type": "splunk.singlevalue",
+      "options": {
+        "backgroundColor": "#161B22",
+        "majorColor": "> majorValue | rangeValue(majorColorConfig)",
+        "numberPrecision": 0,
+        "shouldUseThousandSeparators": true,
+        "majorFontSize": 42,
+        "trendFontSize": 15,
+        "trendDisplay": "absolute",
+        "sparklineDisplay": "below",
+        "showSparklineAreaGraph": true,
+        "sparklineStrokeColor": "#16A3B0",
+        "sparklineAreaColor": "#16A3B0",
+        "underLabel": "battery · signal · heartbeat",
+        "underLabelColor": "#9AA4B2",
+        "underLabelFontSize": 13,
+        "trendColor": "> trendValue | rangeValue(trendColorConfig)"
+      },
+      "dataSources": {
+        "primary": "ds_017"
+      },
+      "title": "At risk within 7 days",
+      "context": {
+        "trendColorConfig": [
+          {
+            "to": -0.0001,
+            "value": "#0CA30C"
+          },
+          {
+            "from": -0.0001,
+            "to": 0.0001,
+            "value": "#9AA4B2"
+          },
+          {
+            "from": 0.0001,
+            "value": "#D03B3B"
+          }
+        ],
+        "majorColorConfig": [
+          {
+            "to": 20,
+            "value": "#E6EDF3"
+          },
+          {
+            "from": 20,
+            "value": "#FAB219"
+          }
+        ]
+      }
+    },
+    "bg_018": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#161B22",
+        "strokeColor": "#262C36",
+        "strokeWidth": 1,
+        "rx": 12
+      }
+    },
+    "viz_019": {
+      "type": "splunk.singlevalue",
+      "options": {
+        "backgroundColor": "#161B22",
+        "majorColor": "#E6EDF3",
+        "numberPrecision": 0,
+        "shouldUseThousandSeparators": true,
+        "majorFontSize": 42,
+        "trendFontSize": 15,
+        "trendDisplay": "absolute",
+        "sparklineDisplay": "below",
+        "showSparklineAreaGraph": true,
+        "sparklineStrokeColor": "#16A3B0",
+        "sparklineAreaColor": "#16A3B0",
+        "unit": "%",
+        "unitPosition": "after",
+        "underLabel": "was ~1% before",
+        "underLabelColor": "#9AA4B2",
+        "underLabelFontSize": 13,
+        "trendColor": "> trendValue | rangeValue(trendColorConfig)"
+      },
+      "dataSources": {
+        "primary": "ds_020"
+      },
+      "title": "Partner tickets opened proactively",
+      "context": {
+        "trendColorConfig": [
+          {
+            "to": -0.0001,
+            "value": "#D03B3B"
+          },
+          {
+            "from": -0.0001,
+            "to": 0.0001,
+            "value": "#9AA4B2"
+          },
+          {
+            "from": 0.0001,
+            "value": "#0CA30C"
+          }
+        ]
+      }
+    },
+    "bg_021": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#161B22",
+        "strokeColor": "#262C36",
+        "strokeWidth": 1,
+        "rx": 12
+      }
+    },
+    "viz_022": {
+      "type": "splunk.line",
+      "options": {
+        "backgroundColor": "#161B22",
+        "legendDisplay": "bottom",
+        "xAxisTitleVisibility": "hide",
+        "nullValueDisplay": "connect",
+        "lineWidth": 2,
+        "seriesColors": [
+          "#3987E5",
+          "#199E70",
+          "#D95926",
+          "#9085E9"
+        ],
+        "yAxisTitleVisibility": "hide"
+      },
+      "dataSources": {
+        "primary": "ds_023"
+      },
+      "title": "Offline devices by type — last 7 days"
+    },
+    "bg_024": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#161B22",
+        "strokeColor": "#262C36",
+        "strokeWidth": 1,
+        "rx": 12
+      }
+    },
+    "viz_025": {
+      "type": "splunk.pie",
+      "options": {
+        "backgroundColor": "#161B22",
+        "showDonutHole": true,
+        "labelDisplay": "valuesAndPercentage",
+        "legendDisplay": "off",
+        "seriesColors": [
+          "#199E70",
+          "#C98500",
+          "#3987E5",
+          "#D95926"
+        ]
+      },
+      "dataSources": {
+        "primary": "ds_026"
+      },
+      "title": "Fleet health right now"
+    },
+    "bg_027": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#161B22",
+        "strokeColor": "#262C36",
+        "strokeWidth": 1,
+        "rx": 12
+      }
+    },
+    "viz_028": {
+      "type": "splunk.table",
+      "options": {
+        "backgroundColor": "#161B22",
+        "headerVisibility": "fixed",
+        "fontSize": "small",
+        "columnFormat": {
+          "Device": {
+            "width": 100
+          },
+          "Type": {
+            "width": 170
+          },
+          "Location": {
+            "width": 170
+          },
+          "Battery": {
+            "width": 70
+          },
+          "Signal": {
+            "width": 80
+          },
+          "Predicted": {
+            "width": 85
+          },
+          "Partner ticket": {
+            "width": 115
+          },
+          "Risk": {
+            "width": 80,
+            "rowBackgroundColors": "> table | seriesByName(\"Risk\") | matchValue(c0Bg)",
+            "rowColors": "> table | seriesByName(\"Risk\") | matchValue(c0Fg)"
+          }
+        }
+      },
+      "dataSources": {
+        "primary": "ds_029"
+      },
+      "title": "Next likely failures — ticket opened before the outage",
+      "context": {
+        "c0Bg": [
+          {
+            "match": "High",
+            "value": "#3F1D20"
+          },
+          {
+            "match": "Medium",
+            "value": "#3A2E12"
+          },
+          {
+            "match": "Low",
+            "value": "#1F242C"
+          }
+        ],
+        "c0Fg": [
+          {
+            "match": "High",
+            "value": "#FF8A80"
+          },
+          {
+            "match": "Medium",
+            "value": "#E3B341"
+          },
+          {
+            "match": "Low",
+            "value": "#9AA4B2"
+          }
+        ]
+      }
+    },
+    "bg_030": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#161B22",
+        "strokeColor": "#262C36",
+        "strokeWidth": 1,
+        "rx": 12
+      }
+    },
+    "viz_031": {
+      "type": "splunk.column",
+      "options": {
+        "backgroundColor": "#161B22",
+        "legendDisplay": "bottom",
+        "xAxisTitleVisibility": "hide",
+        "seriesColors": [
+          "#D95926",
+          "#3987E5"
+        ],
+        "stackMode": "stacked",
+        "yAxisTitleVisibility": "hide"
+      },
+      "dataSources": {
+        "primary": "ds_032"
+      },
+      "title": "Partner tickets per week"
+    },
+    "bg_033": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#161B22",
+        "strokeColor": "#262C36",
+        "strokeWidth": 1,
+        "rx": 12
+      }
+    },
+    "md_034": {
+      "type": "splunk.markdown",
+      "options": {
+        "markdown": "DATA SOURCES NEEDED IN SPLUNK",
+        "fontColor": "#16A3B0",
+        "fontSize": "custom",
+        "customFontSize": 12
+      }
+    },
+    "bg_035": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#1C2530",
+        "strokeColor": "#2D3A48",
+        "strokeWidth": 1,
+        "rx": 17
+      }
+    },
+    "md_036": {
+      "type": "splunk.markdown",
+      "options": {
+        "markdown": "Wireless LAN controller",
+        "fontColor": "#E6EDF3",
+        "fontSize": "custom",
+        "customFontSize": 13
+      }
+    },
+    "bg_037": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#1C2530",
+        "strokeColor": "#2D3A48",
+        "strokeWidth": 1,
+        "rx": 17
+      }
+    },
+    "md_038": {
+      "type": "splunk.markdown",
+      "options": {
+        "markdown": "IoT platform / gateway",
+        "fontColor": "#E6EDF3",
+        "fontSize": "custom",
+        "customFontSize": 13
+      }
+    },
+    "bg_039": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#1C2530",
+        "strokeColor": "#2D3A48",
+        "strokeWidth": 1,
+        "rx": 17
+      }
+    },
+    "md_040": {
+      "type": "splunk.markdown",
+      "options": {
+        "markdown": "CMDB / asset inventory",
+        "fontColor": "#E6EDF3",
+        "fontSize": "custom",
+        "customFontSize": 13
+      }
+    },
+    "bg_041": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#1C2530",
+        "strokeColor": "#2D3A48",
+        "strokeWidth": 1,
+        "rx": 17
+      }
+    },
+    "md_042": {
+      "type": "splunk.markdown",
+      "options": {
+        "markdown": "ServiceNow tickets & changes",
+        "fontColor": "#E6EDF3",
+        "fontSize": "custom",
+        "customFontSize": 13
+      }
+    }
+  },
+  "dataSources": {
+    "ds_011": {
+      "type": "ds.search",
+      "name": "ds_011",
+      "options": {
+        "query": "| makeresults format=csv data=\"ago,n\n29,2329\n28,2335\n27,2338\n26,2338\n25,2342\n24,2347\n23,2349\n22,2354\n21,2356\n20,2355\n19,2362\n18,2361\n17,2370\n16,2370\n15,2372\n14,2377\n13,2377\n12,2380\n11,2387\n10,2388\n9,2392\n8,2397\n7,2398\n6,2400\n5,2403\n4,2408\n3,2412\n2,2410\n1,2413\n0,2420\"\n| eval _time=relative_time(now(), \"@d\") - ago*86400\n| sort 0 _time\n| table _time n",
+        "queryParameters": {
+          "earliest": "-15m",
+          "latest": "now"
+        }
+      }
+    },
+    "ds_014": {
+      "type": "ds.search",
+      "name": "ds_014",
+      "options": {
+        "query": "| makeresults format=csv data=\"ago,pct\n23,98.22\n22,98.84\n21,98.41\n20,98.11\n19,98.72\n18,98.23\n17,98.87\n16,98.13\n15,98.72\n14,98.76\n13,98.32\n12,98.58\n11,98.84\n10,98.41\n9,98.73\n8,96.54\n7,98.68\n6,98.56\n5,98.87\n4,98.21\n3,98.39\n2,98.13\n1,98.5\n0,98.31\"\n| eval _time=relative_time(now(), \"@h\") - ago*3600\n| sort 0 _time\n| table _time pct",
+        "queryParameters": {
+          "earliest": "-15m",
+          "latest": "now"
+        }
+      }
+    },
+    "ds_017": {
+      "type": "ds.search",
+      "name": "ds_017",
+      "options": {
+        "query": "| makeresults format=csv data=\"ago,n\n13,60\n12,56\n11,57\n10,54\n9,53\n8,47\n7,46\n6,45\n5,45\n4,40\n3,39\n2,35\n1,35\n0,33\"\n| eval _time=relative_time(now(), \"@d\") - ago*86400\n| sort 0 _time\n| table _time n",
+        "queryParameters": {
+          "earliest": "-15m",
+          "latest": "now"
+        }
+      }
+    },
+    "ds_020": {
+      "type": "ds.search",
+      "name": "ds_020",
+      "options": {
+        "query": "| makeresults format=csv data=\"ago,pct\n11,1\n10,1\n9,2\n8,1\n7,1\n6,18\n5,31\n4,42\n3,49\n2,55\n1,61\n0,64\"\n| eval _time=relative_time(now(), \"@d\") - ago*604800\n| sort 0 _time\n| table _time pct",
+        "queryParameters": {
+          "earliest": "-15m",
+          "latest": "now"
+        }
+      }
+    },
+    "ds_023": {
+      "type": "ds.search",
+      "name": "ds_023",
+      "options": {
+        "query": "| makeresults format=csv data=\"cyc,slot,Asset tags (RTLS),Environment sensors,Infusion pump gateways,Nurse call buttons\n0,0,20,7,3,2\n0,1,21,3,4,3\n0,2,20,4,4,3\n0,3,19,7,2,3\n0,4,20,4,4,2\n0,5,16,3,5,3\n0,6,20,3,4,1\n0,7,22,4,2,2\n0,8,23,6,2,1\n0,9,27,7,2,2\n0,10,30,7,4,3\n0,11,29,7,3,1\n0,12,30,3,2,1\n0,13,33,7,2,1\n0,14,33,5,4,1\n0,15,36,3,4,2\n0,16,32,4,5,2\n0,17,32,7,5,3\n0,18,34,7,2,3\n0,19,33,7,4,2\n0,20,30,4,4,2\n0,21,25,7,4,3\n0,22,22,3,5,3\n0,23,21,3,5,3\n0,24,21,4,2,3\n0,25,21,5,5,2\n0,26,20,5,4,3\n0,27,18,3,2,3\n0,28,15,5,4,3\n0,29,19,5,4,1\n0,30,19,4,4,2\n0,31,25,7,4,2\n0,32,26,6,2,1\n0,33,27,4,4,3\n0,34,26,5,3,2\n0,35,28,6,2,1\n0,36,32,5,4,3\n0,37,35,4,5,1\n0,38,30,5,3,3\n0,39,34,5,3,1\n0,40,30,7,3,2\n0,41,35,7,3,2\n0,42,30,3,4,3\n0,43,28,6,4,3\n0,44,31,5,5,2\n0,45,28,6,4,2\n0,46,24,6,2,2\n0,47,20,4,2,2\n0,48,23,7,5,3\n0,49,21,4,2,3\n0,50,18,7,4,3\n0,51,17,4,2,3\n0,52,17,3,3,1\n0,53,16,7,3,2\n0,54,21,3,2,2\n0,55,24,3,3,3\n0,56,22,4,2,3\n0,57,27,6,2,3\n0,58,25,5,3,2\n0,59,33,7,5,1\n0,60,30,4,3,1\n0,61,33,3,3,1\n0,62,36,5,3,1\n0,63,34,7,5,1\n0,64,36,5,3,2\n0,65,33,7,5,1\n0,66,31,5,2,1\n0,67,33,4,2,1\n0,68,25,3,5,1\n0,69,29,3,5,2\n0,70,21,5,2,2\n0,71,22,6,4,2\n0,72,19,4,4,2\n0,73,16,4,2,3\n0,74,20,6,2,3\n0,75,16,3,4,2\n0,76,19,7,5,3\n0,77,22,3,5,1\n0,78,19,6,4,2\n0,79,24,6,5,1\n0,80,21,4,4,3\n0,81,27,3,5,1\n0,82,28,4,2,2\n0,83,29,7,4,1\n0,84,31,3,5,3\n0,85,29,5,2,3\n0,86,35,3,5,1\n0,87,32,6,2,3\n0,88,30,7,2,3\n0,89,32,4,2,2\n0,90,34,3,2,1\n0,91,32,6,4,3\n0,92,27,3,2,3\n0,93,27,7,3,1\n0,94,24,3,2,3\n0,95,21,7,3,1\n0,96,18,4,3,2\n0,97,20,6,4,2\n0,98,19,6,4,3\n0,99,18,3,5,3\n0,100,16,6,3,2\n0,101,21,7,5,1\n0,102,22,6,3,1\n0,103,19,6,5,3\n0,104,24,6,3,1\n0,105,25,4,3,3\n0,106,29,5,3,3\n0,107,31,5,5,3\n0,108,34,7,4,1\n0,109,31,3,4,2\n0,110,36,6,3,1\n0,111,35,5,3,2\n0,112,33,4,5,3\n0,113,32,7,3,2\n0,114,32,7,2,2\n0,115,32,3,5,3\n0,116,25,6,3,1\n0,117,28,3,3,2\n0,118,21,4,4,1\n0,119,20,7,2,2\n0,120,18,3,4,1\n0,121,19,3,2,1\n0,122,15,5,4,1\n0,123,17,6,4,1\n0,124,15,5,4,2\n0,125,19,6,2,1\n0,126,22,7,5,2\n0,127,20,7,4,1\n0,128,22,3,5,1\n0,129,26,7,4,1\n0,130,29,5,4,2\n0,131,29,5,2,2\n0,132,33,7,2,3\n0,133,32,7,4,1\n0,134,35,5,3,3\n0,135,36,4,3,2\n0,136,35,6,2,1\n0,137,33,4,4,3\n0,138,33,7,5,3\n0,139,29,4,5,2\n0,140,27,4,2,1\n0,141,28,4,5,2\n0,142,20,5,4,2\n0,143,19,4,2,2\n0,144,21,5,3,3\n0,145,22,7,4,2\n0,146,18,6,2,2\n0,147,18,3,3,2\n0,148,19,3,2,3\n0,149,22,3,3,3\n0,150,18,7,5,3\n0,151,24,6,3,3\n0,152,24,4,5,1\n0,153,27,7,3,3\n0,154,26,4,4,2\n0,155,33,5,2,2\n0,156,31,6,4,3\n0,157,33,5,5,3\n0,158,35,5,5,1\n0,159,35,4,2,1\n0,160,36,4,5,1\n0,161,33,6,3,1\n0,162,34,7,3,1\n0,163,33,7,5,1\n0,164,29,5,3,1\n0,165,26,3,2,1\n0,166,22,7,3,3\n0,167,19,6,2,2\n1,0,19,5,4,3\n1,1,21,4,2,3\n1,2,21,3,2,3\n1,3,17,4,2,1\n1,4,18,4,5,2\n1,5,16,3,5,1\n1,6,23,4,3,2\n1,7,22,6,2,3\n1,8,26,6,3,3\n1,9,26,5,2,2\n1,10,28,6,5,1\n1,11,30,3,4,2\n1,12,34,5,5,3\n1,13,31,7,5,1\n1,14,30,4,4,2\n1,15,32,6,3,1\n1,16,31,3,3,3\n1,17,32,7,3,3\n1,18,28,4,2,3\n1,19,28,6,5,1\n1,20,25,3,5,2\n1,21,25,6,2,3\n1,22,25,3,3,2\n1,23,19,6,5,1\n1,24,18,4,2,2\n1,25,19,4,3,2\n1,26,19,3,4,1\n1,27,19,3,4,2\n1,28,21,6,4,2\n1,29,17,7,4,1\n1,30,23,5,4,2\n1,31,19,3,5,1\n1,32,24,7,2,1\n1,33,23,3,2,1\n1,34,29,3,5,1\n1,35,28,7,4,1\n1,36,34,6,4,2\n1,37,31,3,5,2\n1,38,36,7,5,1\n1,39,33,4,5,1\n1,40,34,6,4,3\n1,41,34,6,3,3\n1,42,34,6,4,1\n1,43,29,6,5,1\n1,44,28,6,4,2\n1,45,29,4,5,2\n1,46,20,4,3,3\n1,47,25,3,5,1\n1,48,23,3,4,1\n1,49,20,3,2,2\n1,50,18,5,4,1\n1,51,15,4,5,1\n1,52,17,7,4,1\n1,53,19,3,3,1\n1,54,22,3,3,3\n1,55,20,7,2,1\n1,56,21,5,3,1\n1,57,29,7,5,3\n1,58,31,7,4,3\n1,59,33,4,5,1\n1,60,32,3,2,1\n1,61,33,3,2,1\n1,62,32,3,2,2\n1,63,34,4,2,3\n1,64,33,5,5,3\n1,65,34,6,2,2\n1,66,34,7,5,2\n1,67,28,3,2,2\n1,68,27,3,4,2\n1,69,24,6,2,3\n1,70,25,5,5,3\n1,71,19,7,3,1\n1,72,19,3,4,1\n1,73,19,6,2,2\n1,74,16,5,3,3\n1,75,16,4,5,3\n1,76,19,6,4,1\n1,77,20,6,5,2\n1,78,20,7,2,2\n1,79,19,4,2,1\n1,80,25,4,4,3\n1,81,27,3,5,1\n1,82,26,4,4,2\n1,83,30,3,4,2\n1,84,33,4,4,1\n1,85,29,6,4,2\n1,86,33,3,3,1\n1,87,34,5,5,3\n1,88,32,4,5,2\n1,89,32,6,3,2\n1,90,34,5,4,1\n1,91,30,5,4,2\n1,92,30,4,2,1\n1,93,24,7,3,3\n1,94,20,4,2,1\n1,95,20,6,4,2\n1,96,21,3,5,1\n1,97,17,3,4,2\n1,98,17,3,2,2\n1,99,17,5,3,3\n1,100,21,6,5,3\n1,101,18,5,2,1\n1,102,20,3,3,3\n1,103,20,4,5,3\n1,104,26,5,3,2\n1,105,23,4,2,1\n1,106,28,3,5,2\n1,107,31,7,5,2\n1,108,32,4,4,1\n1,109,29,4,2,2\n1,110,36,5,5,2\n1,111,33,5,5,2\n1,112,34,4,4,1\n1,113,33,3,5,2\n1,114,34,4,5,3\n1,115,31,5,2,2\n1,116,29,7,2,2\n1,117,24,5,4,1\n1,118,23,3,4,1\n1,119,23,6,5,1\n1,120,19,5,3,3\n1,121,19,6,4,1\n1,122,17,4,2,2\n1,123,17,7,5,3\n1,124,17,3,3,2\n1,125,18,6,2,2\n1,126,18,4,2,3\n1,127,23,3,2,3\n1,128,26,3,4,3\n1,129,23,6,4,2\n1,130,28,5,4,3\n1,131,31,3,3,1\n1,132,31,4,3,1\n1,133,34,4,5,3\n1,134,33,3,3,2\n1,135,31,4,3,2\n1,136,31,4,3,1\n1,137,33,4,3,2\n1,138,34,3,5,2\n1,139,28,3,4,1\n1,140,26,3,3,2\n1,141,24,6,4,3\n1,142,20,4,2,2\n1,143,20,6,3,1\n1,144,19,7,5,1\n1,145,21,5,5,1\n1,146,20,5,5,3\n1,147,18,6,4,2\n1,148,16,7,5,2\n1,149,17,7,4,3\n1,150,23,4,4,1\n1,151,21,5,3,1\n1,152,20,7,2,2\n1,153,27,4,2,3\n1,154,25,4,2,2\n1,155,31,5,4,1\n1,156,31,7,5,2\n1,157,30,7,3,2\n1,158,33,7,4,3\n1,159,33,7,4,3\n1,160,34,5,4,2\n1,161,31,5,3,1\n1,162,32,7,3,3\n1,163,29,4,4,2\n1,164,27,6,3,2\n1,165,25,7,3,3\n1,166,24,7,5,3\n1,167,19,3,5,2\"\n| eval _time=relative_time(now(), \"@w0\") + slot*3600 - cyc*604800\n| where _time<=now() AND _time>now()-604800\n| sort 0 _time\n| eval \"Asset tags (RTLS)\"='Asset tags (RTLS)' + if(now()-_time>=158400 AND now()-_time<169200, 18, 0)\n| eval \"Environment sensors\"='Environment sensors' + if(now()-_time>=158400 AND now()-_time<169200, 6, 0)\n| eval \"Nurse call buttons\"='Nurse call buttons' + if(now()-_time>=158400 AND now()-_time<169200, 6, 0)\n| table _time \"Asset tags (RTLS)\" \"Environment sensors\" \"Infusion pump gateways\" \"Nurse call buttons\"",
+        "queryParameters": {
+          "earliest": "-15m",
+          "latest": "now"
+        }
+      }
+    },
+    "ds_026": {
+      "type": "ds.search",
+      "name": "ds_026",
+      "options": {
+        "query": "| makeresults format=csv data=\"State,Devices\nHealthy,2236\nLow battery,88\nWeak signal,51\nOffline,37\"\n| table State Devices",
+        "queryParameters": {
+          "earliest": "-15m",
+          "latest": "now"
+        }
+      }
+    },
+    "ds_029": {
+      "type": "ds.search",
+      "name": "ds_029",
+      "options": {
+        "query": "| makeresults format=csv data=\"Device,Type,Location,Battery,Signal,Predicted,Partner ticket,Risk\nINF-GW-22,Infusion pump gateway,Surgery A2,—,-91 dBm,< 24 h,INC0048812,High\nNC-A3-114,Nurse call button,Internal med. A3 R114,9%,-72 dBm,1 day,INC0048809,High\nTAG-00871,Asset tag (bed),Orthopedics B3,11%,-68 dBm,2 days,INC0048790,Medium\nENV-C1-104,Temp. sensor,Lab storage C1-104,14%,-77 dBm,3 days,INC0048785,Medium\nTAG-01322,Asset tag (pump),ICU A3,17%,-70 dBm,4 days,planned,Low\nNC-B1-022,Nurse call button,Maternity B1 R22,19%,-83 dBm,5 days,planned,Low\"\n| table Device Type Location Battery Signal Predicted \"Partner ticket\" Risk",
+        "queryParameters": {
+          "earliest": "-15m",
+          "latest": "now"
+        }
+      }
+    },
+    "ds_032": {
+      "type": "ds.search",
+      "name": "ds_032",
+      "options": {
+        "query": "| makeresults format=csv data=\"ago,Reactive (after failure),Proactive (before failure)\n11,61,0\n10,58,1\n9,63,1\n8,57,0\n7,60,1\n6,44,10\n5,38,17\n4,31,22\n3,27,26\n2,24,29\n1,21,33\n0,19,34\"\n| eval _time=relative_time(now(), \"@d\") - ago*604800\n| sort 0 _time\n| table _time \"Reactive (after failure)\" \"Proactive (before failure)\"",
+        "queryParameters": {
+          "earliest": "-15m",
+          "latest": "now"
+        }
+      }
+    }
+  },
+  "layout": {
+    "globalInputs": [],
+    "tabs": {
+      "items": [
+        {
+          "layoutId": "layout_1",
+          "label": "Dashboard"
+        }
+      ]
+    },
+    "layoutDefinitions": {
+      "layout_1": {
+        "type": "absolute",
+        "options": {
+          "width": 1440,
+          "height": 1122,
+          "display": "auto-scale",
+          "backgroundColor": "#0E1116"
+        },
+        "structure": [
+          {
+            "item": "bg_001",
+            "type": "block",
+            "position": {
+              "x": 24,
+              "y": 20,
+              "w": 1392,
+              "h": 116
+            }
+          },
+          {
+            "item": "bg_002",
+            "type": "block",
+            "position": {
+              "x": 24,
+              "y": 20,
+              "w": 6,
+              "h": 116
+            }
+          },
+          {
+            "item": "md_003",
+            "type": "block",
+            "position": {
+              "x": 52,
+              "y": 34,
+              "w": 820,
+              "h": 22
+            }
+          },
+          {
+            "item": "md_004",
+            "type": "block",
+            "position": {
+              "x": 52,
+              "y": 56,
+              "w": 880,
+              "h": 44
+            }
+          },
+          {
+            "item": "md_005",
+            "type": "block",
+            "position": {
+              "x": 52,
+              "y": 100,
+              "w": 880,
+              "h": 28
+            }
+          },
+          {
+            "item": "bg_006",
+            "type": "block",
+            "position": {
+              "x": 928,
+              "y": 36,
+              "w": 464,
+              "h": 84
+            }
+          },
+          {
+            "item": "md_007",
+            "type": "block",
+            "position": {
+              "x": 940,
+              "y": 42,
+              "w": 444,
+              "h": 20
+            }
+          },
+          {
+            "item": "md_008",
+            "type": "block",
+            "position": {
+              "x": 940,
+              "y": 62,
+              "w": 444,
+              "h": 56
+            }
+          },
+          {
+            "item": "bg_009",
+            "type": "block",
+            "position": {
+              "x": 24,
+              "y": 152,
+              "w": 336,
+              "h": 164
+            }
+          },
+          {
+            "item": "viz_010",
+            "type": "block",
+            "position": {
+              "x": 30,
+              "y": 158,
+              "w": 324,
+              "h": 152
+            }
+          },
+          {
+            "item": "bg_012",
+            "type": "block",
+            "position": {
+              "x": 376,
+              "y": 152,
+              "w": 336,
+              "h": 164
+            }
+          },
+          {
+            "item": "viz_013",
+            "type": "block",
+            "position": {
+              "x": 382,
+              "y": 158,
+              "w": 324,
+              "h": 152
+            }
+          },
+          {
+            "item": "bg_015",
+            "type": "block",
+            "position": {
+              "x": 728,
+              "y": 152,
+              "w": 336,
+              "h": 164
+            }
+          },
+          {
+            "item": "viz_016",
+            "type": "block",
+            "position": {
+              "x": 734,
+              "y": 158,
+              "w": 324,
+              "h": 152
+            }
+          },
+          {
+            "item": "bg_018",
+            "type": "block",
+            "position": {
+              "x": 1080,
+              "y": 152,
+              "w": 336,
+              "h": 164
+            }
+          },
+          {
+            "item": "viz_019",
+            "type": "block",
+            "position": {
+              "x": 1086,
+              "y": 158,
+              "w": 324,
+              "h": 152
+            }
+          },
+          {
+            "item": "bg_021",
+            "type": "block",
+            "position": {
+              "x": 24,
+              "y": 332,
+              "w": 904,
+              "h": 330
+            }
+          },
+          {
+            "item": "viz_022",
+            "type": "block",
+            "position": {
+              "x": 30,
+              "y": 338,
+              "w": 892,
+              "h": 318
+            }
+          },
+          {
+            "item": "bg_024",
+            "type": "block",
+            "position": {
+              "x": 944,
+              "y": 332,
+              "w": 472,
+              "h": 330
+            }
+          },
+          {
+            "item": "viz_025",
+            "type": "block",
+            "position": {
+              "x": 950,
+              "y": 338,
+              "w": 460,
+              "h": 318
+            }
+          },
+          {
+            "item": "bg_027",
+            "type": "block",
+            "position": {
+              "x": 24,
+              "y": 678,
+              "w": 904,
+              "h": 300
+            }
+          },
+          {
+            "item": "viz_028",
+            "type": "block",
+            "position": {
+              "x": 30,
+              "y": 684,
+              "w": 892,
+              "h": 288
+            }
+          },
+          {
+            "item": "bg_030",
+            "type": "block",
+            "position": {
+              "x": 944,
+              "y": 678,
+              "w": 472,
+              "h": 300
+            }
+          },
+          {
+            "item": "viz_031",
+            "type": "block",
+            "position": {
+              "x": 950,
+              "y": 684,
+              "w": 460,
+              "h": 288
+            }
+          },
+          {
+            "item": "bg_033",
+            "type": "block",
+            "position": {
+              "x": 24,
+              "y": 994,
+              "w": 1392,
+              "h": 104
+            }
+          },
+          {
+            "item": "md_034",
+            "type": "block",
+            "position": {
+              "x": 44,
+              "y": 1010,
+              "w": 700,
+              "h": 22
+            }
+          },
+          {
+            "item": "bg_035",
+            "type": "block",
+            "position": {
+              "x": 44,
+              "y": 1044,
+              "w": 204,
+              "h": 34
+            }
+          },
+          {
+            "item": "md_036",
+            "type": "block",
+            "position": {
+              "x": 60,
+              "y": 1051,
+              "w": 186,
+              "h": 22
+            }
+          },
+          {
+            "item": "bg_037",
+            "type": "block",
+            "position": {
+              "x": 258,
+              "y": 1044,
+              "w": 196,
+              "h": 34
+            }
+          },
+          {
+            "item": "md_038",
+            "type": "block",
+            "position": {
+              "x": 274,
+              "y": 1051,
+              "w": 178,
+              "h": 22
+            }
+          },
+          {
+            "item": "bg_039",
+            "type": "block",
+            "position": {
+              "x": 464,
+              "y": 1044,
+              "w": 196,
+              "h": 34
+            }
+          },
+          {
+            "item": "md_040",
+            "type": "block",
+            "position": {
+              "x": 480,
+              "y": 1051,
+              "w": 178,
+              "h": 22
+            }
+          },
+          {
+            "item": "bg_041",
+            "type": "block",
+            "position": {
+              "x": 670,
+              "y": 1044,
+              "w": 241,
+              "h": 34
+            }
+          },
+          {
+            "item": "md_042",
+            "type": "block",
+            "position": {
+              "x": 686,
+              "y": 1051,
+              "w": 223,
+              "h": 22
+            }
+          }
+        ]
+      }
+    }
+  }
+}
+  ]]></definition>
+  <meta type="hiddenElements"><![CDATA[
+{"hideEdit": false, "hideOpenInSearch": false, "hideExport": false}
+  ]]></meta>
+</dashboard>

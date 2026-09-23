@@ -1,130 +1,1008 @@
-<form version="1.1" theme="dark">
-  <label>1. Röntgengerät — DHCP / IP Drift</label>
-  <description>Detect when a critical, supposedly-static device silently gets reassigned by DHCP — before it takes an outage to notice.</description>
-
-  <fieldset submitButton="false" autoRun="true">
-    <input type="time" token="tr">
-      <label>Time range</label>
-      <default><earliest>-24h</earliest><latest>now</latest></default>
-    </input>
-  </fieldset>
-
-  <row>
-    <panel>
-      <html>
-        <p style="margin:0;color:#8b98a5;font-style:italic;">"…Röntgengerät ist letzte Woche ausgestiegen, weil die IP-Adresse aus unerklärlichen Gründen auf DHCP umgestellt wurde…"
-        <span style="color:#cdd9e5;font-style:normal;"> — a reserved device's IP silently flipped to DHCP; the outage took hours to trace back to it.</span></p>
-      </html>
-    </panel>
-  </row>
-
-  <row>
-    <panel>
-      <title>Assets protected by drift alerting</title>
-      <chart>
-        <search><query>| makeresults | eval v=96</query></search>
-        <option name="charting.chart">radialGauge</option>
-        <option name="charting.chart.rangeValues">[0,60,85,100]</option>
-        <option name="drilldown">none</option>
-      </chart>
-    </panel>
-    <panel>
-      <title>Unexpected DHCP re-assignments (7d)</title>
-      <single>
-        <search><query>| makeresults | eval v=1</query></search>
-        <option name="drilldown">none</option>
-        <option name="colorBy">value</option>
-        <option name="rangeColors">["0x53a051","0xd93f3c"]</option>
-        <option name="rangeValues">[1]</option>
-      </single>
-    </panel>
-    <panel>
-      <title>Time to detect — before vs. with Splunk</title>
-      <single>
-        <search><query>| makeresults | eval v="4h+ -&gt; &lt;5 min"</query></search>
-        <option name="drilldown">none</option>
-      </single>
-    </panel>
-  </row>
-
-  <row>
-    <panel>
-      <title>Device reachability around the lease change — the outage that followed</title>
-      <chart>
-        <search>
-          <query>| makeresults count=24
-| streamstats count as i
-| eval Hour=strftime(relative_time(now(), "-".(24-i)."h"), "%H:00")
-| eval "Reachable (XRAY-Radiology-03)"=if(i&gt;=15 AND i&lt;=19, 0, 1)
-| table Hour "Reachable (XRAY-Radiology-03)"</query>
-          <earliest>$tr.earliest$</earliest>
-          <latest>$tr.latest$</latest>
-        </search>
-        <option name="charting.chart">line</option>
-        <option name="charting.chart.nullValueMode">connect</option>
-        <option name="charting.axisY.maximumNumber">1</option>
-        <option name="charting.axisY.minimumNumber">0</option>
-        <option name="charting.axisTitleY.text">1 = reachable, 0 = down</option>
-        <option name="charting.legend.placement">bottom</option>
-        <option name="drilldown">none</option>
-      </chart>
-    </panel>
-    <panel>
-      <title>DHCP lease events by type (7d)</title>
-      <chart>
-        <search>
-          <query>| makeresults count=3
-| streamstats count as i
-| eval Category=case(i=1,"Normal static renewal",i=2,"Normal DHCP renewal",i=3,"Unexpected re-assignment")
-| eval Count=case(i=1,84,i=2,206,i=3,1)
-| table Category Count</query>
-          <earliest>$tr.earliest$</earliest>
-          <latest>$tr.latest$</latest>
-        </search>
-        <option name="charting.chart">pie</option>
-        <option name="charting.legend.placement">right</option>
-        <option name="drilldown">none</option>
-      </chart>
-    </panel>
-  </row>
-
-  <row>
-    <panel>
-      <title>Recent lease events for reserved/critical assets</title>
-      <table>
-        <search>
-          <query>| makeresults count=6
-| streamstats count as i
-| eval Time=strftime(relative_time(now(), "-".(7-i)."d"), "%Y-%m-%d %H:%M")
-| eval Asset=case(i=1,"MRI-Suite2-CTL",i=2,"US-Cardio-04",i=3,"XRAY-Radiology-03",i=4,"XRAY-Radiology-03",i=5,"Infusion-Pump-Gateway",i=6,"CT-Scanner-01")
-| eval "New IP"=case(i=1,"10.20.5.21",i=2,"10.20.5.33",i=3,"10.20.5.44",i=4,"10.20.5.187",i=5,"10.20.5.61",i=6,"10.20.5.72")
-| eval Risk=case(i=4,"HIGH — reserved asset re-leased by DHCP",1=1,"normal renewal")
-| table Time Asset "New IP" Risk
-| sort Time</query>
-          <earliest>$tr.earliest$</earliest>
-          <latest>$tr.latest$</latest>
-        </search>
-        <option name="drilldown">none</option>
-        <option name="count">10</option>
-        <format type="color" field="Risk">
-          <colorPalette type="map">{"HIGH — reserved asset re-leased by DHCP":#d93f3c,"normal renewal":#53a051}</colorPalette>
-        </format>
-      </table>
-    </panel>
-  </row>
-
-  <row>
-    <panel>
-      <title>Data sources needed</title>
-      <html>
-        <div style="display:flex;flex-wrap:wrap;gap:6px;">
-          <span style="background:#1b2430;color:#cdd9e5;padding:4px 10px;border-radius:12px;font-size:12px;border:1px solid #2b3a4a;">DHCP server logs</span>
-          <span style="background:#1b2430;color:#cdd9e5;padding:4px 10px;border-radius:12px;font-size:12px;border:1px solid #2b3a4a;">Asset / CMDB inventory</span>
-          <span style="background:#1b2430;color:#cdd9e5;padding:4px 10px;border-radius:12px;font-size:12px;border:1px solid #2b3a4a;">Switch &amp; access-layer logs</span>
-          <span style="background:#1b2430;color:#cdd9e5;padding:4px 10px;border-radius:12px;font-size:12px;border:1px solid #2b3a4a;">Cisco ISE</span>
-          <span style="background:#1b2430;color:#cdd9e5;padding:4px 10px;border-radius:12px;font-size:12px;border:1px solid #2b3a4a;">DNS logs (optional)</span>
-        </div>
-      </html>
-    </panel>
-  </row>
-</form>
+<dashboard version="2" theme="dark">
+  <label>1 · Medical Device IP Drift</label>
+  <description>Detect when a medical device with a reserved IP silently receives a DHCP lease.</description>
+  <definition><![CDATA[
+{
+  "title": "1 · Medical Device IP Drift",
+  "description": "Detect when a medical device with a reserved IP silently receives a DHCP lease.",
+  "inputs": {},
+  "defaults": {},
+  "visualizations": {
+    "bg_001": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#161B22",
+        "strokeColor": "#262C36",
+        "strokeWidth": 1,
+        "rx": 12
+      }
+    },
+    "bg_002": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#16A3B0",
+        "strokeColor": "#16A3B0",
+        "strokeWidth": 1,
+        "rx": 3
+      }
+    },
+    "md_003": {
+      "type": "splunk.markdown",
+      "options": {
+        "markdown": "USE CASE 1 OF 9  ·  SPITAL AARWALD  ·  SAMPLE DATA",
+        "fontColor": "#16A3B0",
+        "fontSize": "custom",
+        "customFontSize": 12
+      }
+    },
+    "md_004": {
+      "type": "splunk.markdown",
+      "options": {
+        "markdown": "# Medical Device IP Drift",
+        "fontColor": "#E6EDF3"
+      }
+    },
+    "md_005": {
+      "type": "splunk.markdown",
+      "options": {
+        "markdown": "Reserved IPs silently replaced by DHCP leases — detected in minutes, with the switch port.",
+        "fontColor": "#9AA4B2",
+        "fontSize": "custom",
+        "customFontSize": 15
+      }
+    },
+    "bg_006": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#11161D",
+        "strokeColor": "#262C36",
+        "strokeWidth": 1,
+        "rx": 8
+      }
+    },
+    "md_007": {
+      "type": "splunk.markdown",
+      "options": {
+        "markdown": "WHAT WE HEARD",
+        "fontColor": "#6E7681",
+        "fontSize": "custom",
+        "customFontSize": 11
+      }
+    },
+    "md_008": {
+      "type": "splunk.markdown",
+      "options": {
+        "markdown": "*“Ein Röntgengerät ist letzte Woche ausgestiegen, weil die IP-Adresse aus unerklärlichen Gründen auf DHCP umgestellt wurde.”*",
+        "fontColor": "#9AA4B2",
+        "fontSize": "custom",
+        "customFontSize": 13
+      }
+    },
+    "bg_009": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#161B22",
+        "strokeColor": "#262C36",
+        "strokeWidth": 1,
+        "rx": 12
+      }
+    },
+    "viz_010": {
+      "type": "splunk.singlevalue",
+      "options": {
+        "backgroundColor": "#161B22",
+        "majorColor": "#E6EDF3",
+        "numberPrecision": 0,
+        "shouldUseThousandSeparators": true,
+        "majorFontSize": 42,
+        "trendFontSize": 15,
+        "trendDisplay": "absolute",
+        "sparklineDisplay": "below",
+        "showSparklineAreaGraph": true,
+        "sparklineStrokeColor": "#16A3B0",
+        "sparklineAreaColor": "#16A3B0",
+        "underLabel": "imaging · lab · monitoring · infusion",
+        "underLabelColor": "#9AA4B2",
+        "underLabelFontSize": 13
+      },
+      "dataSources": {
+        "primary": "ds_011"
+      },
+      "title": "Devices with reserved IP"
+    },
+    "bg_012": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#161B22",
+        "strokeColor": "#262C36",
+        "strokeWidth": 1,
+        "rx": 12
+      }
+    },
+    "viz_013": {
+      "type": "splunk.singlevalue",
+      "options": {
+        "backgroundColor": "#161B22",
+        "majorColor": "> majorValue | rangeValue(majorColorConfig)",
+        "numberPrecision": 0,
+        "shouldUseThousandSeparators": true,
+        "majorFontSize": 42,
+        "trendFontSize": 15,
+        "trendDisplay": "absolute",
+        "sparklineDisplay": "below",
+        "showSparklineAreaGraph": true,
+        "sparklineStrokeColor": "#16A3B0",
+        "sparklineAreaColor": "#16A3B0",
+        "underLabel": "rolling 7-day count",
+        "underLabelColor": "#9AA4B2",
+        "underLabelFontSize": 13,
+        "trendColor": "> trendValue | rangeValue(trendColorConfig)"
+      },
+      "dataSources": {
+        "primary": "ds_014"
+      },
+      "title": "Unexpected IP changes (7 days)",
+      "context": {
+        "trendColorConfig": [
+          {
+            "to": -0.0001,
+            "value": "#0CA30C"
+          },
+          {
+            "from": -0.0001,
+            "to": 0.0001,
+            "value": "#9AA4B2"
+          },
+          {
+            "from": 0.0001,
+            "value": "#D03B3B"
+          }
+        ],
+        "majorColorConfig": [
+          {
+            "to": 1,
+            "value": "#E6EDF3"
+          },
+          {
+            "from": 1,
+            "value": "#FAB219"
+          }
+        ]
+      }
+    },
+    "bg_015": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#161B22",
+        "strokeColor": "#262C36",
+        "strokeWidth": 1,
+        "rx": 12
+      }
+    },
+    "viz_016": {
+      "type": "splunk.singlevalue",
+      "options": {
+        "backgroundColor": "#161B22",
+        "majorColor": "> majorValue | rangeValue(majorColorConfig)",
+        "numberPrecision": 0,
+        "shouldUseThousandSeparators": true,
+        "majorFontSize": 42,
+        "trendFontSize": 15,
+        "trendDisplay": "absolute",
+        "sparklineDisplay": "off",
+        "underLabel": "need action",
+        "underLabelColor": "#9AA4B2",
+        "underLabelFontSize": 13,
+        "trendColor": "> trendValue | rangeValue(trendColorConfig)"
+      },
+      "dataSources": {
+        "primary": "ds_017"
+      },
+      "title": "Reserved devices on DHCP now",
+      "context": {
+        "trendColorConfig": [
+          {
+            "to": -0.0001,
+            "value": "#0CA30C"
+          },
+          {
+            "from": -0.0001,
+            "to": 0.0001,
+            "value": "#9AA4B2"
+          },
+          {
+            "from": 0.0001,
+            "value": "#D03B3B"
+          }
+        ],
+        "majorColorConfig": [
+          {
+            "to": 1,
+            "value": "#0CA30C"
+          },
+          {
+            "from": 1,
+            "value": "#D03B3B"
+          }
+        ]
+      }
+    },
+    "bg_018": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#161B22",
+        "strokeColor": "#262C36",
+        "strokeWidth": 1,
+        "rx": 12
+      }
+    },
+    "viz_019": {
+      "type": "splunk.singlevalue",
+      "options": {
+        "backgroundColor": "#161B22",
+        "majorColor": "#E6EDF3",
+        "numberPrecision": 0,
+        "shouldUseThousandSeparators": true,
+        "majorFontSize": 42,
+        "trendFontSize": 15,
+        "trendDisplay": "off",
+        "sparklineDisplay": "below",
+        "showSparklineAreaGraph": true,
+        "sparklineStrokeColor": "#16A3B0",
+        "sparklineAreaColor": "#16A3B0",
+        "unit": " min",
+        "unitPosition": "after",
+        "underLabel": "was ~3.5 h before Splunk",
+        "underLabelColor": "#9AA4B2",
+        "underLabelFontSize": 13
+      },
+      "dataSources": {
+        "primary": "ds_020"
+      },
+      "title": "Mean time to detect"
+    },
+    "bg_021": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#161B22",
+        "strokeColor": "#262C36",
+        "strokeWidth": 1,
+        "rx": 12
+      }
+    },
+    "viz_022": {
+      "type": "splunk.column",
+      "options": {
+        "backgroundColor": "#161B22",
+        "legendDisplay": "bottom",
+        "xAxisTitleVisibility": "hide",
+        "seriesColors": [
+          "#3987E5",
+          "#199E70",
+          "#9085E9",
+          "#D95926"
+        ],
+        "stackMode": "stacked",
+        "yAxisTitleVisibility": "hide"
+      },
+      "dataSources": {
+        "primary": "ds_023"
+      },
+      "title": "DHCP events per hour — medical device VLANs (24h)"
+    },
+    "bg_024": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#161B22",
+        "strokeColor": "#262C36",
+        "strokeWidth": 1,
+        "rx": 12
+      }
+    },
+    "viz_025": {
+      "type": "splunk.pie",
+      "options": {
+        "backgroundColor": "#161B22",
+        "showDonutHole": true,
+        "labelDisplay": "valuesAndPercentage",
+        "legendDisplay": "off",
+        "seriesColors": [
+          "#3987E5",
+          "#D95926",
+          "#199E70",
+          "#C98500",
+          "#D55181",
+          "#008300",
+          "#9085E9",
+          "#E66767"
+        ]
+      },
+      "dataSources": {
+        "primary": "ds_026"
+      },
+      "title": "Unexpected IP changes by device class (30 days)"
+    },
+    "bg_027": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#161B22",
+        "strokeColor": "#262C36",
+        "strokeWidth": 1,
+        "rx": 12
+      }
+    },
+    "viz_028": {
+      "type": "splunk.table",
+      "options": {
+        "backgroundColor": "#161B22",
+        "headerVisibility": "fixed",
+        "fontSize": "small",
+        "columnFormat": {
+          "When": {
+            "width": 90
+          },
+          "Device": {
+            "width": 105
+          },
+          "Location": {
+            "width": 150
+          },
+          "Reserved IP": {
+            "width": 110
+          },
+          "Leased IP": {
+            "width": 110
+          },
+          "Switch port": {
+            "width": 185
+          },
+          "Status": {
+            "width": 90,
+            "rowBackgroundColors": "> table | seriesByName(\"Status\") | matchValue(c0Bg)",
+            "rowColors": "> table | seriesByName(\"Status\") | matchValue(c0Fg)"
+          }
+        }
+      },
+      "dataSources": {
+        "primary": "ds_029"
+      },
+      "title": "Reserved devices that received a DHCP lease (7 days)",
+      "context": {
+        "c0Bg": [
+          {
+            "match": "Open",
+            "value": "#3F1D20"
+          },
+          {
+            "match": "Resolved",
+            "value": "#12301B"
+          }
+        ],
+        "c0Fg": [
+          {
+            "match": "Open",
+            "value": "#FF8A80"
+          },
+          {
+            "match": "Resolved",
+            "value": "#56D364"
+          }
+        ]
+      }
+    },
+    "bg_030": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#161B22",
+        "strokeColor": "#262C36",
+        "strokeWidth": 1,
+        "rx": 12
+      }
+    },
+    "viz_031": {
+      "type": "splunk.area",
+      "options": {
+        "backgroundColor": "#161B22",
+        "legendDisplay": "off",
+        "xAxisTitleVisibility": "hide",
+        "nullValueDisplay": "connect",
+        "lineWidth": 2,
+        "seriesColors": [
+          "#D95926"
+        ],
+        "yAxisTitleVisibility": "hide"
+      },
+      "dataSources": {
+        "primary": "ds_032"
+      },
+      "title": "XR-RAD-03 — failed image sends to PACS (6h)"
+    },
+    "bg_033": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#161B22",
+        "strokeColor": "#262C36",
+        "strokeWidth": 1,
+        "rx": 12
+      }
+    },
+    "md_034": {
+      "type": "splunk.markdown",
+      "options": {
+        "markdown": "DATA SOURCES NEEDED IN SPLUNK",
+        "fontColor": "#16A3B0",
+        "fontSize": "custom",
+        "customFontSize": 12
+      }
+    },
+    "bg_035": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#1C2530",
+        "strokeColor": "#2D3A48",
+        "strokeWidth": 1,
+        "rx": 17
+      }
+    },
+    "md_036": {
+      "type": "splunk.markdown",
+      "options": {
+        "markdown": "DHCP server logs",
+        "fontColor": "#E6EDF3",
+        "fontSize": "custom",
+        "customFontSize": 13
+      }
+    },
+    "bg_037": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#1C2530",
+        "strokeColor": "#2D3A48",
+        "strokeWidth": 1,
+        "rx": 17
+      }
+    },
+    "md_038": {
+      "type": "splunk.markdown",
+      "options": {
+        "markdown": "Switch & router syslog",
+        "fontColor": "#E6EDF3",
+        "fontSize": "custom",
+        "customFontSize": 13
+      }
+    },
+    "bg_039": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#1C2530",
+        "strokeColor": "#2D3A48",
+        "strokeWidth": 1,
+        "rx": 17
+      }
+    },
+    "md_040": {
+      "type": "splunk.markdown",
+      "options": {
+        "markdown": "Cisco ISE",
+        "fontColor": "#E6EDF3",
+        "fontSize": "custom",
+        "customFontSize": 13
+      }
+    },
+    "bg_041": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#1C2530",
+        "strokeColor": "#2D3A48",
+        "strokeWidth": 1,
+        "rx": 17
+      }
+    },
+    "md_042": {
+      "type": "splunk.markdown",
+      "options": {
+        "markdown": "PACS / DICOM gateway logs",
+        "fontColor": "#E6EDF3",
+        "fontSize": "custom",
+        "customFontSize": 13
+      }
+    },
+    "bg_043": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#1C2530",
+        "strokeColor": "#2D3A48",
+        "strokeWidth": 1,
+        "rx": 17
+      }
+    },
+    "md_044": {
+      "type": "splunk.markdown",
+      "options": {
+        "markdown": "CMDB / asset inventory",
+        "fontColor": "#E6EDF3",
+        "fontSize": "custom",
+        "customFontSize": 13
+      }
+    }
+  },
+  "dataSources": {
+    "ds_011": {
+      "type": "ds.search",
+      "name": "ds_011",
+      "options": {
+        "query": "| makeresults format=csv data=\"ago,devices\n13,1230\n12,1237\n11,1237\n10,1243\n9,1245\n8,1252\n7,1256\n6,1260\n5,1264\n4,1266\n3,1269\n2,1276\n1,1277\n0,1284\"\n| eval _time=relative_time(now(), \"@d\") - ago*86400\n| sort 0 _time\n| table _time devices",
+        "queryParameters": {
+          "earliest": "-15m",
+          "latest": "now"
+        }
+      }
+    },
+    "ds_014": {
+      "type": "ds.search",
+      "name": "ds_014",
+      "options": {
+        "query": "| makeresults format=csv data=\"ago,changes\n13,3\n12,4\n11,3\n10,3\n9,7\n8,6\n7,6\n6,7\n5,6\n4,8\n3,9\n2,5\n1,4\n0,7\"\n| eval _time=relative_time(now(), \"@d\") - ago*86400\n| sort 0 _time\n| table _time changes",
+        "queryParameters": {
+          "earliest": "-15m",
+          "latest": "now"
+        }
+      }
+    },
+    "ds_017": {
+      "type": "ds.search",
+      "name": "ds_017",
+      "options": {
+        "query": "| makeresults format=csv data=\"ago,devices\n1,2\n0,1\"\n| eval _time=relative_time(now(), \"@h\") - ago*3600\n| sort 0 _time\n| table _time devices",
+        "queryParameters": {
+          "earliest": "-15m",
+          "latest": "now"
+        }
+      }
+    },
+    "ds_020": {
+      "type": "ds.search",
+      "name": "ds_020",
+      "options": {
+        "query": "| makeresults format=csv data=\"ago,minutes\n11,215\n10,190\n9,240\n8,205\n7,180\n6,12\n5,8\n4,6\n3,5\n2,4\n1,5\n0,4\"\n| eval _time=relative_time(now(), \"@d\") - ago*604800\n| sort 0 _time\n| table _time minutes",
+        "queryParameters": {
+          "earliest": "-15m",
+          "latest": "now"
+        }
+      }
+    },
+    "ds_023": {
+      "type": "ds.search",
+      "name": "ds_023",
+      "options": {
+        "query": "| makeresults format=csv data=\"cyc,slot,Renewal,New lease,Release,Address conflict\n0,0,28,13,7,0\n0,1,11,10,2,0\n0,2,17,11,0,0\n0,3,21,3,0,0\n0,4,15,14,5,0\n0,5,20,12,7,0\n0,6,33,15,8,0\n0,7,35,21,6,0\n0,8,58,23,11,0\n0,9,59,25,9,0\n0,10,67,30,12,0\n0,11,67,32,17,0\n0,12,75,30,17,0\n0,13,85,31,18,0\n0,14,87,38,16,0\n0,15,92,40,14,0\n0,16,81,32,16,0\n0,17,82,34,14,0\n0,18,61,30,11,0\n0,19,64,26,13,0\n0,20,49,21,11,0\n0,21,46,14,8,0\n0,22,43,10,9,0\n0,23,25,14,8,0\n0,24,46,17,8,0\n0,25,28,17,3,0\n0,26,35,18,7,0\n0,27,40,20,4,0\n0,28,39,20,6,0\n0,29,43,19,11,0\n0,30,63,27,13,0\n0,31,81,37,14,0\n0,32,100,38,20,0\n0,33,102,47,24,0\n0,34,132,49,25,0\n0,35,135,58,23,0\n0,36,153,61,29,0\n0,37,150,67,29,0\n0,38,162,65,30,0\n0,39,155,59,30,0\n0,40,148,63,29,0\n0,41,129,55,28,0\n0,42,121,55,25,0\n0,43,107,42,24,0\n0,44,94,34,21,0\n0,45,72,29,18,0\n0,46,56,28,9,0\n0,47,51,19,9,0\n0,48,37,21,6,0\n0,49,39,14,3,0\n0,50,31,11,5,0\n0,51,44,12,8,0\n0,52,42,22,10,0\n0,53,52,23,12,0\n0,54,66,28,12,0\n0,55,73,28,14,0\n0,56,98,39,18,0\n0,57,108,45,18,0\n0,58,124,55,22,0\n0,59,142,52,24,0\n0,60,138,62,26,0\n0,61,145,61,29,0\n0,62,163,70,30,0\n0,63,151,69,32,0\n0,64,154,63,26,0\n0,65,145,62,23,0\n0,66,128,57,25,0\n0,67,112,51,23,0\n0,68,99,34,20,0\n0,69,79,30,13,0\n0,70,57,25,9,0\n0,71,45,20,9,0\n0,72,39,18,9,0\n0,73,36,12,3,0\n0,74,27,18,9,0\n0,75,34,19,6,0\n0,76,39,21,9,0\n0,77,44,22,8,0\n0,78,67,22,10,0\n0,79,83,37,13,0\n0,80,101,35,20,0\n0,81,114,45,22,0\n0,82,131,47,23,0\n0,83,141,56,23,0\n0,84,143,59,31,0\n0,85,154,68,32,0\n0,86,151,65,30,0\n0,87,150,63,31,0\n0,88,141,62,29,0\n0,89,140,62,27,0\n0,90,131,55,22,0\n0,91,104,41,18,0\n0,92,90,36,16,0\n0,93,76,32,18,0\n0,94,66,30,13,0\n0,95,51,21,9,0\n0,96,44,13,7,0\n0,97,35,19,9,0\n0,98,41,11,7,0\n0,99,31,15,3,0\n0,100,47,13,8,0\n0,101,47,18,9,0\n0,102,59,30,13,0\n0,103,82,29,16,0\n0,104,93,43,15,0\n0,105,110,46,20,0\n0,106,119,54,23,0\n0,107,132,52,29,0\n0,108,147,56,29,0\n0,109,144,60,29,0\n0,110,150,60,28,0\n0,111,151,68,29,0\n0,112,143,57,28,0\n0,113,134,62,24,0\n0,114,121,48,24,0\n0,115,114,49,24,0\n0,116,95,42,17,0\n0,117,85,33,12,0\n0,118,62,31,11,0\n0,119,44,16,7,0\n0,120,43,21,7,0\n0,121,42,16,5,0\n0,122,38,10,3,0\n0,123,38,19,6,0\n0,124,37,16,6,0\n0,125,58,26,9,0\n0,126,64,23,13,0\n0,127,76,32,13,0\n0,128,93,39,15,0\n0,129,110,42,24,0\n0,130,130,48,26,0\n0,131,139,55,26,0\n0,132,147,56,27,0\n0,133,149,64,32,0\n0,134,156,63,29,0\n0,135,147,67,30,0\n0,136,140,59,26,0\n0,137,129,55,26,0\n0,138,118,51,25,0\n0,139,104,42,18,0\n0,140,86,38,21,0\n0,141,81,35,15,0\n0,142,60,22,13,0\n0,143,53,17,11,0\n0,144,20,6,7,0\n0,145,15,5,6,0\n0,146,20,6,0,0\n0,147,27,12,2,0\n0,148,19,7,2,0\n0,149,21,11,8,0\n0,150,33,11,5,0\n0,151,48,21,6,0\n0,152,45,26,8,0\n0,153,60,21,13,0\n0,154,74,29,14,0\n0,155,75,34,14,0\n0,156,86,28,15,0\n0,157,86,32,15,0\n0,158,92,30,19,0\n0,159,89,39,13,0\n0,160,73,33,16,0\n0,161,71,35,12,0\n0,162,64,27,16,0\n0,163,60,26,12,0\n0,164,56,18,11,0\n0,165,37,16,8,0\n0,166,27,11,7,0\n0,167,30,14,7,0\n1,0,29,14,6,0\n1,1,18,6,2,0\n1,2,25,12,3,0\n1,3,18,9,2,0\n1,4,23,14,2,0\n1,5,21,7,8,0\n1,6,43,19,5,0\n1,7,40,21,11,0\n1,8,50,20,9,0\n1,9,61,28,10,0\n1,10,65,30,14,0\n1,11,69,27,15,0\n1,12,88,37,15,0\n1,13,81,32,15,0\n1,14,90,33,17,0\n1,15,77,37,18,0\n1,16,84,38,14,0\n1,17,79,34,17,0\n1,18,65,31,15,0\n1,19,53,28,8,0\n1,20,52,26,7,0\n1,21,43,14,6,0\n1,22,29,16,9,0\n1,23,27,12,8,0\n1,24,47,18,6,0\n1,25,38,17,4,0\n1,26,41,12,3,0\n1,27,41,19,7,0\n1,28,47,13,10,0\n1,29,52,20,8,0\n1,30,68,29,9,0\n1,31,76,36,15,0\n1,32,86,34,20,0\n1,33,109,45,19,0\n1,34,121,51,22,0\n1,35,135,56,25,0\n1,36,146,66,28,0\n1,37,149,67,28,0\n1,38,162,66,33,0\n1,39,147,62,30,0\n1,40,150,59,27,0\n1,41,132,52,23,0\n1,42,116,55,23,0\n1,43,106,42,22,0\n1,44,97,43,21,0\n1,45,79,34,16,0\n1,46,67,29,11,0\n1,47,43,17,10,0\n1,48,48,17,7,0\n1,49,40,15,9,0\n1,50,41,10,8,0\n1,51,40,16,4,0\n1,52,34,16,10,0\n1,53,59,19,10,0\n1,54,72,27,14,0\n1,55,79,30,15,0\n1,56,102,37,17,0\n1,57,118,41,23,0\n1,58,128,56,24,0\n1,59,141,57,29,0\n1,60,140,63,30,0\n1,61,151,69,31,0\n1,62,156,70,27,0\n1,63,157,69,27,0\n1,64,150,60,31,0\n1,65,134,53,29,0\n1,66,116,52,23,0\n1,67,115,51,22,0\n1,68,95,36,18,0\n1,69,78,35,13,0\n1,70,70,29,9,0\n1,71,51,24,7,0\n1,72,47,13,7,0\n1,73,30,20,6,0\n1,74,26,11,7,0\n1,75,33,11,6,0\n1,76,42,21,7,0\n1,77,49,24,8,0\n1,78,63,26,11,0\n1,79,72,29,17,0\n1,80,102,44,17,0\n1,81,116,49,22,0\n1,82,117,49,23,0\n1,83,137,57,27,0\n1,84,145,62,29,0\n1,85,156,61,29,0\n1,86,155,69,29,0\n1,87,151,63,30,0\n1,88,145,66,25,0\n1,89,141,57,26,0\n1,90,123,51,22,0\n1,91,104,51,23,0\n1,92,91,43,18,0\n1,93,74,37,14,0\n1,94,70,29,10,0\n1,95,47,18,12,0\n1,96,48,17,7,0\n1,97,40,13,3,0\n1,98,32,19,5,0\n1,99,30,11,4,0\n1,100,46,17,8,0\n1,101,46,18,7,0\n1,102,57,30,9,0\n1,103,76,38,12,0\n1,104,101,42,21,0\n1,105,116,46,23,0\n1,106,124,48,25,0\n1,107,134,53,24,0\n1,108,150,59,28,0\n1,109,158,65,32,0\n1,110,152,63,28,0\n1,111,153,66,30,0\n1,112,150,59,28,0\n1,113,137,57,26,0\n1,114,119,50,21,0\n1,115,103,41,24,0\n1,116,86,41,17,0\n1,117,82,37,14,0\n1,118,62,27,10,0\n1,119,47,16,7,0\n1,120,46,14,10,0\n1,121,29,19,6,0\n1,122,34,11,3,0\n1,123,42,20,9,0\n1,124,43,12,5,0\n1,125,44,24,13,0\n1,126,60,21,11,0\n1,127,73,34,12,0\n1,128,92,34,18,0\n1,129,106,45,23,0\n1,130,122,57,24,0\n1,131,141,57,28,0\n1,132,146,60,30,0\n1,133,151,62,26,0\n1,134,152,65,30,0\n1,135,160,59,28,0\n1,136,151,64,26,0\n1,137,142,62,23,0\n1,138,124,56,26,0\n1,139,104,45,19,0\n1,140,89,36,15,0\n1,141,76,34,18,0\n1,142,57,21,14,0\n1,143,45,24,10,0\n1,144,31,9,1,0\n1,145,21,3,1,0\n1,146,11,9,5,0\n1,147,15,9,6,0\n1,148,29,4,6,0\n1,149,36,10,2,0\n1,150,35,14,3,0\n1,151,44,13,11,0\n1,152,56,16,12,0\n1,153,60,25,13,0\n1,154,64,27,16,0\n1,155,79,27,17,0\n1,156,81,29,15,0\n1,157,83,38,17,0\n1,158,83,35,15,0\n1,159,92,36,17,0\n1,160,87,29,13,0\n1,161,81,34,15,0\n1,162,76,31,10,0\n1,163,61,22,9,0\n1,164,55,22,11,0\n1,165,45,14,8,0\n1,166,38,11,7,0\n1,167,22,6,4,0\"\n| eval _time=relative_time(now(), \"@w0\") + slot*3600 - cyc*604800\n| where _time<=now() AND _time>now()-86400\n| sort 0 _time\n| eval \"Address conflict\"='Address conflict' + if(now()-_time>=10800 AND now()-_time<14400, 3, 0)\n| eval \"Address conflict\"='Address conflict' + if(now()-_time>=32400 AND now()-_time<36000, 1, 0)\n| eval \"Address conflict\"='Address conflict' + if(now()-_time>=54000 AND now()-_time<57600, 1, 0)\n| eval \"New lease\"='New lease' + if(now()-_time>=10800 AND now()-_time<14400, 12, 0)\n| table _time Renewal \"New lease\" Release \"Address conflict\"",
+        "queryParameters": {
+          "earliest": "-15m",
+          "latest": "now"
+        }
+      }
+    },
+    "ds_026": {
+      "type": "ds.search",
+      "name": "ds_026",
+      "options": {
+        "query": "| makeresults format=csv data=\"Device class,Changes\nImaging (X-ray / CT / MRI),7\nLab analyzers,4\nPatient monitors,3\nInfusion pumps,2\nOther,1\"\n| table \"Device class\" Changes",
+        "queryParameters": {
+          "earliest": "-15m",
+          "latest": "now"
+        }
+      }
+    },
+    "ds_029": {
+      "type": "ds.search",
+      "name": "ds_029",
+      "options": {
+        "query": "| makeresults format=csv data=\"When,Device,Location,Reserved IP,Leased IP,Switch port,Status\n41,CT-RAD-01,Radiology B2-004,10.40.12.11,10.40.12.201,sw-b2-acc-01 Gi1/0/3,Open\n182,XR-RAD-03,Radiology B2-012,10.40.12.23,10.40.12.187,sw-b2-acc-02 Gi1/0/14,Resolved\n1310,LAB-HEM-02,Central lab C1,10.40.30.42,10.40.30.155,sw-c1-acc-04 Gi2/0/22,Resolved\n2745,MON-ICU-17,ICU A3 bed 17,10.40.51.117,10.40.51.203,sw-a3-acc-01 Gi1/0/40,Resolved\n3620,INF-GW-02,Surgery A2,10.40.60.12,10.40.60.99,sw-a2-acc-03 Gi1/0/7,Resolved\n4410,LAB-CHE-01,Central lab C1,10.40.30.21,10.40.30.176,sw-c1-acc-02 Gi1/0/9,Resolved\n8290,XR-RAD-03,Radiology B2-012,10.40.12.23,10.40.12.164,sw-b2-acc-02 Gi1/0/14,Resolved\"\n| eval \"When\"=strftime(relative_time(now(), \"@m\") - 'When'*60, \"%a %H:%M\")\n| table When Device Location \"Reserved IP\" \"Leased IP\" \"Switch port\" Status",
+        "queryParameters": {
+          "earliest": "-15m",
+          "latest": "now"
+        }
+      }
+    },
+    "ds_032": {
+      "type": "ds.search",
+      "name": "ds_032",
+      "options": {
+        "query": "| makeresults format=csv data=\"ago,Failed image sends\n71,1\n70,0\n69,0\n68,0\n67,0\n66,0\n65,0\n64,0\n63,1\n62,1\n61,0\n60,1\n59,0\n58,0\n57,0\n56,0\n55,0\n54,1\n53,0\n52,0\n51,0\n50,0\n49,0\n48,0\n47,0\n46,0\n45,1\n44,0\n43,0\n42,0\n41,1\n40,0\n39,1\n38,0\n37,0\n36,1\n35,39\n34,40\n33,40\n32,41\n31,38\n30,43\n29,39\n28,45\n27,34\n26,29\n25,33\n24,37\n23,0\n22,1\n21,0\n20,0\n19,0\n18,0\n17,1\n16,0\n15,0\n14,1\n13,0\n12,0\n11,0\n10,0\n9,0\n8,1\n7,1\n6,0\n5,0\n4,0\n3,0\n2,1\n1,0\n0,0\"\n| eval _time=relative_time(now(), \"@m\") - ago*300\n| sort 0 _time\n| table _time \"Failed image sends\"",
+        "queryParameters": {
+          "earliest": "-15m",
+          "latest": "now"
+        }
+      }
+    }
+  },
+  "layout": {
+    "globalInputs": [],
+    "tabs": {
+      "items": [
+        {
+          "layoutId": "layout_1",
+          "label": "Dashboard"
+        }
+      ]
+    },
+    "layoutDefinitions": {
+      "layout_1": {
+        "type": "absolute",
+        "options": {
+          "width": 1440,
+          "height": 1122,
+          "display": "auto-scale",
+          "backgroundColor": "#0E1116"
+        },
+        "structure": [
+          {
+            "item": "bg_001",
+            "type": "block",
+            "position": {
+              "x": 24,
+              "y": 20,
+              "w": 1392,
+              "h": 116
+            }
+          },
+          {
+            "item": "bg_002",
+            "type": "block",
+            "position": {
+              "x": 24,
+              "y": 20,
+              "w": 6,
+              "h": 116
+            }
+          },
+          {
+            "item": "md_003",
+            "type": "block",
+            "position": {
+              "x": 52,
+              "y": 34,
+              "w": 820,
+              "h": 22
+            }
+          },
+          {
+            "item": "md_004",
+            "type": "block",
+            "position": {
+              "x": 52,
+              "y": 56,
+              "w": 880,
+              "h": 44
+            }
+          },
+          {
+            "item": "md_005",
+            "type": "block",
+            "position": {
+              "x": 52,
+              "y": 100,
+              "w": 880,
+              "h": 28
+            }
+          },
+          {
+            "item": "bg_006",
+            "type": "block",
+            "position": {
+              "x": 928,
+              "y": 36,
+              "w": 464,
+              "h": 84
+            }
+          },
+          {
+            "item": "md_007",
+            "type": "block",
+            "position": {
+              "x": 940,
+              "y": 42,
+              "w": 444,
+              "h": 20
+            }
+          },
+          {
+            "item": "md_008",
+            "type": "block",
+            "position": {
+              "x": 940,
+              "y": 62,
+              "w": 444,
+              "h": 56
+            }
+          },
+          {
+            "item": "bg_009",
+            "type": "block",
+            "position": {
+              "x": 24,
+              "y": 152,
+              "w": 336,
+              "h": 164
+            }
+          },
+          {
+            "item": "viz_010",
+            "type": "block",
+            "position": {
+              "x": 30,
+              "y": 158,
+              "w": 324,
+              "h": 152
+            }
+          },
+          {
+            "item": "bg_012",
+            "type": "block",
+            "position": {
+              "x": 376,
+              "y": 152,
+              "w": 336,
+              "h": 164
+            }
+          },
+          {
+            "item": "viz_013",
+            "type": "block",
+            "position": {
+              "x": 382,
+              "y": 158,
+              "w": 324,
+              "h": 152
+            }
+          },
+          {
+            "item": "bg_015",
+            "type": "block",
+            "position": {
+              "x": 728,
+              "y": 152,
+              "w": 336,
+              "h": 164
+            }
+          },
+          {
+            "item": "viz_016",
+            "type": "block",
+            "position": {
+              "x": 734,
+              "y": 158,
+              "w": 324,
+              "h": 152
+            }
+          },
+          {
+            "item": "bg_018",
+            "type": "block",
+            "position": {
+              "x": 1080,
+              "y": 152,
+              "w": 336,
+              "h": 164
+            }
+          },
+          {
+            "item": "viz_019",
+            "type": "block",
+            "position": {
+              "x": 1086,
+              "y": 158,
+              "w": 324,
+              "h": 152
+            }
+          },
+          {
+            "item": "bg_021",
+            "type": "block",
+            "position": {
+              "x": 24,
+              "y": 332,
+              "w": 904,
+              "h": 330
+            }
+          },
+          {
+            "item": "viz_022",
+            "type": "block",
+            "position": {
+              "x": 30,
+              "y": 338,
+              "w": 892,
+              "h": 318
+            }
+          },
+          {
+            "item": "bg_024",
+            "type": "block",
+            "position": {
+              "x": 944,
+              "y": 332,
+              "w": 472,
+              "h": 330
+            }
+          },
+          {
+            "item": "viz_025",
+            "type": "block",
+            "position": {
+              "x": 950,
+              "y": 338,
+              "w": 460,
+              "h": 318
+            }
+          },
+          {
+            "item": "bg_027",
+            "type": "block",
+            "position": {
+              "x": 24,
+              "y": 678,
+              "w": 904,
+              "h": 300
+            }
+          },
+          {
+            "item": "viz_028",
+            "type": "block",
+            "position": {
+              "x": 30,
+              "y": 684,
+              "w": 892,
+              "h": 288
+            }
+          },
+          {
+            "item": "bg_030",
+            "type": "block",
+            "position": {
+              "x": 944,
+              "y": 678,
+              "w": 472,
+              "h": 300
+            }
+          },
+          {
+            "item": "viz_031",
+            "type": "block",
+            "position": {
+              "x": 950,
+              "y": 684,
+              "w": 460,
+              "h": 288
+            }
+          },
+          {
+            "item": "bg_033",
+            "type": "block",
+            "position": {
+              "x": 24,
+              "y": 994,
+              "w": 1392,
+              "h": 104
+            }
+          },
+          {
+            "item": "md_034",
+            "type": "block",
+            "position": {
+              "x": 44,
+              "y": 1010,
+              "w": 700,
+              "h": 22
+            }
+          },
+          {
+            "item": "bg_035",
+            "type": "block",
+            "position": {
+              "x": 44,
+              "y": 1044,
+              "w": 152,
+              "h": 34
+            }
+          },
+          {
+            "item": "md_036",
+            "type": "block",
+            "position": {
+              "x": 60,
+              "y": 1051,
+              "w": 134,
+              "h": 22
+            }
+          },
+          {
+            "item": "bg_037",
+            "type": "block",
+            "position": {
+              "x": 206,
+              "y": 1044,
+              "w": 196,
+              "h": 34
+            }
+          },
+          {
+            "item": "md_038",
+            "type": "block",
+            "position": {
+              "x": 222,
+              "y": 1051,
+              "w": 178,
+              "h": 22
+            }
+          },
+          {
+            "item": "bg_039",
+            "type": "block",
+            "position": {
+              "x": 412,
+              "y": 1044,
+              "w": 100,
+              "h": 34
+            }
+          },
+          {
+            "item": "md_040",
+            "type": "block",
+            "position": {
+              "x": 428,
+              "y": 1051,
+              "w": 82,
+              "h": 22
+            }
+          },
+          {
+            "item": "bg_041",
+            "type": "block",
+            "position": {
+              "x": 522,
+              "y": 1044,
+              "w": 219,
+              "h": 34
+            }
+          },
+          {
+            "item": "md_042",
+            "type": "block",
+            "position": {
+              "x": 538,
+              "y": 1051,
+              "w": 201,
+              "h": 22
+            }
+          },
+          {
+            "item": "bg_043",
+            "type": "block",
+            "position": {
+              "x": 751,
+              "y": 1044,
+              "w": 196,
+              "h": 34
+            }
+          },
+          {
+            "item": "md_044",
+            "type": "block",
+            "position": {
+              "x": 767,
+              "y": 1051,
+              "w": 178,
+              "h": 22
+            }
+          }
+        ]
+      }
+    }
+  }
+}
+  ]]></definition>
+  <meta type="hiddenElements"><![CDATA[
+{"hideEdit": false, "hideOpenInSearch": false, "hideExport": false}
+  ]]></meta>
+</dashboard>

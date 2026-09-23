@@ -1,126 +1,899 @@
-<form version="1.1" theme="dark">
-  <label>7. Bettenauslastung — Bed Occupancy (Exec View)</label>
-  <description>A leadership-level view of bed occupancy by ward — the kind of KPI dashboard that gets shown to GL/executive management, not just operations.</description>
-
-  <fieldset submitButton="false" autoRun="true">
-    <input type="time" token="tr">
-      <label>Time range</label>
-      <default><earliest>-30d</earliest><latest>now</latest></default>
-    </input>
-  </fieldset>
-
-  <row>
-    <panel>
-      <html>
-        <p style="margin:0;color:#8b98a5;font-style:italic;">"Überwachung der Bettenauslastung, kann interessant sein für GL."
-        <span style="color:#cdd9e5;font-style:normal;"> — a leadership KPI, not just an ops metric.</span></p>
-      </html>
-    </panel>
-  </row>
-
-  <row>
-    <panel>
-      <title>Hospital-wide occupancy (today)</title>
-      <chart>
-        <search><query>| makeresults | eval v=87</query></search>
-        <option name="charting.chart">radialGauge</option>
-        <option name="charting.chart.rangeValues">[0,75,90,100]</option>
-        <option name="drilldown">none</option>
-      </chart>
-    </panel>
-    <panel>
-      <title>Free beds right now</title>
-      <single>
-        <search><query>| makeresults | eval v=31</query></search>
-        <option name="drilldown">none</option>
-      </single>
-    </panel>
-    <panel>
-      <title>30-day trend</title>
-      <single>
-        <search><query>| makeresults | eval v="+4.2 pts vs. last month"</query></search>
-        <option name="drilldown">none</option>
-      </single>
-    </panel>
-  </row>
-
-  <row>
-    <panel>
-      <title>Occupancy % by ward — 30 days</title>
-      <chart>
-        <search>
-          <query>| makeresults count=30
-| streamstats count as i
-| eval Day=strftime(relative_time(now(), "-".(30-i)."d"), "%m-%d")
-| eval "Surgery"=78+((i%7)*2)
-| eval "Internal Medicine"=85+((i%5)*2)
-| eval "Radiology / Day Clinic"=60+((i%9)*3)
-| table Day "Surgery" "Internal Medicine" "Radiology / Day Clinic"</query>
-          <earliest>$tr.earliest$</earliest>
-          <latest>$tr.latest$</latest>
-        </search>
-        <option name="charting.chart">line</option>
-        <option name="charting.chart.nullValueMode">connect</option>
-        <option name="charting.axisY.maximumNumber">100</option>
-        <option name="charting.axisTitleY.text">Occupancy %</option>
-        <option name="charting.legend.placement">bottom</option>
-        <option name="drilldown">none</option>
-      </chart>
-    </panel>
-    <panel>
-      <title>Bed status breakdown — hospital-wide (now)</title>
-      <chart>
-        <search>
-          <query>| makeresults count=4
-| streamstats count as i
-| eval Category=case(i=1,"Occupied",i=2,"Free",i=3,"Being cleaned",i=4,"Blocked")
-| eval Count=case(i=1,87,i=2,9,i=3,3,i=4,1)
-| table Category Count</query>
-          <earliest>$tr.earliest$</earliest>
-          <latest>$tr.latest$</latest>
-        </search>
-        <option name="charting.chart">pie</option>
-        <option name="charting.legend.placement">right</option>
-        <option name="drilldown">none</option>
-      </chart>
-    </panel>
-  </row>
-
-  <row>
-    <panel>
-      <title>Ward summary — today</title>
-      <table>
-        <search>
-          <query>| makeresults count=3
-| streamstats count as i
-| eval Ward=case(i=1,"Surgery",i=2,"Internal Medicine",i=3,"Radiology / Day Clinic")
-| eval "Licensed beds"=case(i=1,40,i=2,52,i=3,20)
-| eval "Occupied"=case(i=1,35,i=2,49,i=3,13)
-| eval "Occupancy %"=round('Occupied'/'Licensed beds'*100,1)
-| eval Status=case('Occupancy %'&gt;=90,"Near capacity",'Occupancy %'&gt;=75,"Healthy",1=1,"Underutilized")
-| table Ward "Licensed beds" Occupied "Occupancy %" Status</query>
-          <earliest>$tr.earliest$</earliest>
-          <latest>$tr.latest$</latest>
-        </search>
-        <option name="drilldown">none</option>
-        <format type="color" field="Status">
-          <colorPalette type="map">{"Near capacity":#d93f3c,"Healthy":#53a051,"Underutilized":#f2b827}</colorPalette>
-        </format>
-      </table>
-    </panel>
-  </row>
-
-  <row>
-    <panel>
-      <title>Data sources needed</title>
-      <html>
-        <div style="display:flex;flex-wrap:wrap;gap:6px;">
-          <span style="background:#1b2430;color:#cdd9e5;padding:4px 10px;border-radius:12px;font-size:12px;border:1px solid #2b3a4a;">Bed management / RTLS system</span>
-          <span style="background:#1b2430;color:#cdd9e5;padding:4px 10px;border-radius:12px;font-size:12px;border:1px solid #2b3a4a;">ADT feed (HL7)</span>
-          <span style="background:#1b2430;color:#cdd9e5;padding:4px 10px;border-radius:12px;font-size:12px;border:1px solid #2b3a4a;">Nurse call system</span>
-          <span style="background:#1b2430;color:#cdd9e5;padding:4px 10px;border-radius:12px;font-size:12px;border:1px solid #2b3a4a;">Licensed-bed reference data</span>
-        </div>
-      </html>
-    </panel>
-  </row>
-</form>
+<dashboard version="2" theme="dark">
+  <label>7 · Bed Occupancy</label>
+  <description>Executive view of bed occupancy, patient flow and capacity by department.</description>
+  <definition><![CDATA[
+{
+  "title": "7 · Bed Occupancy",
+  "description": "Executive view of bed occupancy, patient flow and capacity by department.",
+  "inputs": {},
+  "defaults": {},
+  "visualizations": {
+    "bg_001": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#161B22",
+        "strokeColor": "#262C36",
+        "strokeWidth": 1,
+        "rx": 12
+      }
+    },
+    "bg_002": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#16A3B0",
+        "strokeColor": "#16A3B0",
+        "strokeWidth": 1,
+        "rx": 3
+      }
+    },
+    "md_003": {
+      "type": "splunk.markdown",
+      "options": {
+        "markdown": "USE CASE 7 OF 9  ·  SPITAL AARWALD  ·  SAMPLE DATA",
+        "fontColor": "#16A3B0",
+        "fontSize": "custom",
+        "customFontSize": 12
+      }
+    },
+    "md_004": {
+      "type": "splunk.markdown",
+      "options": {
+        "markdown": "# Bed Occupancy — Executive View",
+        "fontColor": "#E6EDF3"
+      }
+    },
+    "md_005": {
+      "type": "splunk.markdown",
+      "options": {
+        "markdown": "Live occupancy, patient flow and capacity by department — for the executive board.",
+        "fontColor": "#9AA4B2",
+        "fontSize": "custom",
+        "customFontSize": 15
+      }
+    },
+    "bg_006": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#11161D",
+        "strokeColor": "#262C36",
+        "strokeWidth": 1,
+        "rx": 8
+      }
+    },
+    "md_007": {
+      "type": "splunk.markdown",
+      "options": {
+        "markdown": "WHAT WE HEARD",
+        "fontColor": "#6E7681",
+        "fontSize": "custom",
+        "customFontSize": 11
+      }
+    },
+    "md_008": {
+      "type": "splunk.markdown",
+      "options": {
+        "markdown": "*“Überwachung der Bettenauslastung, kann interessant sein für die GL.”*",
+        "fontColor": "#9AA4B2",
+        "fontSize": "custom",
+        "customFontSize": 13
+      }
+    },
+    "bg_009": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#161B22",
+        "strokeColor": "#262C36",
+        "strokeWidth": 1,
+        "rx": 12
+      }
+    },
+    "viz_010": {
+      "type": "splunk.singlevalue",
+      "options": {
+        "backgroundColor": "#161B22",
+        "majorColor": "> majorValue | rangeValue(majorColorConfig)",
+        "numberPrecision": 1,
+        "shouldUseThousandSeparators": true,
+        "majorFontSize": 42,
+        "trendFontSize": 15,
+        "trendDisplay": "absolute",
+        "sparklineDisplay": "below",
+        "showSparklineAreaGraph": true,
+        "sparklineStrokeColor": "#16A3B0",
+        "sparklineAreaColor": "#16A3B0",
+        "unit": "%",
+        "unitPosition": "after",
+        "underLabel": "412 beds in total",
+        "underLabelColor": "#9AA4B2",
+        "underLabelFontSize": 13
+      },
+      "dataSources": {
+        "primary": "ds_011"
+      },
+      "title": "Occupancy now",
+      "context": {
+        "majorColorConfig": [
+          {
+            "to": 85,
+            "value": "#0CA30C"
+          },
+          {
+            "from": 85,
+            "to": 92,
+            "value": "#FAB219"
+          },
+          {
+            "from": 92,
+            "value": "#D03B3B"
+          }
+        ]
+      }
+    },
+    "bg_012": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#161B22",
+        "strokeColor": "#262C36",
+        "strokeWidth": 1,
+        "rx": 12
+      }
+    },
+    "viz_013": {
+      "type": "splunk.singlevalue",
+      "options": {
+        "backgroundColor": "#161B22",
+        "majorColor": "#E6EDF3",
+        "numberPrecision": 0,
+        "shouldUseThousandSeparators": true,
+        "majorFontSize": 42,
+        "trendFontSize": 15,
+        "trendDisplay": "absolute",
+        "sparklineDisplay": "below",
+        "showSparklineAreaGraph": true,
+        "sparklineStrokeColor": "#16A3B0",
+        "sparklineAreaColor": "#16A3B0",
+        "underLabel": "incl. 1 ICU bed",
+        "underLabelColor": "#9AA4B2",
+        "underLabelFontSize": 13,
+        "trendColor": "> trendValue | rangeValue(trendColorConfig)"
+      },
+      "dataSources": {
+        "primary": "ds_014"
+      },
+      "title": "Free beds now",
+      "context": {
+        "trendColorConfig": [
+          {
+            "to": -0.0001,
+            "value": "#D03B3B"
+          },
+          {
+            "from": -0.0001,
+            "to": 0.0001,
+            "value": "#9AA4B2"
+          },
+          {
+            "from": 0.0001,
+            "value": "#0CA30C"
+          }
+        ]
+      }
+    },
+    "bg_015": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#161B22",
+        "strokeColor": "#262C36",
+        "strokeWidth": 1,
+        "rx": 12
+      }
+    },
+    "viz_016": {
+      "type": "splunk.singlevalue",
+      "options": {
+        "backgroundColor": "#161B22",
+        "majorColor": "#E6EDF3",
+        "numberPrecision": 0,
+        "shouldUseThousandSeparators": true,
+        "majorFontSize": 42,
+        "trendFontSize": 15,
+        "trendDisplay": "absolute",
+        "sparklineDisplay": "below",
+        "showSparklineAreaGraph": true,
+        "sparklineStrokeColor": "#16A3B0",
+        "sparklineAreaColor": "#16A3B0",
+        "underLabel": "weekdays ~74 · weekends ~50",
+        "underLabelColor": "#9AA4B2",
+        "underLabelFontSize": 13
+      },
+      "dataSources": {
+        "primary": "ds_017"
+      },
+      "title": "Admissions today"
+    },
+    "bg_018": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#161B22",
+        "strokeColor": "#262C36",
+        "strokeWidth": 1,
+        "rx": 12
+      }
+    },
+    "viz_019": {
+      "type": "splunk.singlevalue",
+      "options": {
+        "backgroundColor": "#161B22",
+        "majorColor": "#E6EDF3",
+        "numberPrecision": 1,
+        "shouldUseThousandSeparators": true,
+        "majorFontSize": 42,
+        "trendFontSize": 15,
+        "trendDisplay": "absolute",
+        "sparklineDisplay": "below",
+        "showSparklineAreaGraph": true,
+        "sparklineStrokeColor": "#16A3B0",
+        "sparklineAreaColor": "#16A3B0",
+        "unit": " days",
+        "unitPosition": "after",
+        "underLabel": "target 5.0",
+        "underLabelColor": "#9AA4B2",
+        "underLabelFontSize": 13,
+        "trendColor": "> trendValue | rangeValue(trendColorConfig)"
+      },
+      "dataSources": {
+        "primary": "ds_020"
+      },
+      "title": "Avg. length of stay",
+      "context": {
+        "trendColorConfig": [
+          {
+            "to": -0.0001,
+            "value": "#0CA30C"
+          },
+          {
+            "from": -0.0001,
+            "to": 0.0001,
+            "value": "#9AA4B2"
+          },
+          {
+            "from": 0.0001,
+            "value": "#D03B3B"
+          }
+        ]
+      }
+    },
+    "bg_021": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#161B22",
+        "strokeColor": "#262C36",
+        "strokeWidth": 1,
+        "rx": 12
+      }
+    },
+    "viz_022": {
+      "type": "splunk.line",
+      "options": {
+        "backgroundColor": "#161B22",
+        "legendDisplay": "bottom",
+        "xAxisTitleVisibility": "hide",
+        "nullValueDisplay": "connect",
+        "lineWidth": 2,
+        "seriesColors": [
+          "#3987E5",
+          "#D95926",
+          "#199E70",
+          "#C98500",
+          "#D55181"
+        ],
+        "yAxisTitleVisibility": "hide",
+        "yAxisMin": 60,
+        "yAxisMax": 100
+      },
+      "dataSources": {
+        "primary": "ds_023"
+      },
+      "title": "Occupancy % by department — last 30 days"
+    },
+    "bg_024": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#161B22",
+        "strokeColor": "#262C36",
+        "strokeWidth": 1,
+        "rx": 12
+      }
+    },
+    "viz_025": {
+      "type": "splunk.singlevalueradial",
+      "options": {
+        "backgroundColor": "#161B22",
+        "maxValue": 100,
+        "minValue": 0,
+        "unit": "%",
+        "majorColor": "#E6EDF3",
+        "radialBackgroundColor": "#2A313C",
+        "radialStrokeColor": "> majorValue | rangeValue(radialConfig)",
+        "trendDisplay": "off"
+      },
+      "dataSources": {
+        "primary": "ds_026"
+      },
+      "title": "Intensive care occupancy now",
+      "context": {
+        "radialConfig": [
+          {
+            "to": 85,
+            "value": "#0CA30C"
+          },
+          {
+            "from": 85,
+            "to": 92,
+            "value": "#FAB219"
+          },
+          {
+            "from": 92,
+            "value": "#D03B3B"
+          }
+        ]
+      }
+    },
+    "bg_027": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#161B22",
+        "strokeColor": "#262C36",
+        "strokeWidth": 1,
+        "rx": 12
+      }
+    },
+    "viz_028": {
+      "type": "splunk.table",
+      "options": {
+        "backgroundColor": "#161B22",
+        "headerVisibility": "fixed",
+        "fontSize": "default",
+        "columnFormat": {
+          "Status": {
+            "rowBackgroundColors": "> table | seriesByName(\"Status\") | matchValue(c0Bg)",
+            "rowColors": "> table | seriesByName(\"Status\") | matchValue(c0Fg)"
+          }
+        }
+      },
+      "dataSources": {
+        "primary": "ds_029"
+      },
+      "title": "Departments right now",
+      "context": {
+        "c0Bg": [
+          {
+            "match": "High",
+            "value": "#3A2E12"
+          },
+          {
+            "match": "Full",
+            "value": "#3F1D20"
+          },
+          {
+            "match": "OK",
+            "value": "#12301B"
+          }
+        ],
+        "c0Fg": [
+          {
+            "match": "High",
+            "value": "#E3B341"
+          },
+          {
+            "match": "Full",
+            "value": "#FF8A80"
+          },
+          {
+            "match": "OK",
+            "value": "#56D364"
+          }
+        ]
+      }
+    },
+    "bg_030": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#161B22",
+        "strokeColor": "#262C36",
+        "strokeWidth": 1,
+        "rx": 12
+      }
+    },
+    "viz_031": {
+      "type": "splunk.column",
+      "options": {
+        "backgroundColor": "#161B22",
+        "legendDisplay": "bottom",
+        "xAxisTitleVisibility": "hide",
+        "seriesColors": [
+          "#3987E5",
+          "#199E70"
+        ],
+        "yAxisTitleVisibility": "hide"
+      },
+      "dataSources": {
+        "primary": "ds_032"
+      },
+      "title": "Admissions vs. discharges per day"
+    },
+    "bg_033": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#161B22",
+        "strokeColor": "#262C36",
+        "strokeWidth": 1,
+        "rx": 12
+      }
+    },
+    "md_034": {
+      "type": "splunk.markdown",
+      "options": {
+        "markdown": "DATA SOURCES NEEDED IN SPLUNK",
+        "fontColor": "#16A3B0",
+        "fontSize": "custom",
+        "customFontSize": 12
+      }
+    },
+    "bg_035": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#1C2530",
+        "strokeColor": "#2D3A48",
+        "strokeWidth": 1,
+        "rx": 17
+      }
+    },
+    "md_036": {
+      "type": "splunk.markdown",
+      "options": {
+        "markdown": "Hospital information system (ADT / HL7)",
+        "fontColor": "#E6EDF3",
+        "fontSize": "custom",
+        "customFontSize": 13
+      }
+    },
+    "bg_037": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#1C2530",
+        "strokeColor": "#2D3A48",
+        "strokeWidth": 1,
+        "rx": 17
+      }
+    },
+    "md_038": {
+      "type": "splunk.markdown",
+      "options": {
+        "markdown": "Bed management system",
+        "fontColor": "#E6EDF3",
+        "fontSize": "custom",
+        "customFontSize": 13
+      }
+    }
+  },
+  "dataSources": {
+    "ds_011": {
+      "type": "ds.search",
+      "name": "ds_011",
+      "options": {
+        "query": "| makeresults format=csv data=\"ago,pct\n29,84.49\n28,85.11\n27,86.7\n26,86.58\n25,87.91\n24,88.13\n23,87.97\n22,88.76\n21,87.97\n20,88.29\n19,87.29\n18,86.7\n17,86.47\n16,86.24\n15,84.31\n14,83.57\n13,83.33\n12,83.05\n11,81.84\n10,81.07\n9,81.61\n8,80.07\n7,81.35\n6,80.75\n5,80.96\n4,81.52\n3,82.53\n2,84.11\n1,84.03\n0,86.9\"\n| eval _time=relative_time(now(), \"@d\") - ago*86400\n| sort 0 _time\n| table _time pct",
+        "queryParameters": {
+          "earliest": "-15m",
+          "latest": "now"
+        }
+      }
+    },
+    "ds_014": {
+      "type": "ds.search",
+      "name": "ds_014",
+      "options": {
+        "query": "| makeresults format=csv data=\"ago,n\n23,41\n22,42\n21,45\n20,43\n19,47\n18,48\n17,54\n16,58\n15,55\n14,61\n13,58\n12,63\n11,59\n10,60\n9,60\n8,57\n7,53\n6,54\n5,47\n4,45\n3,44\n2,41\n1,39\n0,54\"\n| eval _time=relative_time(now(), \"@h\") - ago*3600\n| sort 0 _time\n| table _time n",
+        "queryParameters": {
+          "earliest": "-15m",
+          "latest": "now"
+        }
+      }
+    },
+    "ds_017": {
+      "type": "ds.search",
+      "name": "ds_017",
+      "options": {
+        "query": "| makeresults format=csv data=\"cyc,slot,n\n0,0,48\n0,1,71\n0,2,80\n0,3,70\n0,4,79\n0,5,80\n0,6,47\n1,0,45\n1,1,77\n1,2,72\n1,3,76\n1,4,75\n1,5,73\n1,6,55\n2,0,51\n2,1,72\n2,2,77\n2,3,69\n2,4,69\n2,5,76\n2,6,50\"\n| eval _time=relative_time(now(), \"@w0\") + slot*86400 - cyc*604800\n| where _time<=now() AND _time>now()-1209600\n| sort 0 _time\n| table _time n",
+        "queryParameters": {
+          "earliest": "-15m",
+          "latest": "now"
+        }
+      }
+    },
+    "ds_020": {
+      "type": "ds.search",
+      "name": "ds_020",
+      "options": {
+        "query": "| makeresults format=csv data=\"ago,d\n11,5.72\n10,5.71\n9,5.75\n8,5.66\n7,5.7\n6,5.56\n5,5.59\n4,5.58\n3,5.56\n2,5.47\n1,5.4\n0,5.3\"\n| eval _time=relative_time(now(), \"@d\") - ago*604800\n| sort 0 _time\n| table _time d",
+        "queryParameters": {
+          "earliest": "-15m",
+          "latest": "now"
+        }
+      }
+    },
+    "ds_023": {
+      "type": "ds.search",
+      "name": "ds_023",
+      "options": {
+        "query": "| makeresults format=csv data=\"cyc,slot,Surgery,Internal Medicine,Cardiology,Orthopedics,Intensive Care\n0,0,78.4,93.5,82.8,68.3,85.0\n0,1,87.1,94.5,82.4,82.9,87.4\n0,2,88.3,94.4,84.7,82.9,93.8\n0,3,87.4,95.7,84.1,82.4,89.4\n0,4,86.9,92.4,86.4,81.6,94.1\n0,5,88.0,91.8,84.4,81.1,85.5\n0,6,78.7,93.8,82.2,71.9,91.5\n1,0,78.5,92.2,78.5,68.6,91.2\n1,1,86.0,95.2,83.1,81.1,85.6\n1,2,88.1,94.0,83.9,80.5,93.5\n1,3,89.8,94.3,86.4,81.8,93.6\n1,4,89.8,94.4,85.4,81.6,88.3\n1,5,87.9,93.0,83.1,83.9,88.8\n1,6,77.4,94.0,78.6,70.3,89.9\n2,0,80.8,94.1,78.4,68.8,88.1\n2,1,88.5,95.8,85.6,81.9,85.3\n2,2,88.0,95.9,84.9,81.2,85.6\n2,3,89.0,94.7,84.9,82.8,89.7\n2,4,86.8,95.8,84.2,82.8,94.1\n2,5,89.0,92.5,85.9,80.4,93.3\n2,6,79.1,95.5,80.1,68.9,90.0\n3,0,79.0,94.2,81.7,71.2,92.3\n3,1,86.8,92.2,84.4,83.2,86.2\n3,2,88.0,94.7,87.9,83.2,89.2\n3,3,86.8,94.0,84.1,83.2,92.0\n3,4,87.4,95.9,82.5,80.4,89.2\n3,5,87.4,93.4,87.9,82.4,84.0\n3,6,80.6,92.7,81.9,71.3,85.3\n4,0,78.6,94.6,79.2,71.6,88.8\n4,1,88.5,91.4,87.7,82.9,89.1\n4,2,89.0,91.4,83.0,84.0,84.3\n4,3,88.4,93.3,85.9,82.4,90.6\n4,4,87.9,95.7,82.9,82.2,84.2\n4,5,89.2,94.6,82.6,83.0,85.5\n4,6,80.9,92.0,83.2,68.1,86.3\n5,0,79.0,94.8,80.0,70.2,93.2\n5,1,86.2,94.7,87.4,82.6,93.0\n5,2,88.1,95.1,87.3,80.5,85.7\n5,3,88.0,95.4,86.7,82.4,92.5\n5,4,86.6,91.7,85.7,80.5,84.7\n5,5,88.7,93.7,84.9,83.1,93.7\n5,6,77.2,92.0,78.3,68.4,89.0\"\n| eval _time=relative_time(now(), \"@w0\") + slot*86400 - cyc*604800\n| where _time<=now() AND _time>now()-2592000\n| sort 0 _time\n| table _time Surgery \"Internal Medicine\" Cardiology Orthopedics \"Intensive Care\"",
+        "queryParameters": {
+          "earliest": "-15m",
+          "latest": "now"
+        }
+      }
+    },
+    "ds_026": {
+      "type": "ds.search",
+      "name": "ds_026",
+      "options": {
+        "query": "| makeresults format=csv data=\"ago,pct\n1,89\n0,94\"\n| eval _time=relative_time(now(), \"@h\") - ago*3600\n| sort 0 _time\n| table _time pct",
+        "queryParameters": {
+          "earliest": "-15m",
+          "latest": "now"
+        }
+      }
+    },
+    "ds_029": {
+      "type": "ds.search",
+      "name": "ds_029",
+      "options": {
+        "query": "| makeresults format=csv data=\"Department,Beds,Occupied,Free,Occupancy %,Waiting for bed,Status\nSurgery,96,87,9,90.6,2,High\nInternal Medicine,118,113,5,95.8,6,Full\nCardiology,52,44,8,84.6,0,OK\nOrthopedics,64,51,13,79.7,0,OK\nIntensive Care,18,17,1,94.4,1,Full\nPediatrics,34,24,10,70.6,0,OK\nMaternity,30,22,8,73.3,0,OK\"\n| table Department Beds Occupied Free \"Occupancy %\" \"Waiting for bed\" Status",
+        "queryParameters": {
+          "earliest": "-15m",
+          "latest": "now"
+        }
+      }
+    },
+    "ds_032": {
+      "type": "ds.search",
+      "name": "ds_032",
+      "options": {
+        "query": "| makeresults format=csv data=\"cyc,slot,Admissions,Discharges\n0,0,44,44\n0,1,69,72\n0,2,73,74\n0,3,76,74\n0,4,76,68\n0,5,79,77\n0,6,51,40\n1,0,52,44\n1,1,75,73\n1,2,71,76\n1,3,76,69\n1,4,76,68\n1,5,75,75\n1,6,50,33\n2,0,50,39\n2,1,73,66\n2,2,78,68\n2,3,74,66\n2,4,71,75\n2,5,72,85\n2,6,45,44\"\n| eval _time=relative_time(now(), \"@w0\") + slot*86400 - cyc*604800\n| where _time<=now() AND _time>now()-1209600\n| sort 0 _time\n| table _time Admissions Discharges",
+        "queryParameters": {
+          "earliest": "-15m",
+          "latest": "now"
+        }
+      }
+    }
+  },
+  "layout": {
+    "globalInputs": [],
+    "tabs": {
+      "items": [
+        {
+          "layoutId": "layout_1",
+          "label": "Dashboard"
+        }
+      ]
+    },
+    "layoutDefinitions": {
+      "layout_1": {
+        "type": "absolute",
+        "options": {
+          "width": 1440,
+          "height": 1194,
+          "display": "auto-scale",
+          "backgroundColor": "#0E1116"
+        },
+        "structure": [
+          {
+            "item": "bg_001",
+            "type": "block",
+            "position": {
+              "x": 24,
+              "y": 20,
+              "w": 1392,
+              "h": 116
+            }
+          },
+          {
+            "item": "bg_002",
+            "type": "block",
+            "position": {
+              "x": 24,
+              "y": 20,
+              "w": 6,
+              "h": 116
+            }
+          },
+          {
+            "item": "md_003",
+            "type": "block",
+            "position": {
+              "x": 52,
+              "y": 34,
+              "w": 820,
+              "h": 22
+            }
+          },
+          {
+            "item": "md_004",
+            "type": "block",
+            "position": {
+              "x": 52,
+              "y": 56,
+              "w": 880,
+              "h": 44
+            }
+          },
+          {
+            "item": "md_005",
+            "type": "block",
+            "position": {
+              "x": 52,
+              "y": 100,
+              "w": 880,
+              "h": 28
+            }
+          },
+          {
+            "item": "bg_006",
+            "type": "block",
+            "position": {
+              "x": 928,
+              "y": 36,
+              "w": 464,
+              "h": 84
+            }
+          },
+          {
+            "item": "md_007",
+            "type": "block",
+            "position": {
+              "x": 940,
+              "y": 42,
+              "w": 444,
+              "h": 20
+            }
+          },
+          {
+            "item": "md_008",
+            "type": "block",
+            "position": {
+              "x": 940,
+              "y": 62,
+              "w": 444,
+              "h": 56
+            }
+          },
+          {
+            "item": "bg_009",
+            "type": "block",
+            "position": {
+              "x": 24,
+              "y": 152,
+              "w": 336,
+              "h": 164
+            }
+          },
+          {
+            "item": "viz_010",
+            "type": "block",
+            "position": {
+              "x": 30,
+              "y": 158,
+              "w": 324,
+              "h": 152
+            }
+          },
+          {
+            "item": "bg_012",
+            "type": "block",
+            "position": {
+              "x": 376,
+              "y": 152,
+              "w": 336,
+              "h": 164
+            }
+          },
+          {
+            "item": "viz_013",
+            "type": "block",
+            "position": {
+              "x": 382,
+              "y": 158,
+              "w": 324,
+              "h": 152
+            }
+          },
+          {
+            "item": "bg_015",
+            "type": "block",
+            "position": {
+              "x": 728,
+              "y": 152,
+              "w": 336,
+              "h": 164
+            }
+          },
+          {
+            "item": "viz_016",
+            "type": "block",
+            "position": {
+              "x": 734,
+              "y": 158,
+              "w": 324,
+              "h": 152
+            }
+          },
+          {
+            "item": "bg_018",
+            "type": "block",
+            "position": {
+              "x": 1080,
+              "y": 152,
+              "w": 336,
+              "h": 164
+            }
+          },
+          {
+            "item": "viz_019",
+            "type": "block",
+            "position": {
+              "x": 1086,
+              "y": 158,
+              "w": 324,
+              "h": 152
+            }
+          },
+          {
+            "item": "bg_021",
+            "type": "block",
+            "position": {
+              "x": 24,
+              "y": 332,
+              "w": 904,
+              "h": 330
+            }
+          },
+          {
+            "item": "viz_022",
+            "type": "block",
+            "position": {
+              "x": 30,
+              "y": 338,
+              "w": 892,
+              "h": 318
+            }
+          },
+          {
+            "item": "bg_024",
+            "type": "block",
+            "position": {
+              "x": 944,
+              "y": 332,
+              "w": 472,
+              "h": 330
+            }
+          },
+          {
+            "item": "viz_025",
+            "type": "block",
+            "position": {
+              "x": 950,
+              "y": 338,
+              "w": 460,
+              "h": 318
+            }
+          },
+          {
+            "item": "bg_027",
+            "type": "block",
+            "position": {
+              "x": 24,
+              "y": 678,
+              "w": 904,
+              "h": 372
+            }
+          },
+          {
+            "item": "viz_028",
+            "type": "block",
+            "position": {
+              "x": 30,
+              "y": 684,
+              "w": 892,
+              "h": 360
+            }
+          },
+          {
+            "item": "bg_030",
+            "type": "block",
+            "position": {
+              "x": 944,
+              "y": 678,
+              "w": 472,
+              "h": 372
+            }
+          },
+          {
+            "item": "viz_031",
+            "type": "block",
+            "position": {
+              "x": 950,
+              "y": 684,
+              "w": 460,
+              "h": 360
+            }
+          },
+          {
+            "item": "bg_033",
+            "type": "block",
+            "position": {
+              "x": 24,
+              "y": 1066,
+              "w": 1392,
+              "h": 104
+            }
+          },
+          {
+            "item": "md_034",
+            "type": "block",
+            "position": {
+              "x": 44,
+              "y": 1082,
+              "w": 700,
+              "h": 22
+            }
+          },
+          {
+            "item": "bg_035",
+            "type": "block",
+            "position": {
+              "x": 44,
+              "y": 1116,
+              "w": 322,
+              "h": 34
+            }
+          },
+          {
+            "item": "md_036",
+            "type": "block",
+            "position": {
+              "x": 60,
+              "y": 1123,
+              "w": 304,
+              "h": 22
+            }
+          },
+          {
+            "item": "bg_037",
+            "type": "block",
+            "position": {
+              "x": 376,
+              "y": 1116,
+              "w": 189,
+              "h": 34
+            }
+          },
+          {
+            "item": "md_038",
+            "type": "block",
+            "position": {
+              "x": 392,
+              "y": 1123,
+              "w": 171,
+              "h": 22
+            }
+          }
+        ]
+      }
+    }
+  }
+}
+  ]]></definition>
+  <meta type="hiddenElements"><![CDATA[
+{"hideEdit": false, "hideOpenInSearch": false, "hideExport": false}
+  ]]></meta>
+</dashboard>
