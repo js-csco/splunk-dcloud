@@ -12,54 +12,26 @@
   <row>
     <panel>
       <html>
-        <h2>What happened</h2>
-        <blockquote style="border-left:3px solid #16a3b0;margin:0 0 12px;padding:6px 14px;color:#cdd9e5;background:#101722;">
-          "Redundante Datenbankserver, die aktuell viel zu wenig überwacht werden. Es kann
-          momentan nicht nachvollzogen werden, wieso sich das redundante System nun aktiviert
-          hat."
-        </blockquote>
-        <p style="color:#cdd9e5;max-width:900px;">The standby database took over — which is the
-        system doing its job — but there's no monitoring stitched together to say <i>why</i>:
-        was it the primary's CPU/memory, a lost heartbeat over the network, a disk issue, or a
-        manual failover? Without a timeline that lines up the <b>cluster/replication log</b>
-        with the <b>host metrics</b> of both nodes and the <b>network heartbeat</b> between
-        them, every failover becomes its own investigation.</p>
+        <p style="margin:0;color:#8b98a5;font-style:italic;">"…Redundante Datenbankserver, die aktuell viel zu wenig überwacht werden…"
+        <span style="color:#cdd9e5;font-style:normal;"> — the standby took over; nobody could say why.</span></p>
       </html>
     </panel>
   </row>
 
   <row>
     <panel>
-      <title>Data sources needed to build this for real</title>
-      <html>
-        <ul style="color:#cdd9e5;">
-          <li><b>Database / cluster logs</b> — PostgreSQL (streaming replication + Patroni),
-          SQL Server Always On availability group events, Oracle Data Guard, or Pacemaker/
-          Corosync cluster logs — the "who is primary now, and why" record.</li>
-          <li><b>Host / OS metrics</b> — CPU, memory, disk I/O and load on both primary and
-          standby (the same <code>*_metrics</code> pattern already used in this lab's Host &amp;
-          Infra Metrics dashboard).</li>
-          <li><b>Network heartbeat / VIP logs</b> — the keepalive or virtual-IP mechanism the
-          cluster uses to detect the primary is gone (e.g. keepalived, cluster VIP move events).</li>
-          <li><b>Application / connection logs</b> — client-side connection errors and
-          reconnects, to size the actual customer/business impact of the failover.</li>
-        </ul>
-      </html>
+      <title>Cluster health (uptime, 30d)</title>
+      <chart>
+        <search><query>| makeresults | eval v=99.6</query></search>
+        <option name="charting.chart">radialGauge</option>
+        <option name="charting.chart.rangeValues">[0,95,99,100]</option>
+        <option name="drilldown">none</option>
+      </chart>
     </panel>
-  </row>
-
-  <row>
     <panel>
       <title>Failovers (30 days)</title>
       <single>
         <search><query>| makeresults | eval v=2</query></search>
-        <option name="drilldown">none</option>
-      </single>
-    </panel>
-    <panel>
-      <title>Nodes monitored</title>
-      <single>
-        <search><query>| makeresults | eval v=6</query></search>
         <option name="drilldown">none</option>
       </single>
     </panel>
@@ -69,23 +41,6 @@
         <search><query>| makeresults | eval v="Hours -&gt; Minutes"</query></search>
         <option name="drilldown">none</option>
       </single>
-    </panel>
-  </row>
-
-  <row>
-    <panel>
-      <title>Example: what caused this failover?</title>
-      <table>
-        <search>
-          <query>| makeresults count=1
-| eval RootCause="Primary node CPU pegged at 100% for 90s -> missed 3 consecutive heartbeats -> standby promoted"
-| eval "Primary node"="db-primary-01", "Standby node (now active)"="db-standby-01", "Failover time"=strftime(relative_time(now(),"-38m"),"%Y-%m-%d %H:%M:%S"), "Missed heartbeats"=3, "Client reconnects (5 min after)"=214
-| table "Failover time" "Primary node" "Standby node (now active)" RootCause "Missed heartbeats" "Client reconnects (5 min after)"</query>
-          <earliest>$tr.earliest$</earliest>
-          <latest>$tr.latest$</latest>
-        </search>
-        <option name="drilldown">none</option>
-      </table>
     </panel>
   </row>
 
@@ -112,7 +67,7 @@
       </chart>
     </panel>
     <panel>
-      <title>Cluster role over time (0=standby, 1=active/primary)</title>
+      <title>Cluster role over time (0=standby, 1=active)</title>
       <chart>
         <search>
           <query>| makeresults count=40
@@ -135,20 +90,48 @@
 
   <row>
     <panel>
-      <title>The SPL, once cluster logs + host metrics are onboarded</title>
+      <title>Failover trigger reasons (90 days, 5 events)</title>
+      <chart>
+        <search>
+          <query>| makeresults count=3
+| streamstats count as i
+| eval Category=case(i=1,"CPU spike",i=2,"Heartbeat lost",i=3,"Manual / planned")
+| eval Count=case(i=1,2,i=2,2,i=3,1)
+| table Category Count</query>
+          <earliest>$tr.earliest$</earliest>
+          <latest>$tr.latest$</latest>
+        </search>
+        <option name="charting.chart">pie</option>
+        <option name="charting.legend.placement">right</option>
+        <option name="drilldown">none</option>
+      </chart>
+    </panel>
+    <panel>
+      <title>Latest failover — at a glance</title>
+      <table>
+        <search>
+          <query>| makeresults count=1
+| eval "Failover time"=strftime(relative_time(now(),"-38m"),"%Y-%m-%d %H:%M:%S")
+| eval Primary="db-primary-01", "Now active"="db-standby-01", Trigger="CPU spike + missed heartbeats", "Missed heartbeats"=3, Reconnects=214
+| table "Failover time" Primary "Now active" Trigger "Missed heartbeats" Reconnects</query>
+          <earliest>$tr.earliest$</earliest>
+          <latest>$tr.latest$</latest>
+        </search>
+        <option name="drilldown">none</option>
+      </table>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
+      <title>Data sources needed</title>
       <html>
-        <pre style="white-space:pre-wrap;background:#11151a;padding:12px;border-radius:6px;color:#cdd9e5;">(index=db_cluster_logs OR index=*_metrics host IN (db-primary-01, db-standby-01))
-| eval role_event=if(sourcetype="cluster:role_change", role, null())
-| streamstats window=1 latest(role_event) as current_role by host
-| stats
-    values(current_role) as role_changes,
-    max(eval(if(sourcetype="linux:metrics",cpu_pct,null()))) as peak_cpu,
-    count(eval(sourcetype="cluster:heartbeat_missed")) as missed_heartbeats
-  by host, _time
-| where isnotnull(role_changes) OR missed_heartbeats&gt;0</pre>
-        <p style="color:#8b98a5;">The goal isn't to stop failovers — it's to answer "why" in
-        seconds instead of hours, and to catch the CPU/heartbeat pattern <i>before</i> the next
-        one triggers.</p>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;">
+          <span style="background:#1b2430;color:#cdd9e5;padding:4px 10px;border-radius:12px;font-size:12px;border:1px solid #2b3a4a;">DB / cluster logs</span>
+          <span style="background:#1b2430;color:#cdd9e5;padding:4px 10px;border-radius:12px;font-size:12px;border:1px solid #2b3a4a;">Host / OS metrics</span>
+          <span style="background:#1b2430;color:#cdd9e5;padding:4px 10px;border-radius:12px;font-size:12px;border:1px solid #2b3a4a;">Network heartbeat / VIP logs</span>
+          <span style="background:#1b2430;color:#cdd9e5;padding:4px 10px;border-radius:12px;font-size:12px;border:1px solid #2b3a4a;">App connection logs</span>
+        </div>
       </html>
     </panel>
   </row>

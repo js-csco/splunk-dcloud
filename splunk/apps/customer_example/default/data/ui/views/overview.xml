@@ -7,17 +7,10 @@
       <html>
         <h1 style="margin:0 0 6px;">Customer Example</h1>
         <p style="color:#cdd9e5;max-width:900px;">
-          This app is built from a single discovery conversation with a hospital IT team.
-          Every dashboard below answers one thing they said, with a <b>quick worked example</b>
-          (built from representative sample data, since these source systems aren't part of
-          this lab) and a plain list of the <b>data sources</b> Splunk would actually ingest to
-          solve it for real. Use it as a talk track, not a finished build.
+          Nine pain points from one customer conversation, each turned into a dashboard with
+          a worked example and the data sources needed to build it for real.
+          <span style="color:#8b98a5;">(Sample data — these source systems aren't part of this lab.)</span>
         </p>
-        <p style="color:#8b98a5;">Nothing here is connected to the customer's real DHCP server,
-        ISE, DNA Center, NSX Manager, bed-management system, or LLM platform — those don't
-        exist in this lab. Every chart is generated on the fly with <code>makeresults</code> so
-        the story renders with zero setup; swap it for the real search once the data source is
-        onboarded.</p>
       </html>
     </panel>
   </row>
@@ -55,15 +48,15 @@
             </tr>
           </thead>
           <tbody style="color:#e6edf3;">
-            <tr><td style="padding:8px;border:1px solid #2b3a4a;">1</td><td style="padding:8px;border:1px solid #2b3a4a;">X-ray machine went down after its IP silently flipped from static to DHCP — long root-cause hunt.</td><td style="padding:8px;border:1px solid #2b3a4a;">Detect + alert on unexpected DHCP lease changes for critical/reserved assets.</td><td style="padding:8px;border:1px solid #2b3a4a;">DHCP server logs, CMDB/asset inventory, switch port/CDP logs, ISE</td></tr>
-            <tr><td style="padding:8px;border:1px solid #2b3a4a;">2</td><td style="padding:8px;border:1px solid #2b3a4a;">Redundant DB servers are barely monitored; nobody knows why failover triggered.</td><td style="padding:8px;border:1px solid #2b3a4a;">Correlate cluster/replication events with host + network heartbeat around the failover.</td><td style="padding:8px;border:1px solid #2b3a4a;">DB/cluster logs, OS metrics, VIP/heartbeat network logs</td></tr>
-            <tr><td style="padding:8px;border:1px solid #2b3a4a;">3</td><td style="padding:8px;border:1px solid #2b3a4a;">IoT is 99% reactive; managed by an external provider.</td><td style="padding:8px;border:1px solid #2b3a4a;">Shift to proactive: connectivity/battery trend + predictive alerting, shared with the MSP.</td><td style="padding:8px;border:1px solid #2b3a4a;">IoT gateway/MQTT telemetry, wireless/VLAN logs, MSP ticketing API</td></tr>
-            <tr><td style="padding:8px;border:1px solid #2b3a4a;">4</td><td style="padding:8px;border:1px solid #2b3a4a;">No correlation across ISE, DNA Center and the rest of the network stack.</td><td style="padding:8px;border:1px solid #2b3a4a;">One timeline: auth events (ISE) + client/network health (DNAC) + interface state (switches).</td><td style="padding:8px;border:1px solid #2b3a4a;">Cisco ISE, Cisco DNA Center, switch/router syslog &amp; SNMP, WLC</td></tr>
-            <tr><td style="padding:8px;border:1px solid #2b3a4a;">5</td><td style="padding:8px;border:1px solid #2b3a4a;">A label printer failed this year from rising temperatures.</td><td style="padding:8px;border:1px solid #2b3a4a;">Correlate device error codes with room/ambient temperature trend to predict/prevent it.</td><td style="padding:8px;border:1px solid #2b3a4a;">Environmental (BMS/IoT) sensors, printer/device SNMP logs, asset location</td></tr>
-            <tr><td style="padding:8px;border:1px solid #2b3a4a;">6</td><td style="padding:8px;border:1px solid #2b3a4a;">VMware/NSX microsegmentation — "one small click and the other side stops working again" when the vendor moves a port.</td><td style="padding:8px;border:1px solid #2b3a4a;">Correlate DFW/firewall rule + port-group changes with the connectivity break that follows.</td><td style="padding:8px;border:1px solid #2b3a4a;">NSX Manager (DFW rule changes), vCenter events, change management/CMDB</td></tr>
-            <tr><td style="padding:8px;border:1px solid #2b3a4a;">7</td><td style="padding:8px;border:1px solid #2b3a4a;">Bed occupancy monitoring — potentially interesting for GL (leadership).</td><td style="padding:8px;border:1px solid #2b3a4a;">Executive KPI view: occupancy % by ward, trend, and a simple forecast.</td><td style="padding:8px;border:1px solid #2b3a4a;">Bed management / RTLS system, ADT (HL7) feed, nurse call system</td></tr>
-            <tr><td style="padding:8px;border:1px solid #2b3a4a;">8</td><td style="padding:8px;border:1px solid #2b3a4a;">"Solange es in der Schweiz verarbeitet wird, darf es auch in die Cloud raus."</td><td style="padding:8px;border:1px solid #2b3a4a;">Prove data-residency compliance on every cloud egress, flag anything processed outside CH.</td><td style="padding:8px;border:1px solid #2b3a4a;">Proxy/CASB logs, DLP/data-classification tags, cloud provider audit logs (with region)</td></tr>
-            <tr><td style="padding:8px;border:1px solid #2b3a4a;">9</td><td style="padding:8px;border:1px solid #2b3a4a;">AI Observability is interesting, but leadership has the handbrake on due to uncertainty.</td><td style="padding:8px;border:1px solid #2b3a4a;">Governance-first view: cost/latency plus guardrail &amp; DLP hits, to de-risk before scaling up.</td><td style="padding:8px;border:1px solid #2b3a4a;">LLM/API gateway logs, model registry, guardrail/DLP scan logs, identity</td></tr>
+            <tr><td style="padding:8px;border:1px solid #2b3a4a;">1</td><td style="padding:8px;border:1px solid #2b3a4a;">X-ray machine — DHCP re-assigned its IP</td><td style="padding:8px;border:1px solid #2b3a4a;">Alert on unexpected lease changes</td><td style="padding:8px;border:1px solid #2b3a4a;">DHCP, CMDB, switch/CDP, ISE</td></tr>
+            <tr><td style="padding:8px;border:1px solid #2b3a4a;">2</td><td style="padding:8px;border:1px solid #2b3a4a;">Redundant DB servers barely monitored</td><td style="padding:8px;border:1px solid #2b3a4a;">Correlate cluster events + host/network heartbeat</td><td style="padding:8px;border:1px solid #2b3a4a;">DB/cluster logs, OS metrics, VIP logs</td></tr>
+            <tr><td style="padding:8px;border:1px solid #2b3a4a;">3</td><td style="padding:8px;border:1px solid #2b3a4a;">IoT is 99% reactive, run by an MSP</td><td style="padding:8px;border:1px solid #2b3a4a;">Proactive alerting shared with the MSP</td><td style="padding:8px;border:1px solid #2b3a4a;">IoT/MQTT telemetry, WLAN logs, MSP API</td></tr>
+            <tr><td style="padding:8px;border:1px solid #2b3a4a;">4</td><td style="padding:8px;border:1px solid #2b3a4a;">No correlation across ISE, DNA Center, network</td><td style="padding:8px;border:1px solid #2b3a4a;">One timeline instead of three consoles</td><td style="padding:8px;border:1px solid #2b3a4a;">Cisco ISE, DNA Center, switch syslog, WLC</td></tr>
+            <tr><td style="padding:8px;border:1px solid #2b3a4a;">5</td><td style="padding:8px;border:1px solid #2b3a4a;">Label printer failed from rising heat</td><td style="padding:8px;border:1px solid #2b3a4a;">Correlate room temp with device errors</td><td style="padding:8px;border:1px solid #2b3a4a;">Environmental sensors, printer SNMP, asset data</td></tr>
+            <tr><td style="padding:8px;border:1px solid #2b3a4a;">6</td><td style="padding:8px;border:1px solid #2b3a4a;">NSX changes silently break connectivity</td><td style="padding:8px;border:1px solid #2b3a4a;">Correlate rule changes with outages</td><td style="padding:8px;border:1px solid #2b3a4a;">NSX Manager, vCenter, change mgmt/CMDB</td></tr>
+            <tr><td style="padding:8px;border:1px solid #2b3a4a;">7</td><td style="padding:8px;border:1px solid #2b3a4a;">Bed occupancy — interesting for GL</td><td style="padding:8px;border:1px solid #2b3a4a;">Executive KPI view by ward + trend</td><td style="padding:8px;border:1px solid #2b3a4a;">Bed mgmt/RTLS, ADT (HL7), nurse call</td></tr>
+            <tr><td style="padding:8px;border:1px solid #2b3a4a;">8</td><td style="padding:8px;border:1px solid #2b3a4a;">"Processed in CH may go to the cloud"</td><td style="padding:8px;border:1px solid #2b3a4a;">Prove residency compliance on every egress</td><td style="padding:8px;border:1px solid #2b3a4a;">Proxy/CASB logs, DLP tags, cloud audit logs</td></tr>
+            <tr><td style="padding:8px;border:1px solid #2b3a4a;">9</td><td style="padding:8px;border:1px solid #2b3a4a;">AI adoption stalled — GL uncertainty</td><td style="padding:8px;border:1px solid #2b3a4a;">Governance-first: cost, latency, guardrail hits</td><td style="padding:8px;border:1px solid #2b3a4a;">LLM/API gateway logs, guardrail/DLP logs</td></tr>
           </tbody>
         </table>
       </html>

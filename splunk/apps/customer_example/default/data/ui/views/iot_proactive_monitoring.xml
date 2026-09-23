@@ -12,71 +12,36 @@
   <row>
     <panel>
       <html>
-        <h2>What happened</h2>
-        <blockquote style="border-left:3px solid #16a3b0;margin:0 0 12px;padding:6px 14px;color:#cdd9e5;background:#101722;">
-          "IoT Systeme werden zur Zeit überhaupt nicht proaktiv überwacht, zu 99% reaktiv. Man
-          arbeitet hier mit einem externen Dienstleister zusammen."
-        </blockquote>
-        <p style="color:#cdd9e5;max-width:900px;">Today, an IoT device (asset tags, environmental
-        sensors, infusion pumps, etc.) is only noticed when it stops working — a ticket to the
-        external managed-service provider is the first signal anyone gets. Device telemetry
-        (battery level, signal strength, last-seen) almost always degrades <i>before</i> it goes
-        fully dark. Centralizing that telemetry in Splunk turns "find out it broke" into "get
-        alerted 2 days before it breaks", and gives the customer and the MSP the same shared
-        view instead of two separate dashboards.</p>
+        <p style="margin:0;color:#8b98a5;font-style:italic;">"…IoT Systeme werden zur Zeit überhaupt nicht proaktiv überwacht, zu 99% reaktiv…"
+        <span style="color:#cdd9e5;font-style:normal;"> — managed with an external provider, first signal is always a break.</span></p>
       </html>
     </panel>
   </row>
 
   <row>
     <panel>
-      <title>Data sources needed to build this for real</title>
-      <html>
-        <ul style="color:#cdd9e5;">
-          <li><b>IoT gateway / platform telemetry</b> — MQTT broker, LoRaWAN network server, or
-          the vendor's cloud API (battery %, RSSI/signal, last-seen heartbeat) per device.</li>
-          <li><b>Network access data</b> — which VLAN/SSID/AP the device is on (wireless
-          controller logs), to separate a device problem from a network problem.</li>
-          <li><b>MSP ticketing system</b> — ServiceNow/Jira/whatever the external provider uses,
-          via its REST API, so ticket volume and MTTR can be compared against telemetry.</li>
-          <li><b>Asset inventory</b> — device type, location/ward, and criticality, so alerts can
-          be prioritized (a dead asset tag is not the same as a dead infusion pump gateway).</li>
-        </ul>
-      </html>
-    </panel>
-  </row>
-
-  <row>
-    <panel>
-      <title>Reactive vs. proactive today</title>
-      <single>
-        <search>
-          <query>| makeresults | eval "% incidents caught only after the device went dark"=99</query>
-        </search>
-        <option name="unit">%</option>
+      <title>Proactive coverage today</title>
+      <chart>
+        <search><query>| makeresults | eval v=1</query></search>
+        <option name="charting.chart">radialGauge</option>
+        <option name="charting.chart.rangeValues">[0,50,80,100]</option>
         <option name="drilldown">none</option>
-        <option name="colorBy">value</option>
-        <option name="rangeColors">["0xd93f3c","0xd93f3c"]</option>
-        <option name="rangeValues">[0]</option>
-      </single>
+      </chart>
     </panel>
     <panel>
-      <title>Devices with degrading telemetry right now (would-be proactive alerts)</title>
+      <title>Devices with degrading telemetry now</title>
       <single>
-        <search>
-          <query>| makeresults | eval devices=3</query>
-        </search>
+        <search><query>| makeresults | eval v=3</query></search>
         <option name="drilldown">none</option>
         <option name="colorBy">value</option>
-        <option name="rangeColors">["0xf2b827"]</option>
+        <option name="rangeColors">["0x53a051","0xf2b827"]</option>
+        <option name="rangeValues">[1]</option>
       </single>
     </panel>
     <panel>
       <title>Fleet size (this ward)</title>
       <single>
-        <search>
-          <query>| makeresults | eval devices=48</query>
-        </search>
+        <search><query>| makeresults | eval v=48</query></search>
         <option name="drilldown">none</option>
       </single>
     </panel>
@@ -102,6 +67,23 @@
         <option name="drilldown">none</option>
       </chart>
     </panel>
+    <panel>
+      <title>Fleet status right now</title>
+      <chart>
+        <search>
+          <query>| makeresults count=3
+| streamstats count as i
+| eval Category=case(i=1,"Healthy",i=2,"Degrading",i=3,"Dark / unresponsive")
+| eval Count=case(i=1,42,i=2,3,i=3,3)
+| table Category Count</query>
+          <earliest>$tr.earliest$</earliest>
+          <latest>$tr.latest$</latest>
+        </search>
+        <option name="charting.chart">pie</option>
+        <option name="charting.legend.placement">right</option>
+        <option name="drilldown">none</option>
+      </chart>
+    </panel>
   </row>
 
   <row>
@@ -112,9 +94,9 @@
           <query>| makeresults count=3
 | streamstats count as i
 | eval Device=case(i=1,"Asset-Tag-114",i=2,"InfusionGW-22",i=3,"EnvSensor-Ward3-07")
-| eval Signal=case(i=1,"Battery 13% (dropping ~8%/day)",i=2,"RSSI -94 dBm (dropping fast)",i=3,"Last-seen 41 min ago (normally &lt;2 min)")
+| eval Signal=case(i=1,"Battery 13%, dropping",i=2,"RSSI -94 dBm, dropping",i=3,"Last-seen 41 min ago")
 | eval "Days until likely dark"=case(i=1,2,i=2,1,i=3,0)
-| eval Priority=case(i=1,"Medium",i=2,"High — infusion pump gateway",i=3,"High — already intermittent")
+| eval Priority=case(i=1,"Medium",i=2,"High",i=3,"High")
 | table Device Signal "Days until likely dark" Priority
 | sort "Days until likely dark"</query>
           <earliest>$tr.earliest$</earliest>
@@ -122,7 +104,7 @@
         </search>
         <option name="drilldown">none</option>
         <format type="color" field="Priority">
-          <colorPalette type="map">{"High — infusion pump gateway":#d93f3c,"High — already intermittent":#d93f3c,"Medium":#f2b827}</colorPalette>
+          <colorPalette type="map">{"High":#d93f3c,"Medium":#f2b827}</colorPalette>
         </format>
       </table>
     </panel>
@@ -130,19 +112,14 @@
 
   <row>
     <panel>
-      <title>The SPL, once IoT telemetry is onboarded</title>
+      <title>Data sources needed</title>
       <html>
-        <pre style="white-space:pre-wrap;background:#11151a;padding:12px;border-radius:6px;color:#cdd9e5;">index=iot_telemetry
-| stats latest(battery_pct) as battery, latest(rssi_dbm) as rssi, latest(_time) as last_seen by device_id
-| lookup asset_inventory device_id OUTPUT device_type, ward, criticality
-| eval minutes_dark=round((now()-last_seen)/60,1)
-| eval risk=case(
-    battery&lt;20 OR rssi&lt;-90 OR minutes_dark&gt;15, "proactive-alert",
-    1=1, "healthy")
-| where risk="proactive-alert"
-| table device_id device_type ward battery rssi minutes_dark criticality</pre>
-        <p style="color:#8b98a5;">Share this same search (or a scheduled report of it) with the
-        MSP — one shared signal instead of the customer and the provider each guessing.</p>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;">
+          <span style="background:#1b2430;color:#cdd9e5;padding:4px 10px;border-radius:12px;font-size:12px;border:1px solid #2b3a4a;">IoT gateway / MQTT telemetry</span>
+          <span style="background:#1b2430;color:#cdd9e5;padding:4px 10px;border-radius:12px;font-size:12px;border:1px solid #2b3a4a;">Wireless / VLAN logs</span>
+          <span style="background:#1b2430;color:#cdd9e5;padding:4px 10px;border-radius:12px;font-size:12px;border:1px solid #2b3a4a;">MSP ticketing API</span>
+          <span style="background:#1b2430;color:#cdd9e5;padding:4px 10px;border-radius:12px;font-size:12px;border:1px solid #2b3a4a;">Asset inventory</span>
+        </div>
       </html>
     </panel>
   </row>

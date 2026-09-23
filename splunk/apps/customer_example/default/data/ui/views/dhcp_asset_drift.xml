@@ -12,48 +12,21 @@
   <row>
     <panel>
       <html>
-        <h2>What happened</h2>
-        <blockquote style="border-left:3px solid #16a3b0;margin:0 0 12px;padding:6px 14px;color:#cdd9e5;background:#101722;">
-          "Ein Röntgengerät ist letzte Woche ausgestiegen, weil die IP-Adresse aus
-          unerklärlichen Gründen auf DHCP umgestellt wurde, was zu längerer
-          Ursachenbehebung geführt hatte."
-        </blockquote>
-        <p style="color:#cdd9e5;max-width:900px;">A radiology device that's supposed to hold a
-        <b>reserved/static</b> address quietly picked up a <b>new DHCP lease</b> instead — the
-        modality software couldn't reach PACS/RIS on the old address, and nobody had a record
-        of the change, so troubleshooting started from zero instead of from "the IP changed at
-        14:32". With DHCP lease events, a switch-port/CDP trail and an asset inventory in
-        Splunk, this becomes a single correlated alert instead of a multi-hour hunt.</p>
+        <p style="margin:0;color:#8b98a5;font-style:italic;">"…Röntgengerät ist letzte Woche ausgestiegen, weil die IP-Adresse aus unerklärlichen Gründen auf DHCP umgestellt wurde…"
+        <span style="color:#cdd9e5;font-style:normal;"> — a reserved device's IP silently flipped to DHCP; the outage took hours to trace back to it.</span></p>
       </html>
     </panel>
   </row>
 
   <row>
     <panel>
-      <title>Data sources needed to build this for real</title>
-      <html>
-        <ul style="color:#cdd9e5;">
-          <li><b>DHCP server logs</b> — lease grant/renew/release events (Windows DHCP debug
-          logs, ISC <code>dhcpd</code>, or Infoblox/BlueCat syslog) keyed by MAC address.</li>
-          <li><b>Asset / CMDB inventory</b> — which MACs and IPs are supposed to be
-          <b>static/reserved</b>, tagged by criticality (e.g. "modality", "life-safety").</li>
-          <li><b>Switch &amp; access-layer logs</b> — port config, CDP/LLDP and interface
-          up/down (syslog or SNMP) to see which port/switch the device moved to or reset on.</li>
-          <li><b>Cisco ISE</b> — endpoint identity and profiling (device type, VLAN
-          assignment) to confirm the device's real network posture at the time of the event.</li>
-          <li><b>Optional:</b> DNS logs to catch clients still resolving the old, now-stale IP.</li>
-        </ul>
-      </html>
-    </panel>
-  </row>
-
-  <row>
-    <panel>
-      <title>Reserved/static assets monitored</title>
-      <single>
-        <search><query>| makeresults | eval v=142</query></search>
+      <title>Assets protected by drift alerting</title>
+      <chart>
+        <search><query>| makeresults | eval v=96</query></search>
+        <option name="charting.chart">radialGauge</option>
+        <option name="charting.chart.rangeValues">[0,60,85,100]</option>
         <option name="drilldown">none</option>
-      </single>
+      </chart>
     </panel>
     <panel>
       <title>Unexpected DHCP re-assignments (7d)</title>
@@ -71,33 +44,6 @@
         <search><query>| makeresults | eval v="4h+ -&gt; &lt;5 min"</query></search>
         <option name="drilldown">none</option>
       </single>
-    </panel>
-  </row>
-
-  <row>
-    <panel>
-      <title>Example: unexpected DHCP lease change on a reserved medical device</title>
-      <table>
-        <search>
-          <query>| makeresults count=6
-| streamstats count as i
-| eval Time=strftime(relative_time(now(), "-".(7-i)."d"), "%Y-%m-%d %H:%M")
-| eval Asset=case(i=1,"MRI-Suite2-CTL",i=2,"US-Cardio-04",i=3,"XRAY-Radiology-03",i=4,"XRAY-Radiology-03",i=5,"Infusion-Pump-Gateway",i=6,"CT-Scanner-01")
-| eval "Assignment type"=case(i=1,"Static (reserved)",i=2,"Static (reserved)",i=3,"Static (reserved)",i=4,"DHCP (unexpected)",i=5,"Static (reserved)",i=6,"Static (reserved)")
-| eval "Previous IP"=case(i=1,"10.20.5.21",i=2,"10.20.5.33",i=3,"10.20.5.44",i=4,"10.20.5.44",i=5,"10.20.5.61",i=6,"10.20.5.72")
-| eval "New IP"=case(i=1,"10.20.5.21",i=2,"10.20.5.33",i=3,"10.20.5.44",i=4,"10.20.5.187",i=5,"10.20.5.61",i=6,"10.20.5.72")
-| eval Risk=case(i=4,"HIGH — reserved asset re-leased by DHCP",1=1,"normal renewal")
-| table Time Asset "Assignment type" "Previous IP" "New IP" Risk
-| sort Time</query>
-          <earliest>$tr.earliest$</earliest>
-          <latest>$tr.latest$</latest>
-        </search>
-        <option name="drilldown">none</option>
-        <option name="count">10</option>
-        <format type="color" field="Risk">
-          <colorPalette type="map">{"HIGH — reserved asset re-leased by DHCP":#d93f3c,"normal renewal":#53a051}</colorPalette>
-        </format>
-      </table>
     </panel>
   </row>
 
@@ -123,21 +69,61 @@
         <option name="drilldown">none</option>
       </chart>
     </panel>
+    <panel>
+      <title>DHCP lease events by type (7d)</title>
+      <chart>
+        <search>
+          <query>| makeresults count=3
+| streamstats count as i
+| eval Category=case(i=1,"Normal static renewal",i=2,"Normal DHCP renewal",i=3,"Unexpected re-assignment")
+| eval Count=case(i=1,84,i=2,206,i=3,1)
+| table Category Count</query>
+          <earliest>$tr.earliest$</earliest>
+          <latest>$tr.latest$</latest>
+        </search>
+        <option name="charting.chart">pie</option>
+        <option name="charting.legend.placement">right</option>
+        <option name="drilldown">none</option>
+      </chart>
+    </panel>
   </row>
 
   <row>
     <panel>
-      <title>The SPL, once DHCP + CMDB are onboarded</title>
+      <title>Recent lease events for reserved/critical assets</title>
+      <table>
+        <search>
+          <query>| makeresults count=6
+| streamstats count as i
+| eval Time=strftime(relative_time(now(), "-".(7-i)."d"), "%Y-%m-%d %H:%M")
+| eval Asset=case(i=1,"MRI-Suite2-CTL",i=2,"US-Cardio-04",i=3,"XRAY-Radiology-03",i=4,"XRAY-Radiology-03",i=5,"Infusion-Pump-Gateway",i=6,"CT-Scanner-01")
+| eval "New IP"=case(i=1,"10.20.5.21",i=2,"10.20.5.33",i=3,"10.20.5.44",i=4,"10.20.5.187",i=5,"10.20.5.61",i=6,"10.20.5.72")
+| eval Risk=case(i=4,"HIGH — reserved asset re-leased by DHCP",1=1,"normal renewal")
+| table Time Asset "New IP" Risk
+| sort Time</query>
+          <earliest>$tr.earliest$</earliest>
+          <latest>$tr.latest$</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="count">10</option>
+        <format type="color" field="Risk">
+          <colorPalette type="map">{"HIGH — reserved asset re-leased by DHCP":#d93f3c,"normal renewal":#53a051}</colorPalette>
+        </format>
+      </table>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
+      <title>Data sources needed</title>
       <html>
-        <pre style="white-space:pre-wrap;background:#11151a;padding:12px;border-radius:6px;color:#cdd9e5;">index=dhcp_logs sourcetype=dhcp:lease (action=ACK OR action=RENEW)
-| rename client_mac as mac
-| lookup asset_inventory mac OUTPUT ip as expected_ip, asset_name, criticality, assignment_type
-| where assignment_type="static" AND isnotnull(ip) AND ip!=expected_ip
-| eval alert_priority=if(criticality="life-safety" OR criticality="modality","critical","normal")
-| table _time asset_name mac expected_ip ip alert_priority</pre>
-        <p style="color:#8b98a5;">Wire this into an alert (any result in the last 5 minutes,
-        <code>alert_priority=critical</code>) and page the network/biomed team <i>before</i> the
-        modality drops off PACS — not after.</p>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;">
+          <span style="background:#1b2430;color:#cdd9e5;padding:4px 10px;border-radius:12px;font-size:12px;border:1px solid #2b3a4a;">DHCP server logs</span>
+          <span style="background:#1b2430;color:#cdd9e5;padding:4px 10px;border-radius:12px;font-size:12px;border:1px solid #2b3a4a;">Asset / CMDB inventory</span>
+          <span style="background:#1b2430;color:#cdd9e5;padding:4px 10px;border-radius:12px;font-size:12px;border:1px solid #2b3a4a;">Switch &amp; access-layer logs</span>
+          <span style="background:#1b2430;color:#cdd9e5;padding:4px 10px;border-radius:12px;font-size:12px;border:1px solid #2b3a4a;">Cisco ISE</span>
+          <span style="background:#1b2430;color:#cdd9e5;padding:4px 10px;border-radius:12px;font-size:12px;border:1px solid #2b3a4a;">DNS logs (optional)</span>
+        </div>
       </html>
     </panel>
   </row>

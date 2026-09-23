@@ -12,34 +12,8 @@
   <row>
     <panel>
       <html>
-        <h2>What happened</h2>
-        <blockquote style="border-left:3px solid #16a3b0;margin:0 0 12px;padding:6px 14px;color:#cdd9e5;background:#101722;">
-          "Überwachung der Bettenauslastung, kann interessant sein für GL."
-        </blockquote>
-        <p style="color:#cdd9e5;max-width:900px;">This one came up as a leadership (GL) interest
-        rather than an IT operations problem — occupancy is a business KPI, not a fault to fix.
-        The Splunk angle is the same either way: pull the occupancy signal into one place,
-        trend it by ward over time, and put it in front of the people who make staffing and
-        capacity decisions, instead of it living only inside the bed-management system's own
-        (operational) UI.</p>
-      </html>
-    </panel>
-  </row>
-
-  <row>
-    <panel>
-      <title>Data sources needed to build this for real</title>
-      <html>
-        <ul style="color:#cdd9e5;">
-          <li><b>Bed management system / RTLS</b> — real-time bed status (occupied / free /
-          being cleaned / blocked) per ward, usually via its own API or database export.</li>
-          <li><b>ADT feed (HL7)</b> — Admission-Discharge-Transfer messages, the clinical
-          system of record for who is in which bed and for how long.</li>
-          <li><b>Nurse call system</b> — optional, but useful as a proxy for ward activity
-          level alongside raw occupancy.</li>
-          <li><b>Reference data</b> — total licensed beds per ward, so a raw count becomes a
-          meaningful percentage.</li>
-        </ul>
+        <p style="margin:0;color:#8b98a5;font-style:italic;">"Überwachung der Bettenauslastung, kann interessant sein für GL."
+        <span style="color:#cdd9e5;font-style:normal;"> — a leadership KPI, not just an ops metric.</span></p>
       </html>
     </panel>
   </row>
@@ -47,32 +21,24 @@
   <row>
     <panel>
       <title>Hospital-wide occupancy (today)</title>
-      <single>
-        <search>
-          <query>| makeresults | eval occupancy=87</query>
-        </search>
-        <option name="unit">%</option>
+      <chart>
+        <search><query>| makeresults | eval v=87</query></search>
+        <option name="charting.chart">radialGauge</option>
+        <option name="charting.chart.rangeValues">[0,75,90,100]</option>
         <option name="drilldown">none</option>
-        <option name="colorBy">value</option>
-        <option name="rangeColors">["0x53a051","0xf2b827","0xd93f3c"]</option>
-        <option name="rangeValues">[80,95]</option>
-      </single>
+      </chart>
     </panel>
     <panel>
       <title>Free beds right now</title>
       <single>
-        <search>
-          <query>| makeresults | eval beds=31</query>
-        </search>
+        <search><query>| makeresults | eval v=31</query></search>
         <option name="drilldown">none</option>
       </single>
     </panel>
     <panel>
       <title>30-day trend</title>
       <single>
-        <search>
-          <query>| makeresults | eval trend="+4.2 pts vs. last month"</query>
-        </search>
+        <search><query>| makeresults | eval v="+4.2 pts vs. last month"</query></search>
         <option name="drilldown">none</option>
       </single>
     </panel>
@@ -98,6 +64,23 @@
         <option name="charting.axisY.maximumNumber">100</option>
         <option name="charting.axisTitleY.text">Occupancy %</option>
         <option name="charting.legend.placement">bottom</option>
+        <option name="drilldown">none</option>
+      </chart>
+    </panel>
+    <panel>
+      <title>Bed status breakdown — hospital-wide (now)</title>
+      <chart>
+        <search>
+          <query>| makeresults count=4
+| streamstats count as i
+| eval Category=case(i=1,"Occupied",i=2,"Free",i=3,"Being cleaned",i=4,"Blocked")
+| eval Count=case(i=1,87,i=2,9,i=3,3,i=4,1)
+| table Category Count</query>
+          <earliest>$tr.earliest$</earliest>
+          <latest>$tr.latest$</latest>
+        </search>
+        <option name="charting.chart">pie</option>
+        <option name="charting.legend.placement">right</option>
         <option name="drilldown">none</option>
       </chart>
     </panel>
@@ -129,17 +112,14 @@
 
   <row>
     <panel>
-      <title>The SPL, once the bed-management system / ADT feed is onboarded</title>
+      <title>Data sources needed</title>
       <html>
-        <pre style="white-space:pre-wrap;background:#11151a;padding:12px;border-radius:6px;color:#cdd9e5;">index=adt_hl7 message_type=ADT
-| eval bed_status=case(event_type="A01","occupied", event_type="A03","free", 1=1, bed_status)
-| stats latest(bed_status) as status by ward, bed_id
-| stats count as licensed_beds, count(eval(status="occupied")) as occupied by ward
-| eval occupancy_pct=round(occupied/licensed_beds*100,1)
-| table ward licensed_beds occupied occupancy_pct
-| sort - occupancy_pct</pre>
-        <p style="color:#8b98a5;">Scheduled daily/weekly and shared as a PDF or a Splunk
-        dashboard link, this is a natural fit for a GL/leadership review deck.</p>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;">
+          <span style="background:#1b2430;color:#cdd9e5;padding:4px 10px;border-radius:12px;font-size:12px;border:1px solid #2b3a4a;">Bed management / RTLS system</span>
+          <span style="background:#1b2430;color:#cdd9e5;padding:4px 10px;border-radius:12px;font-size:12px;border:1px solid #2b3a4a;">ADT feed (HL7)</span>
+          <span style="background:#1b2430;color:#cdd9e5;padding:4px 10px;border-radius:12px;font-size:12px;border:1px solid #2b3a4a;">Nurse call system</span>
+          <span style="background:#1b2430;color:#cdd9e5;padding:4px 10px;border-radius:12px;font-size:12px;border:1px solid #2b3a4a;">Licensed-bed reference data</span>
+        </div>
       </html>
     </panel>
   </row>
