@@ -1,0 +1,112 @@
+<form version="1.1" theme="dark">
+  <label>5. Etikettendrucker — Environmental Device Health</label>
+  <description>Catch equipment failing from environmental conditions (heat, humidity) before it fails, by correlating room sensors with device error logs.</description>
+
+  <fieldset submitButton="false" autoRun="true">
+    <input type="time" token="tr">
+      <label>Time range</label>
+      <default><earliest>-7d</earliest><latest>now</latest></default>
+    </input>
+  </fieldset>
+
+  <row>
+    <panel>
+      <html>
+        <h2>What happened</h2>
+        <blockquote style="border-left:3px solid #16a3b0;margin:0 0 12px;padding:6px 14px;color:#cdd9e5;background:#101722;">
+          "Etikettendrucker der dieses Jahr aufgrund steigender Temperaturen nicht mehr
+          funktioniert hat."
+        </blockquote>
+        <p style="color:#cdd9e5;max-width:900px;">A label printer (used for patient/sample
+        labelling — not a cosmetic failure) stopped working this year because the room it sat in
+        got too hot. Nobody was watching room temperature <i>and</i> the printer's own error
+        log together, so the failure looked random until someone put the two timelines side by
+        side after the fact. The same pattern applies to any device with a documented operating
+        range — network cabinets, UPS units, server closets, lab equipment.</p>
+      </html>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
+      <title>Data sources needed to build this for real</title>
+      <html>
+        <ul style="color:#cdd9e5;">
+          <li><b>Environmental sensors</b> — room/rack temperature &amp; humidity, from the
+          building management system (BMS/BACnet) or dedicated IoT sensors (same telemetry
+          pattern as the IoT dashboard).</li>
+          <li><b>Device / printer logs</b> — SNMP (Printer-MIB) or the vendor's print-server
+          logs for error codes, paper jams, and thermal-shutdown events.</li>
+          <li><b>Asset &amp; location data</b> — which room/rack each device physically sits in,
+          so a sensor reading can be joined to the right device.</li>
+          <li><b>HVAC / facilities alarms</b> — AC unit faults or scheduled maintenance windows
+          that explain a temperature spike.</li>
+        </ul>
+      </html>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
+      <title>Example: room temperature vs. printer errors (7 days)</title>
+      <chart>
+        <search>
+          <query>| makeresults count=7
+| streamstats count as i
+| eval Day=strftime(relative_time(now(), "-".(7-i)."d"), "%m-%d")
+| eval "Room temp (°C, Label-Printer-Storage-2)"=case(i&lt;=4, 22+i, i=5, 31, i=6, 34, i=7, 29)
+| eval "Printer error count"=case(i&lt;=4, 0, i=5, 2, i=6, 9, i=7, 1)
+| table Day "Room temp (°C, Label-Printer-Storage-2)" "Printer error count"</query>
+          <earliest>$tr.earliest$</earliest>
+          <latest>$tr.latest$</latest>
+        </search>
+        <option name="charting.chart">line</option>
+        <option name="charting.chart.nullValueMode">connect</option>
+        <option name="charting.legend.placement">bottom</option>
+        <option name="drilldown">none</option>
+      </chart>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
+      <title>Devices currently trending outside their rated operating range</title>
+      <table>
+        <search>
+          <query>| makeresults count=3
+| streamstats count as i
+| eval Device=case(i=1,"Label-Printer-Storage-2",i=2,"Network-Cabinet-B12",i=3,"UPS-Ward4")
+| eval Location=case(i=1,"Storage room 2, Bldg B",i=2,"IDF closet B12",i=3,"Ward 4 electrical room")
+| eval "Current temp"=case(i=1,"34°C",i=2,"27°C",i=3,"24°C")
+| eval "Rated max"=case(i=1,"30°C",i=2,"35°C",i=3,"40°C")
+| eval Status=case(i=1,"Over rated max — action needed",i=2,"Within range",i=3,"Within range")
+| table Device Location "Current temp" "Rated max" Status</query>
+          <earliest>$tr.earliest$</earliest>
+          <latest>$tr.latest$</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <format type="color" field="Status">
+          <colorPalette type="map">{"Over rated max — action needed":#d93f3c,"Within range":#53a051}</colorPalette>
+        </format>
+      </table>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
+      <title>The SPL, once room sensors + device logs are onboarded</title>
+      <html>
+        <pre style="white-space:pre-wrap;background:#11151a;padding:12px;border-radius:6px;color:#cdd9e5;">index=env_sensors sourcetype=bms:temperature
+| lookup asset_inventory room_id OUTPUT device_name, rated_max_temp_c
+| where isnotnull(rated_max_temp_c)
+| eval over_rated=if(temp_c&gt;rated_max_temp_c, 1, 0)
+| where over_rated=1
+| join type=left room_id
+    [ search index=device_logs sourcetype="printer:snmp" error=* | stats count as printer_errors by room_id ]
+| table _time room_id device_name temp_c rated_max_temp_c printer_errors</pre>
+        <p style="color:#8b98a5;">A simple threshold alert on <code>over_rated=1</code> would
+        have flagged this room days before the printer actually failed.</p>
+      </html>
+    </panel>
+  </row>
+</form>

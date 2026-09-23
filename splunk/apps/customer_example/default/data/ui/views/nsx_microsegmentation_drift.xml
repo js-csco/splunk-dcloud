@@ -1,0 +1,135 @@
+<form version="1.1" theme="dark">
+  <label>6. VMware / NSX — Microsegmentation Drift</label>
+  <description>Tie every "it stopped working on the other side again" back to the firewall rule or port-group change that actually caused it.</description>
+
+  <fieldset submitButton="false" autoRun="true">
+    <input type="time" token="tr">
+      <label>Time range</label>
+      <default><earliest>-24h</earliest><latest>now</latest></default>
+    </input>
+  </fieldset>
+
+  <row>
+    <panel>
+      <html>
+        <h2>What happened</h2>
+        <blockquote style="border-left:3px solid #16a3b0;margin:0 0 12px;padding:6px 14px;color:#cdd9e5;background:#101722;">
+          "VMware, NSX im Einsatz, Mikrosegmentierung — ein kleiner Klick und es 'tut auf der
+          anderen Seite wieder nichts', dann hat der Lieferant wieder ein Port gewechselt."
+        </blockquote>
+        <p style="color:#cdd9e5;max-width:900px;">Microsegmentation is doing exactly what it's
+        designed to do — blocking traffic that isn't explicitly allowed — but every time a
+        vendor's application team changes a port, or someone edits a Distributed Firewall (DFW)
+        rule or a port-group, something on the other side breaks with no obvious link back to
+        the change that caused it. Without a log of <i>who changed what, when</i> lined up
+        against the connectivity that broke right after, every incident starts as "is it the
+        network or the app?" instead of "rule change at 14:02, app team, revert candidate".</p>
+      </html>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
+      <title>Data sources needed to build this for real</title>
+      <html>
+        <ul style="color:#cdd9e5;">
+          <li><b>NSX Manager</b> — Distributed Firewall (DFW) rule create/modify/delete events,
+          via syslog or the NSX API, including the rule name, source/destination, and the
+          user who made the change.</li>
+          <li><b>vCenter events</b> — port-group changes, VM NIC reconfiguration, and vMotion
+          events (a VM moving to a different host/port-group is a common silent cause).</li>
+          <li><b>Change management / CMDB</b> — a record of planned changes (ServiceNow change
+          tickets), so an unplanned change stands out immediately.</li>
+          <li><b>Application-side connectivity checks</b> — the kind of port/health probe this
+          lab already runs for the web-app and DB tiers (<code>port:probe</code>,
+          <code>webapp:probe</code>) — the "did it actually break" signal to correlate against.</li>
+        </ul>
+      </html>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
+      <title>Example: rule change immediately followed by an app outage</title>
+      <table>
+        <search>
+          <query>| makeresults count=4
+| streamstats count as i
+| eval Time=strftime(relative_time(now(), "-".(240-i*20)."m"), "%H:%M")
+| eval Source=case(i=1,"NSX Manager (DFW)",i=2,"App probe",i=3,"NSX Manager (DFW)",i=4,"App probe")
+| eval Event=case(
+    i=1,"Rule 'Allow-App-to-DB-5432' modified by user vendor.integrations (source range narrowed)",
+    i=2,"webapp-berlin -> db-berlin:5432 probe FAILED (connection refused)",
+    i=3,"Rule 'Allow-App-to-DB-5432' reverted by network.admin",
+    i=4,"webapp-berlin -> db-berlin:5432 probe OK")
+| table Time Source Event
+| sort Time</query>
+          <earliest>$tr.earliest$</earliest>
+          <latest>$tr.latest$</latest>
+        </search>
+        <option name="drilldown">none</option>
+      </table>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
+      <title>App connectivity around the rule change</title>
+      <chart>
+        <search>
+          <query>| makeresults count=24
+| streamstats count as i
+| eval Hour=strftime(relative_time(now(), "-".(24-i)."h"), "%H:00")
+| eval "App -&gt; DB reachable"=if(i&gt;=12 AND i&lt;=13, 0, 1)
+| table Hour "App -&gt; DB reachable"</query>
+          <earliest>$tr.earliest$</earliest>
+          <latest>$tr.latest$</latest>
+        </search>
+        <option name="charting.chart">line</option>
+        <option name="charting.chart.nullValueMode">connect</option>
+        <option name="charting.axisY.maximumNumber">1</option>
+        <option name="charting.axisY.minimumNumber">0</option>
+        <option name="charting.legend.placement">bottom</option>
+        <option name="drilldown">none</option>
+      </chart>
+    </panel>
+    <panel>
+      <title>DFW / port-group changes by team (last 7 days, example)</title>
+      <chart>
+        <search>
+          <query>| makeresults count=3
+| streamstats count as i
+| eval Team=case(i=1,"vendor.integrations",i=2,"network.admin",i=3,"app.team")
+| eval "Changes"=case(i=1,7,i=2,2,i=3,3)
+| eval "Changes causing an outage &lt;15min later"=case(i=1,4,i=2,0,i=3,1)
+| table Team "Changes" "Changes causing an outage &lt;15min later"</query>
+          <earliest>$tr.earliest$</earliest>
+          <latest>$tr.latest$</latest>
+        </search>
+        <option name="charting.chart">bar</option>
+        <option name="charting.legend.placement">bottom</option>
+        <option name="drilldown">none</option>
+      </chart>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
+      <title>The SPL, once NSX + probes are onboarded</title>
+      <html>
+        <pre style="white-space:pre-wrap;background:#11151a;padding:12px;border-radius:6px;color:#cdd9e5;">index=nsx_dfw_events (action=create OR action=modify OR action=delete)
+| rename user as changed_by, rule_name as rule
+| append [
+    search index=*_web OR index=*_metrics sourcetype="port:probe" open=0
+    | eval rule="(probe failure)" ]
+| streamstats window=1 latest(_time) as last_change by rule
+| eval minutes_after_change=round((_time-last_change)/60,1)
+| where minutes_after_change&gt;=0 AND minutes_after_change&lt;=15
+| table _time changed_by rule minutes_after_change</pre>
+        <p style="color:#8b98a5;">This is a smaller version of the <b>Client → Hypervisor → App</b>
+        and <b>Root Cause Analysis</b> dashboards already in this lab, applied to "what changed"
+        instead of "what's down".</p>
+      </html>
+    </panel>
+  </row>
+</form>

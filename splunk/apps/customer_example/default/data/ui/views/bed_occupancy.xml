@@ -1,0 +1,146 @@
+<form version="1.1" theme="dark">
+  <label>7. Bettenauslastung — Bed Occupancy (Exec View)</label>
+  <description>A leadership-level view of bed occupancy by ward — the kind of KPI dashboard that gets shown to GL/executive management, not just operations.</description>
+
+  <fieldset submitButton="false" autoRun="true">
+    <input type="time" token="tr">
+      <label>Time range</label>
+      <default><earliest>-30d</earliest><latest>now</latest></default>
+    </input>
+  </fieldset>
+
+  <row>
+    <panel>
+      <html>
+        <h2>What happened</h2>
+        <blockquote style="border-left:3px solid #16a3b0;margin:0 0 12px;padding:6px 14px;color:#cdd9e5;background:#101722;">
+          "Überwachung der Bettenauslastung, kann interessant sein für GL."
+        </blockquote>
+        <p style="color:#cdd9e5;max-width:900px;">This one came up as a leadership (GL) interest
+        rather than an IT operations problem — occupancy is a business KPI, not a fault to fix.
+        The Splunk angle is the same either way: pull the occupancy signal into one place,
+        trend it by ward over time, and put it in front of the people who make staffing and
+        capacity decisions, instead of it living only inside the bed-management system's own
+        (operational) UI.</p>
+      </html>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
+      <title>Data sources needed to build this for real</title>
+      <html>
+        <ul style="color:#cdd9e5;">
+          <li><b>Bed management system / RTLS</b> — real-time bed status (occupied / free /
+          being cleaned / blocked) per ward, usually via its own API or database export.</li>
+          <li><b>ADT feed (HL7)</b> — Admission-Discharge-Transfer messages, the clinical
+          system of record for who is in which bed and for how long.</li>
+          <li><b>Nurse call system</b> — optional, but useful as a proxy for ward activity
+          level alongside raw occupancy.</li>
+          <li><b>Reference data</b> — total licensed beds per ward, so a raw count becomes a
+          meaningful percentage.</li>
+        </ul>
+      </html>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
+      <title>Hospital-wide occupancy (today)</title>
+      <single>
+        <search>
+          <query>| makeresults | eval occupancy=87</query>
+        </search>
+        <option name="unit">%</option>
+        <option name="drilldown">none</option>
+        <option name="colorBy">value</option>
+        <option name="rangeColors">["0x53a051","0xf2b827","0xd93f3c"]</option>
+        <option name="rangeValues">[80,95]</option>
+      </single>
+    </panel>
+    <panel>
+      <title>Free beds right now</title>
+      <single>
+        <search>
+          <query>| makeresults | eval beds=31</query>
+        </search>
+        <option name="drilldown">none</option>
+      </single>
+    </panel>
+    <panel>
+      <title>30-day trend</title>
+      <single>
+        <search>
+          <query>| makeresults | eval trend="+4.2 pts vs. last month"</query>
+        </search>
+        <option name="drilldown">none</option>
+      </single>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
+      <title>Occupancy % by ward — 30 days</title>
+      <chart>
+        <search>
+          <query>| makeresults count=30
+| streamstats count as i
+| eval Day=strftime(relative_time(now(), "-".(30-i)."d"), "%m-%d")
+| eval "Surgery"=78+((i%7)*2)
+| eval "Internal Medicine"=85+((i%5)*2)
+| eval "Radiology / Day Clinic"=60+((i%9)*3)
+| table Day "Surgery" "Internal Medicine" "Radiology / Day Clinic"</query>
+          <earliest>$tr.earliest$</earliest>
+          <latest>$tr.latest$</latest>
+        </search>
+        <option name="charting.chart">line</option>
+        <option name="charting.chart.nullValueMode">connect</option>
+        <option name="charting.axisY.maximumNumber">100</option>
+        <option name="charting.axisTitleY.text">Occupancy %</option>
+        <option name="charting.legend.placement">bottom</option>
+        <option name="drilldown">none</option>
+      </chart>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
+      <title>Ward summary — today</title>
+      <table>
+        <search>
+          <query>| makeresults count=3
+| streamstats count as i
+| eval Ward=case(i=1,"Surgery",i=2,"Internal Medicine",i=3,"Radiology / Day Clinic")
+| eval "Licensed beds"=case(i=1,40,i=2,52,i=3,20)
+| eval "Occupied"=case(i=1,35,i=2,49,i=3,13)
+| eval "Occupancy %"=round('Occupied'/'Licensed beds'*100,1)
+| eval Status=case('Occupancy %'&gt;=90,"Near capacity",'Occupancy %'&gt;=75,"Healthy",1=1,"Underutilized")
+| table Ward "Licensed beds" Occupied "Occupancy %" Status</query>
+          <earliest>$tr.earliest$</earliest>
+          <latest>$tr.latest$</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <format type="color" field="Status">
+          <colorPalette type="map">{"Near capacity":#d93f3c,"Healthy":#53a051,"Underutilized":#f2b827}</colorPalette>
+        </format>
+      </table>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
+      <title>The SPL, once the bed-management system / ADT feed is onboarded</title>
+      <html>
+        <pre style="white-space:pre-wrap;background:#11151a;padding:12px;border-radius:6px;color:#cdd9e5;">index=adt_hl7 message_type=ADT
+| eval bed_status=case(event_type="A01","occupied", event_type="A03","free", 1=1, bed_status)
+| stats latest(bed_status) as status by ward, bed_id
+| stats count as licensed_beds, count(eval(status="occupied")) as occupied by ward
+| eval occupancy_pct=round(occupied/licensed_beds*100,1)
+| table ward licensed_beds occupied occupancy_pct
+| sort - occupancy_pct</pre>
+        <p style="color:#8b98a5;">Scheduled daily/weekly and shared as a PDF or a Splunk
+        dashboard link, this is a natural fit for a GL/leadership review deck.</p>
+      </html>
+    </panel>
+  </row>
+</form>

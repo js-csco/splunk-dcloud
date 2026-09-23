@@ -1,0 +1,13 @@
+<nav search_view="search" color="#16a3b0">
+  <view name="overview" default="true" />
+  <view name="dhcp_asset_drift" />
+  <view name="db_failover_monitoring" />
+  <view name="iot_proactive_monitoring" />
+  <view name="network_correlation_ise_dna" />
+  <view name="environmental_device_health" />
+  <view name="nsx_microsegmentation_drift" />
+  <view name="bed_occupancy" />
+  <view name="data_residency_compliance" />
+  <view name="ai_observability" />
+  <view name="search" />
+</nav>

@@ -1,0 +1,72 @@
+<dashboard version="1.1" theme="dark">
+  <label>Customer Example — Overview</label>
+  <description>Nine pain points captured in a customer discovery workshop, each turned into a dashboard: a worked example plus the data sources needed to build it for real.</description>
+
+  <row>
+    <panel>
+      <html>
+        <h1 style="margin:0 0 6px;">Customer Example</h1>
+        <p style="color:#cdd9e5;max-width:900px;">
+          This app is built from a single discovery conversation with a hospital IT team.
+          Every dashboard below answers one thing they said, with a <b>quick worked example</b>
+          (built from representative sample data, since these source systems aren't part of
+          this lab) and a plain list of the <b>data sources</b> Splunk would actually ingest to
+          solve it for real. Use it as a talk track, not a finished build.
+        </p>
+        <p style="color:#8b98a5;">Nothing here is connected to the customer's real DHCP server,
+        ISE, DNA Center, NSX Manager, bed-management system, or LLM platform — those don't
+        exist in this lab. Every chart is generated on the fly with <code>makeresults</code> so
+        the story renders with zero setup; swap it for the real search once the data source is
+        onboarded.</p>
+      </html>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
+      <html>
+        <div style="font-size:12px;letter-spacing:1px;color:#8b98a5;text-transform:uppercase;margin-bottom:8px;">Jump to a use case</div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;">
+          <a href="/app/customer_example/dhcp_asset_drift" style="text-decoration:none;background:#16a3b0;color:#fff;padding:10px 14px;border-radius:8px;font-weight:600;font-size:13px;">1. Röntgengerät / DHCP drift</a>
+          <a href="/app/customer_example/db_failover_monitoring" style="text-decoration:none;background:#16a3b0;color:#fff;padding:10px 14px;border-radius:8px;font-weight:600;font-size:13px;">2. DB failover monitoring</a>
+          <a href="/app/customer_example/iot_proactive_monitoring" style="text-decoration:none;background:#16a3b0;color:#fff;padding:10px 14px;border-radius:8px;font-weight:600;font-size:13px;">3. IoT proactive monitoring</a>
+          <a href="/app/customer_example/network_correlation_ise_dna" style="text-decoration:none;background:#16a3b0;color:#fff;padding:10px 14px;border-radius:8px;font-weight:600;font-size:13px;">4. Network correlation (ISE/DNA)</a>
+          <a href="/app/customer_example/environmental_device_health" style="text-decoration:none;background:#16a3b0;color:#fff;padding:10px 14px;border-radius:8px;font-weight:600;font-size:13px;">5. Etikettendrucker / Temperatur</a>
+          <a href="/app/customer_example/nsx_microsegmentation_drift" style="text-decoration:none;background:#16a3b0;color:#fff;padding:10px 14px;border-radius:8px;font-weight:600;font-size:13px;">6. VMware/NSX microsegmentation</a>
+          <a href="/app/customer_example/bed_occupancy" style="text-decoration:none;background:#16a3b0;color:#fff;padding:10px 14px;border-radius:8px;font-weight:600;font-size:13px;">7. Bettenauslastung</a>
+          <a href="/app/customer_example/data_residency_compliance" style="text-decoration:none;background:#16a3b0;color:#fff;padding:10px 14px;border-radius:8px;font-weight:600;font-size:13px;">8. Swiss data residency</a>
+          <a href="/app/customer_example/ai_observability" style="text-decoration:none;background:#16a3b0;color:#fff;padding:10px 14px;border-radius:8px;font-weight:600;font-size:13px;">9. AI Observability</a>
+        </div>
+      </html>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
+      <title>The nine use cases, at a glance</title>
+      <html>
+        <table style="border-collapse:collapse;width:100%;font-size:13px;">
+          <thead>
+            <tr style="background:#1b2430;color:#cdd9e5;text-align:left;">
+              <th style="padding:8px;border:1px solid #2b3a4a;">#</th>
+              <th style="padding:8px;border:1px solid #2b3a4a;">What they said</th>
+              <th style="padding:8px;border:1px solid #2b3a4a;">Splunk angle</th>
+              <th style="padding:8px;border:1px solid #2b3a4a;">Key data sources</th>
+            </tr>
+          </thead>
+          <tbody style="color:#e6edf3;">
+            <tr><td style="padding:8px;border:1px solid #2b3a4a;">1</td><td style="padding:8px;border:1px solid #2b3a4a;">X-ray machine went down after its IP silently flipped from static to DHCP — long root-cause hunt.</td><td style="padding:8px;border:1px solid #2b3a4a;">Detect + alert on unexpected DHCP lease changes for critical/reserved assets.</td><td style="padding:8px;border:1px solid #2b3a4a;">DHCP server logs, CMDB/asset inventory, switch port/CDP logs, ISE</td></tr>
+            <tr><td style="padding:8px;border:1px solid #2b3a4a;">2</td><td style="padding:8px;border:1px solid #2b3a4a;">Redundant DB servers are barely monitored; nobody knows why failover triggered.</td><td style="padding:8px;border:1px solid #2b3a4a;">Correlate cluster/replication events with host + network heartbeat around the failover.</td><td style="padding:8px;border:1px solid #2b3a4a;">DB/cluster logs, OS metrics, VIP/heartbeat network logs</td></tr>
+            <tr><td style="padding:8px;border:1px solid #2b3a4a;">3</td><td style="padding:8px;border:1px solid #2b3a4a;">IoT is 99% reactive; managed by an external provider.</td><td style="padding:8px;border:1px solid #2b3a4a;">Shift to proactive: connectivity/battery trend + predictive alerting, shared with the MSP.</td><td style="padding:8px;border:1px solid #2b3a4a;">IoT gateway/MQTT telemetry, wireless/VLAN logs, MSP ticketing API</td></tr>
+            <tr><td style="padding:8px;border:1px solid #2b3a4a;">4</td><td style="padding:8px;border:1px solid #2b3a4a;">No correlation across ISE, DNA Center and the rest of the network stack.</td><td style="padding:8px;border:1px solid #2b3a4a;">One timeline: auth events (ISE) + client/network health (DNAC) + interface state (switches).</td><td style="padding:8px;border:1px solid #2b3a4a;">Cisco ISE, Cisco DNA Center, switch/router syslog &amp; SNMP, WLC</td></tr>
+            <tr><td style="padding:8px;border:1px solid #2b3a4a;">5</td><td style="padding:8px;border:1px solid #2b3a4a;">A label printer failed this year from rising temperatures.</td><td style="padding:8px;border:1px solid #2b3a4a;">Correlate device error codes with room/ambient temperature trend to predict/prevent it.</td><td style="padding:8px;border:1px solid #2b3a4a;">Environmental (BMS/IoT) sensors, printer/device SNMP logs, asset location</td></tr>
+            <tr><td style="padding:8px;border:1px solid #2b3a4a;">6</td><td style="padding:8px;border:1px solid #2b3a4a;">VMware/NSX microsegmentation — "one small click and the other side stops working again" when the vendor moves a port.</td><td style="padding:8px;border:1px solid #2b3a4a;">Correlate DFW/firewall rule + port-group changes with the connectivity break that follows.</td><td style="padding:8px;border:1px solid #2b3a4a;">NSX Manager (DFW rule changes), vCenter events, change management/CMDB</td></tr>
+            <tr><td style="padding:8px;border:1px solid #2b3a4a;">7</td><td style="padding:8px;border:1px solid #2b3a4a;">Bed occupancy monitoring — potentially interesting for GL (leadership).</td><td style="padding:8px;border:1px solid #2b3a4a;">Executive KPI view: occupancy % by ward, trend, and a simple forecast.</td><td style="padding:8px;border:1px solid #2b3a4a;">Bed management / RTLS system, ADT (HL7) feed, nurse call system</td></tr>
+            <tr><td style="padding:8px;border:1px solid #2b3a4a;">8</td><td style="padding:8px;border:1px solid #2b3a4a;">"Solange es in der Schweiz verarbeitet wird, darf es auch in die Cloud raus."</td><td style="padding:8px;border:1px solid #2b3a4a;">Prove data-residency compliance on every cloud egress, flag anything processed outside CH.</td><td style="padding:8px;border:1px solid #2b3a4a;">Proxy/CASB logs, DLP/data-classification tags, cloud provider audit logs (with region)</td></tr>
+            <tr><td style="padding:8px;border:1px solid #2b3a4a;">9</td><td style="padding:8px;border:1px solid #2b3a4a;">AI Observability is interesting, but leadership has the handbrake on due to uncertainty.</td><td style="padding:8px;border:1px solid #2b3a4a;">Governance-first view: cost/latency plus guardrail &amp; DLP hits, to de-risk before scaling up.</td><td style="padding:8px;border:1px solid #2b3a4a;">LLM/API gateway logs, model registry, guardrail/DLP scan logs, identity</td></tr>
+          </tbody>
+        </table>
+      </html>
+    </panel>
+  </row>
+</dashboard>

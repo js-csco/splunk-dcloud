@@ -1,0 +1,138 @@
+<form version="1.1" theme="dark">
+  <label>4. Network Correlation — ISE / DNA Center</label>
+  <description>Line up identity (ISE), assurance (DNA Center) and the wire (switches) into one incident timeline instead of three separate consoles.</description>
+
+  <fieldset submitButton="false" autoRun="true">
+    <input type="time" token="tr">
+      <label>Time range</label>
+      <default><earliest>-4h</earliest><latest>now</latest></default>
+    </input>
+  </fieldset>
+
+  <row>
+    <panel>
+      <html>
+        <h2>What happened</h2>
+        <blockquote style="border-left:3px solid #16a3b0;margin:0 0 12px;padding:6px 14px;color:#cdd9e5;background:#101722;">
+          "Fehlende Korrelationen der Netzwerkkomponenten wie ISE, DNA usw."
+        </blockquote>
+        <p style="color:#cdd9e5;max-width:900px;">ISE, DNA Center, switches and wireless
+        controllers each tell part of the story — an auth failure here, a client health score
+        drop there, an interface flap somewhere else — but nobody looks at them together. This
+        lab already demonstrates the correlation <i>pattern</i> (see the <b>Correlation</b> app's
+        2/3-source dashboards) across the systems that exist here; this view applies the same
+        idea to ISE + DNA Center + the access layer, which is exactly what the customer is
+        missing.</p>
+      </html>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
+      <title>Data sources needed to build this for real</title>
+      <html>
+        <ul style="color:#cdd9e5;">
+          <li><b>Cisco ISE</b> — via pxGrid or syslog: authentication success/failure, posture
+          status, and endpoint profiling, keyed by MAC/username.</li>
+          <li><b>Cisco DNA Center</b> — Assurance API (or syslog): client health score, network
+          device health, and issue events, keyed by client MAC or device.</li>
+          <li><b>Switch / router syslog &amp; SNMP</b> — interface up/down, port-security
+          violations, spanning-tree events (this lab already has an SSH-poll pattern for Cisco
+          Catalyst devices in <b>Get Data In → SSH Devices</b> that generalizes to this).</li>
+          <li><b>Wireless LAN controller</b> — client roam/deauth events for wireless endpoints.</li>
+          <li><b>Common correlation key:</b> MAC address (or username, for identity-based
+          correlation) — the same "correlate by" technique used elsewhere in this lab.</li>
+        </ul>
+      </html>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
+      <title>Example: one incident, three consoles</title>
+      <table>
+        <search>
+          <query>| makeresults count=5
+| streamstats count as i
+| eval Time=strftime(relative_time(now(), "-".(300-i*40)."s"), "%H:%M:%S")
+| eval Source=case(i=1,"ISE",i=2,"Switch (access layer)",i=3,"DNA Center",i=4,"ISE",i=5,"DNA Center")
+| eval Event=case(
+    i=1,"802.1X auth failed (cert expired) — endpoint 3rd-floor-nurse-station-07",
+    i=2,"Gi1/0/24 err-disabled (port-security violation)",
+    i=3,"Client health score dropped 92 -> 34 for endpoint 3rd-floor-nurse-station-07",
+    i=4,"Endpoint re-authenticated after cert renewal",
+    i=5,"Client health score recovered 34 -> 90")
+| eval Device="3rd-floor-nurse-station-07 (AA:BB:CC:11:22:33)"
+| table Time Source Event Device
+| sort Time</query>
+          <earliest>$tr.earliest$</earliest>
+          <latest>$tr.latest$</latest>
+        </search>
+        <option name="drilldown">none</option>
+      </table>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
+      <title>Client health score around the incident (DNA Center)</title>
+      <chart>
+        <search>
+          <query>| makeresults count=20
+| streamstats count as i
+| eval Minute=strftime(relative_time(now(), "-".(20-i)."m"), "%H:%M")
+| eval "Client health score"=case(i&gt;=9 AND i&lt;=13, 34, 1=1, 90+(i%3))
+| table Minute "Client health score"</query>
+          <earliest>$tr.earliest$</earliest>
+          <latest>$tr.latest$</latest>
+        </search>
+        <option name="charting.chart">line</option>
+        <option name="charting.chart.nullValueMode">connect</option>
+        <option name="charting.axisY.maximumNumber">100</option>
+        <option name="charting.axisY.minimumNumber">0</option>
+        <option name="charting.legend.placement">bottom</option>
+        <option name="drilldown">none</option>
+      </chart>
+    </panel>
+    <panel>
+      <title>Auth outcome over time (ISE)</title>
+      <chart>
+        <search>
+          <query>| makeresults count=20
+| streamstats count as i
+| eval Minute=strftime(relative_time(now(), "-".(20-i)."m"), "%H:%M")
+| eval "Auth success"=if(i&gt;=9 AND i&lt;=12,0,1)
+| eval "Auth failure"=if(i&gt;=9 AND i&lt;=12,1,0)
+| table Minute "Auth success" "Auth failure"</query>
+          <earliest>$tr.earliest$</earliest>
+          <latest>$tr.latest$</latest>
+        </search>
+        <option name="charting.chart">column</option>
+        <option name="charting.chart.stackMode">stacked</option>
+        <option name="charting.legend.placement">bottom</option>
+        <option name="drilldown">none</option>
+      </chart>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
+      <title>The SPL, once ISE + DNA Center are onboarded (same pattern as this lab's 3-source correlation)</title>
+      <html>
+        <pre style="white-space:pre-wrap;background:#11151a;padding:12px;border-radius:6px;color:#cdd9e5;">(index=ise_logs OR index=dnac_assurance OR index=network_syslog)
+| eval mac=coalesce(mac, endpoint_mac, client_mac)
+| eval source=case(index="ise_logs","ISE", index="dnac_assurance","DNA Center", index="network_syslog","Switch")
+| stats count(eval(source=="ISE")) as ise_events,
+        count(eval(source=="DNA Center")) as dnac_events,
+        count(eval(source=="Switch")) as switch_events,
+        min(_time) as first_event, max(_time) as last_event
+  by mac
+| where ise_events&gt;0 AND (dnac_events&gt;0 OR switch_events&gt;0)
+| eval duration_sec=last_event-first_event</pre>
+        <p style="color:#8b98a5;">This is the exact "correlate two/three sources by a shared key"
+        pattern already built into the <b>Correlation</b> app in this lab — swap the indexes and
+        the key stays the same.</p>
+      </html>
+    </panel>
+  </row>
+</form>

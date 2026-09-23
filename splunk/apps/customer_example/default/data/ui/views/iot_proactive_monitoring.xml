@@ -1,0 +1,149 @@
+<form version="1.1" theme="dark">
+  <label>3. IoT — From Reactive to Proactive</label>
+  <description>Turn IoT device telemetry into an early-warning signal instead of a post-mortem, and share the same view with the external service provider.</description>
+
+  <fieldset submitButton="false" autoRun="true">
+    <input type="time" token="tr">
+      <label>Time range</label>
+      <default><earliest>-7d</earliest><latest>now</latest></default>
+    </input>
+  </fieldset>
+
+  <row>
+    <panel>
+      <html>
+        <h2>What happened</h2>
+        <blockquote style="border-left:3px solid #16a3b0;margin:0 0 12px;padding:6px 14px;color:#cdd9e5;background:#101722;">
+          "IoT Systeme werden zur Zeit überhaupt nicht proaktiv überwacht, zu 99% reaktiv. Man
+          arbeitet hier mit einem externen Dienstleister zusammen."
+        </blockquote>
+        <p style="color:#cdd9e5;max-width:900px;">Today, an IoT device (asset tags, environmental
+        sensors, infusion pumps, etc.) is only noticed when it stops working — a ticket to the
+        external managed-service provider is the first signal anyone gets. Device telemetry
+        (battery level, signal strength, last-seen) almost always degrades <i>before</i> it goes
+        fully dark. Centralizing that telemetry in Splunk turns "find out it broke" into "get
+        alerted 2 days before it breaks", and gives the customer and the MSP the same shared
+        view instead of two separate dashboards.</p>
+      </html>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
+      <title>Data sources needed to build this for real</title>
+      <html>
+        <ul style="color:#cdd9e5;">
+          <li><b>IoT gateway / platform telemetry</b> — MQTT broker, LoRaWAN network server, or
+          the vendor's cloud API (battery %, RSSI/signal, last-seen heartbeat) per device.</li>
+          <li><b>Network access data</b> — which VLAN/SSID/AP the device is on (wireless
+          controller logs), to separate a device problem from a network problem.</li>
+          <li><b>MSP ticketing system</b> — ServiceNow/Jira/whatever the external provider uses,
+          via its REST API, so ticket volume and MTTR can be compared against telemetry.</li>
+          <li><b>Asset inventory</b> — device type, location/ward, and criticality, so alerts can
+          be prioritized (a dead asset tag is not the same as a dead infusion pump gateway).</li>
+        </ul>
+      </html>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
+      <title>Reactive vs. proactive today</title>
+      <single>
+        <search>
+          <query>| makeresults | eval "% incidents caught only after the device went dark"=99</query>
+        </search>
+        <option name="unit">%</option>
+        <option name="drilldown">none</option>
+        <option name="colorBy">value</option>
+        <option name="rangeColors">["0xd93f3c","0xd93f3c"]</option>
+        <option name="rangeValues">[0]</option>
+      </single>
+    </panel>
+    <panel>
+      <title>Devices with degrading telemetry right now (would-be proactive alerts)</title>
+      <single>
+        <search>
+          <query>| makeresults | eval devices=3</query>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="colorBy">value</option>
+        <option name="rangeColors">["0xf2b827"]</option>
+      </single>
+    </panel>
+    <panel>
+      <title>Fleet size (this ward)</title>
+      <single>
+        <search>
+          <query>| makeresults | eval devices=48</query>
+        </search>
+        <option name="drilldown">none</option>
+      </single>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
+      <title>Fleet health — battery &amp; connectivity trend (7 days)</title>
+      <chart>
+        <search>
+          <query>| makeresults count=7
+| streamstats count as i
+| eval Day=strftime(relative_time(now(), "-".(7-i)."d"), "%m-%d")
+| eval "Asset-Tag-114 battery %"=case(i&lt;=4, 61-(i*2), 1=1, 61-(i*8))
+| eval "InfusionGW-22 signal (RSSI dBm, higher=better)"=case(i&lt;=5, -58-(i*1), 1=1, -58-(i*6))
+| table Day "Asset-Tag-114 battery %" "InfusionGW-22 signal (RSSI dBm, higher=better)"</query>
+          <earliest>$tr.earliest$</earliest>
+          <latest>$tr.latest$</latest>
+        </search>
+        <option name="charting.chart">line</option>
+        <option name="charting.chart.nullValueMode">connect</option>
+        <option name="charting.legend.placement">bottom</option>
+        <option name="drilldown">none</option>
+      </chart>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
+      <title>Devices trending toward failure (would page the MSP before an outage)</title>
+      <table>
+        <search>
+          <query>| makeresults count=3
+| streamstats count as i
+| eval Device=case(i=1,"Asset-Tag-114",i=2,"InfusionGW-22",i=3,"EnvSensor-Ward3-07")
+| eval Signal=case(i=1,"Battery 13% (dropping ~8%/day)",i=2,"RSSI -94 dBm (dropping fast)",i=3,"Last-seen 41 min ago (normally &lt;2 min)")
+| eval "Days until likely dark"=case(i=1,2,i=2,1,i=3,0)
+| eval Priority=case(i=1,"Medium",i=2,"High — infusion pump gateway",i=3,"High — already intermittent")
+| table Device Signal "Days until likely dark" Priority
+| sort "Days until likely dark"</query>
+          <earliest>$tr.earliest$</earliest>
+          <latest>$tr.latest$</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <format type="color" field="Priority">
+          <colorPalette type="map">{"High — infusion pump gateway":#d93f3c,"High — already intermittent":#d93f3c,"Medium":#f2b827}</colorPalette>
+        </format>
+      </table>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
+      <title>The SPL, once IoT telemetry is onboarded</title>
+      <html>
+        <pre style="white-space:pre-wrap;background:#11151a;padding:12px;border-radius:6px;color:#cdd9e5;">index=iot_telemetry
+| stats latest(battery_pct) as battery, latest(rssi_dbm) as rssi, latest(_time) as last_seen by device_id
+| lookup asset_inventory device_id OUTPUT device_type, ward, criticality
+| eval minutes_dark=round((now()-last_seen)/60,1)
+| eval risk=case(
+    battery&lt;20 OR rssi&lt;-90 OR minutes_dark&gt;15, "proactive-alert",
+    1=1, "healthy")
+| where risk="proactive-alert"
+| table device_id device_type ward battery rssi minutes_dark criticality</pre>
+        <p style="color:#8b98a5;">Share this same search (or a scheduled report of it) with the
+        MSP — one shared signal instead of the customer and the provider each guessing.</p>
+      </html>
+    </panel>
+  </row>
+</form>

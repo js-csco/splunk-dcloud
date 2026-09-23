@@ -1,0 +1,11 @@
+# customer_example - globally visible, readable by all lab roles.
+
+[]
+access = read : [ * ], write : [ admin, power ]
+export = system
+
+[views]
+export = system
+
+[nav]
+export = system

@@ -43,7 +43,7 @@ Demo logins (all password `C1sco12345`): `admin` · `gary` (global) · `leo` (Lo
 
 - **Setup:** [How it works](#how-it-works) · [Startup (each session)](#startup-each-session) · [Cisco routers](#cisco-routers-console-bring-up) · [Troubleshooting: DNS](#troubleshooting-dns)
 - **Core design:** [Location-based RBAC](#location-based-rbac-the-core-design)
-- **Use cases (demos):** [Dashboards](#dashboards-lab-overview-app) · [Host & infra metrics](#host--infrastructure-metrics) · [Alerts & ITSI](#alerts) · [Asset Configuration](#asset-configuration-inventory--enrichment) · [Client → Hypervisor → App](#client--hypervisor--app-correlation) · [Splunk MCP Server](#splunk-mcp-server-claude-desktop) · [Save to GitHub](#save-to-github-persisting-demo-changes)
+- **Use cases (demos):** [Dashboards](#dashboards-lab-overview-app) · [Host & infra metrics](#host--infrastructure-metrics) · [Alerts & ITSI](#alerts) · [Asset Configuration](#asset-configuration-inventory--enrichment) · [Client → Hypervisor → App](#client--hypervisor--app-correlation) · [Splunk MCP Server](#splunk-mcp-server-claude-desktop) · [Customer Example](#customer-example-workshop-use-cases) · [Save to GitHub](#save-to-github-persisting-demo-changes)
 - **Reference:** [Get Data In](#get-data-in-ingestion-methods) · [SNMP (SC4SNMP)](#snmp-via-splunk-connect-for-snmp-sc4snmp) · [Install ITSI / ITE-W](#install-itsi--it-essentials-work) · [Repo layout](#repo-layout) · [Environment](#environment-assumptions) · [Roadmap](#roadmap)
 
 ---
@@ -264,8 +264,9 @@ every session.
 Plus the other apps: **Alerts**, **Infrastructure Monitoring** (*Data Onboarding
 Overview*, *Host & Infra Metrics*, *Asset Configuration*), **Correlation**
 (*Correlation 2/3 Sources*, *Dynamic Correlation*, *Client → Hypervisor → App*, *Root
-Cause Analysis*), and **Get Data In** (ingestion methods, *Indexes and Sourcetypes*,
-*Data Model & Pivot*).
+Cause Analysis*), **Get Data In** (ingestion methods, *Indexes and Sourcetypes*,
+*Data Model & Pivot*), and **Customer Example** (nine dashboards built from a customer
+discovery workshop — see [Customer Example](#customer-example-workshop-use-cases)).
 
 The **Correlation 2/3 Sources** views teach the canonical
 `stats count(eval(source=A)) … by key` technique — pick sources and a correlation key
@@ -504,6 +505,31 @@ Desktop** dashboard walks through it and shows whether the app loaded. The
 > dashboard's status panel confirms it loaded); for the self-signed cert you may need
 > `[mcp] ssl_verify = false` in the app's `mcp.conf`, and Claude Desktop must reach
 > `198.18.1.124:8089`.
+
+## Customer Example (workshop use cases)
+
+The **Customer Example** app turns nine pain points from a real customer discovery
+conversation (a hospital IT team) into nine dashboards — one pain point each, in
+`splunk/apps/customer_example`. None of the source systems involved (DHCP server, ISE, DNA
+Center, NSX Manager, a bed-management system, an LLM platform, …) exist in this lab, so
+every panel is generated on the fly with `makeresults` — a **quick, realistic worked
+example** with zero setup, not live data. Each dashboard also lists the **data sources**
+(DHCP, switching, DB/cluster logs, ISE/DNA Center, environmental sensors, NSX, ADT/HL7,
+CASB/cloud audit logs, LLM gateway logs, …) that would actually be onboarded to build it
+for real, plus representative SPL for once they are. Start at **Overview** for the
+full list and a quick-launch grid:
+
+| # | Dashboard | Customer's pain point |
+|---|---|---|
+| 1 | Röntgengerät — DHCP / IP Drift | A device's IP silently flipped from static to DHCP; long root-cause hunt. |
+| 2 | Redundant DB Servers — Failover Visibility | No visibility into why a redundant DB pair failed over. |
+| 3 | IoT — From Reactive to Proactive | IoT is ~99% reactive; managed with an external provider. |
+| 4 | Network Correlation — ISE / DNA Center | No correlation across ISE, DNA Center, and the rest of the network. |
+| 5 | Etikettendrucker — Environmental Device Health | A label printer failed this year from rising room temperature. |
+| 6 | VMware / NSX — Microsegmentation Drift | A vendor's port/rule change silently breaks connectivity on the other side. |
+| 7 | Bettenauslastung — Bed Occupancy (Exec View) | Bed occupancy monitoring, flagged as interesting for GL (leadership). |
+| 8 | Swiss Data Residency & Cloud Compliance | "Processed in Switzerland may go to the cloud" — currently a policy, not a monitored control. |
+| 9 | AI Observability & Governance | AI adoption is stalled on leadership uncertainty about visibility/guardrails. |
 
 ## Save to GitHub (persisting demo changes)
 
@@ -777,6 +803,7 @@ splunk/apps/
   infra_monitoring/           # host metrics, asset config, syslog receivers
   alerts/                     # scheduled alerts + Webex/Proxmox actions
   correlation/                # 2/3-source + Client -> Hypervisor -> App dashboards
+  customer_example/           # 9 dashboards from a customer discovery workshop (synthetic examples + data-sources-needed)
   itsi_episodes/              # config-as-code episode saved searches
 ```
 
@@ -808,5 +835,6 @@ splunk/apps/
 - [x] ITSI Predictive Analytics: MLTK + PSC install path + synthetic `itsi_summary` history backfill so a model can train on a reset lab
 - [ ] Real ITSI (premium): heavy on a reset-each-session VM — free ITE-W preferred unless licensed
 - [x] Processes & services: full `linux:ps` + `linux:services` (systemd) from every UF incl. a UF on the Proxmox host, with a Processes & Services dashboard
+- [x] Customer Example: 9 dashboards from a customer discovery workshop, each with a synthetic worked example and the data sources needed to build it for real
 - [ ] SOAP sender (parked)
 ```

@@ -1,0 +1,155 @@
+<form version="1.1" theme="dark">
+  <label>9. AI Observability &amp; Governance</label>
+  <description>A governance-first view of AI usage — cost, latency, and guardrail hits — built to de-risk AI adoption for a leadership team that currently has the handbrake on.</description>
+
+  <fieldset submitButton="false" autoRun="true">
+    <input type="time" token="tr">
+      <label>Time range</label>
+      <default><earliest>-7d</earliest><latest>now</latest></default>
+    </input>
+  </fieldset>
+
+  <row>
+    <panel>
+      <html>
+        <h2>What happened</h2>
+        <blockquote style="border-left:3px solid #16a3b0;margin:0 0 12px;padding:6px 14px;color:#cdd9e5;background:#101722;">
+          "AI Observability ist sehr interessant, GL hat da zur Zeit aber etwas die Handbremse
+          drauf, aufgrund Unsicherheit."
+        </blockquote>
+        <p style="color:#cdd9e5;max-width:900px;">Leadership's hesitation isn't about whether AI
+        is useful — it's about not having <b>visibility and guardrails</b> before it scales:
+        what's being sent to which model, what it costs, whether responses are being checked for
+        sensitive data leakage, and whether usage is auditable. The pitch here isn't "AI
+        observability" as a buzzword — it's specifically the governance layer (cost control,
+        guardrail hits, auditability) that turns "we're not sure" into "we can see exactly what's
+        happening and stop it if needed."</p>
+      </html>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
+      <title>Data sources needed to build this for real</title>
+      <html>
+        <ul style="color:#cdd9e5;">
+          <li><b>LLM / API gateway logs</b> — every request to a model provider (Anthropic,
+          OpenAI, Azure OpenAI, etc.) with tokens, latency, cost, and the calling
+          application/team.</li>
+          <li><b>Guardrail / DLP scan logs</b> — output from a prompt/response scanner checking
+          for PII, PHI, or policy-violating content before/after the model call.</li>
+          <li><b>Model registry / version metadata</b> — which model version answered which
+          request, for reproducibility and rollback if a model update changes behavior.</li>
+          <li><b>Identity / access data</b> — which user or service account made each call, so
+          usage and incidents are attributable.</li>
+        </ul>
+      </html>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
+      <title>AI requests (7 days)</title>
+      <single>
+        <search>
+          <query>| makeresults | eval requests=48213</query>
+        </search>
+        <option name="drilldown">none</option>
+      </single>
+    </panel>
+    <panel>
+      <title>Guardrail hits (blocked before leaving)</title>
+      <single>
+        <search>
+          <query>| makeresults | eval hits=7</query>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="colorBy">value</option>
+        <option name="rangeColors">["0x53a051","0xf2b827"]</option>
+        <option name="rangeValues">[1]</option>
+      </single>
+    </panel>
+    <panel>
+      <title>Spend (7 days)</title>
+      <single>
+        <search>
+          <query>| makeresults | eval spend=1284</query>
+        </search>
+        <option name="unit">CHF</option>
+        <option name="drilldown">none</option>
+      </single>
+    </panel>
+    <panel>
+      <title>p95 latency</title>
+      <single>
+        <search>
+          <query>| makeresults | eval latency=2.4</query>
+        </search>
+        <option name="unit">s</option>
+        <option name="drilldown">none</option>
+      </single>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
+      <title>Usage &amp; spend by team (7 days)</title>
+      <chart>
+        <search>
+          <query>| makeresults count=4
+| streamstats count as i
+| eval Team=case(i=1,"Radiology-AI-Pipeline",i=2,"Clinical-Docs-Assistant",i=3,"IT-Helpdesk-Bot",i=4,"HR-Screening (pilot, paused)")
+| eval "Requests"=case(i=1,28400,i=2,14200,i=3,5600,i=4,13)
+| eval "Spend (CHF)"=case(i=1,712,i=2,398,i=3,161,i=4,13)
+| table Team "Requests" "Spend (CHF)"</query>
+          <earliest>$tr.earliest$</earliest>
+          <latest>$tr.latest$</latest>
+        </search>
+        <option name="charting.chart">bar</option>
+        <option name="charting.legend.placement">bottom</option>
+        <option name="drilldown">none</option>
+      </chart>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
+      <title>Guardrail hits over time — what governance is actually catching</title>
+      <table>
+        <search>
+          <query>| makeresults count=3
+| streamstats count as i
+| eval Time=strftime(relative_time(now(), "-".(i*2)."d"), "%Y-%m-%d")
+| eval Team=case(i=1,"Clinical-Docs-Assistant",i=2,"HR-Screening (pilot, paused)",i=3,"Clinical-Docs-Assistant")
+| eval Finding=case(i=1,"Response contained unredacted patient name — blocked",i=2,"Prompt contained candidate SSN — blocked, pilot paused",i=3,"Response contained internal-only pricing — blocked")
+| eval Action=case(i=1,"Blocked, logged, team notified",i=2,"Blocked, pilot escalated to GL",i=3,"Blocked, logged")
+| table Time Team Finding Action
+| sort Time</query>
+          <earliest>$tr.earliest$</earliest>
+          <latest>$tr.latest$</latest>
+        </search>
+        <option name="drilldown">none</option>
+      </table>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
+      <title>The SPL, once the AI gateway + guardrail logs are onboarded</title>
+      <html>
+        <pre style="white-space:pre-wrap;background:#11151a;padding:12px;border-radius:6px;color:#cdd9e5;">index=ai_gateway
+| stats count as requests, sum(tokens) as tokens, sum(cost_chf) as spend, perc95(latency_ms) as p95_latency
+  by team, model
+| appendcols [
+    search index=ai_guardrail action=block
+    | stats count as guardrail_hits by team ]
+| eval risk_flag=if(guardrail_hits&gt;0, "review", "clear")
+| table team model requests spend p95_latency guardrail_hits risk_flag
+| sort - guardrail_hits</pre>
+        <p style="color:#8b98a5;">The point for GL: this is a dashboard that shows AI usage
+        <i>and</i> proves the guardrails are catching real things — the evidence needed to move
+        from "handbrake on" to "controlled rollout".</p>
+      </html>
+    </panel>
+  </row>
+</form>

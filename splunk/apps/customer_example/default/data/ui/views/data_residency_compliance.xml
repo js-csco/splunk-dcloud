@@ -1,0 +1,127 @@
+<form version="1.1" theme="dark">
+  <label>8. Swiss Data Residency &amp; Cloud Compliance</label>
+  <description>Prove, on every cloud egress, that "processed in Switzerland" actually held — instead of assuming it did.</description>
+
+  <fieldset submitButton="false" autoRun="true">
+    <input type="time" token="tr">
+      <label>Time range</label>
+      <default><earliest>-24h</earliest><latest>now</latest></default>
+    </input>
+  </fieldset>
+
+  <row>
+    <panel>
+      <html>
+        <h2>What happened</h2>
+        <blockquote style="border-left:3px solid #16a3b0;margin:0 0 12px;padding:6px 14px;color:#cdd9e5;background:#101722;">
+          "Solange es in der Schweiz verarbeitet wird, darf es auch in die Cloud raus."
+        </blockquote>
+        <p style="color:#cdd9e5;max-width:900px;">This is a policy statement, not (yet) a
+        monitored control — the rule is that data may leave to the cloud as long as it was
+        <b>processed within Switzerland</b> first, but today there's no automated evidence that
+        every export actually respected that. Splunk's role here isn't to enforce the policy
+        (a CASB/DLP/cloud gateway does that) — it's to be the <b>audit trail</b> that proves
+        every egress happened after CH-region processing, and to flag the one that didn't
+        before an auditor or regulator finds it.</p>
+      </html>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
+      <title>Data sources needed to build this for real</title>
+      <html>
+        <ul style="color:#cdd9e5;">
+          <li><b>Proxy / CASB logs</b> — every outbound request to a cloud service, with
+          destination and (ideally) the cloud region it landed in.</li>
+          <li><b>Data classification / DLP tags</b> — which data category (e.g. patient data,
+          internal, public) was in the payload, from the DLP engine or app-level tagging.</li>
+          <li><b>Cloud provider audit logs</b> — Azure Activity Log / AWS CloudTrail / GCP Audit
+          Logs, which record the <b>region</b> a resource or processing job actually ran in.</li>
+          <li><b>Egress firewall / SASE logs</b> — the network-layer record of what left the
+          Swiss network boundary and when.</li>
+        </ul>
+      </html>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
+      <title>Egress events — last 24h</title>
+      <single>
+        <search>
+          <query>| makeresults | eval events=1842</query>
+        </search>
+        <option name="drilldown">none</option>
+      </single>
+    </panel>
+    <panel>
+      <title>Compliant (processed in CH first)</title>
+      <single>
+        <search>
+          <query>| makeresults | eval pct=99.7</query>
+        </search>
+        <option name="unit">%</option>
+        <option name="drilldown">none</option>
+        <option name="colorBy">value</option>
+        <option name="rangeColors">["0xd93f3c","0x53a051"]</option>
+        <option name="rangeValues">[99]</option>
+      </single>
+    </panel>
+    <panel>
+      <title>Policy violations flagged</title>
+      <single>
+        <search>
+          <query>| makeresults | eval v=1</query>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="colorBy">value</option>
+        <option name="rangeColors">["0x53a051","0xd93f3c"]</option>
+        <option name="rangeValues">[1]</option>
+      </single>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
+      <title>Example: cloud egress events by processing region and classification</title>
+      <table>
+        <search>
+          <query>| makeresults count=5
+| streamstats count as i
+| eval Time=strftime(relative_time(now(), "-".(300-i*30)."m"), "%H:%M")
+| eval Application=case(i=1,"Imaging-AI-Pipeline",i=2,"HR-Analytics",i=3,"Imaging-AI-Pipeline",i=4,"Backup-Sync",i=5,"Imaging-AI-Pipeline")
+| eval "Processed in"=case(i=1,"Switzerland (CH-North)",i=2,"Switzerland (CH-North)",i=3,"Switzerland (CH-North)",i=4,"Switzerland (CH-North)",i=5,"West Europe (Ireland) — POLICY VIOLATION")
+| eval "Data classification"=case(i=1,"Patient data (pseudonymized)",i=2,"Internal (HR)",i=3,"Patient data (pseudonymized)",i=4,"Internal backups",i=5,"Patient data (pseudonymized)")
+| eval "Cloud destination"=case(i=1,"Azure Blob (CH-North)",i=2,"Azure Blob (CH-North)",i=3,"Azure Blob (CH-North)",i=4,"Azure Blob (CH-North)",i=5,"Azure Blob (West Europe)")
+| eval Status=if(i=5,"VIOLATION","OK")
+| table Time Application "Processed in" "Data classification" "Cloud destination" Status
+| sort Time</query>
+          <earliest>$tr.earliest$</earliest>
+          <latest>$tr.latest$</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <format type="color" field="Status">
+          <colorPalette type="map">{"VIOLATION":#d93f3c,"OK":#53a051}</colorPalette>
+        </format>
+      </table>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
+      <title>The SPL, once proxy/CASB + cloud audit logs are onboarded</title>
+      <html>
+        <pre style="white-space:pre-wrap;background:#11151a;padding:12px;border-radius:6px;color:#cdd9e5;">index=casb_logs action=egress dest_type=cloud
+| lookup dlp_classification request_id OUTPUT data_class
+| lookup processing_jobs request_id OUTPUT processed_region
+| eval violation=if(processed_region!="CH" AND match(data_class,"(?i)patient|phi"), 1, 0)
+| where violation=1
+| table _time app request_id data_class processed_region dest_region</pre>
+        <p style="color:#8b98a5;">This becomes a real-time alert (any <code>violation=1</code> in
+        the last 5 minutes) plus a scheduled compliance report for audit season — evidence
+        instead of a policy statement.</p>
+      </html>
+    </panel>
+  </row>
+</form>
